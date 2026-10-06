@@ -11,7 +11,7 @@ its sources. It is recommended, not required.
 
 The Python calculator is `ballot-guide/scripts/score.py`; the browser calculator
 is `tools/calc.js`. Keep their behavior in lockstep and run both calculator tests.
-`node tools/calc_test.js` includes a parity fuzz that runs 2000 random races (all five
+`node tools/calc_test.js` includes a parity fuzz that runs 4000 random races (all five
 evidence kinds, ranges and calls, including uneven evidence) through both calculators
 and fails on any mismatch.
 
@@ -25,6 +25,8 @@ python3 tools/package.py
 
 `tools/page.template.html` and `tools/kit.js` supply the web interface.
 Do not edit generated `docs/index.html` or `PROMPT-KIT.md` directly.
+The public README stays voter-first; scoring details belong in `SCORING.md`,
+which must match `score.py` and `calc.js`. The README screenshot is `docs/img/web-kit.jpg`.
 The deterministic archive is `dist/ballot-guide.skill`, with top-level `ballot-guide/SKILL.md`.
 Inspect the archive before attaching it to an explicitly authorized release.
 After checks pass and the PR is merged, check out merged `main`, rebuild the

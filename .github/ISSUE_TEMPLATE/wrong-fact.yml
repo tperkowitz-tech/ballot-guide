@@ -1,0 +1,24 @@
+name: Wrong fact or broken source
+description: A claim, vote, score input or link in the prompts, rules or web kit is wrong or out of date.
+labels: [accuracy]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for helping keep this accurate. Please do not include your home address or other personal details."
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong?
+      description: Quote the text or describe the step, and say what it should be.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source that shows the correct information
+      placeholder: "https://..."
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did you see it?
+      options: [Web kit, PROMPT-KIT.md, Claude or Codex skill, Scoring rules, Somewhere else]

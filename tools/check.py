@@ -36,7 +36,7 @@ def main():
                 text = path.read_text(errors="replace").replace("tperkowitz-tech", "")
                 if any(re.search(p, text, re.I) for p in patterns):
                     found.append(str(path.relative_to(ROOT)))
-    for name in ("README.md", "PROMPT-KIT.md", "CONTRIBUTING.md", "LICENSE"):
+    for name in ("README.md", "SCORING.md", "SECURITY.md", "PROMPT-KIT.md", "CONTRIBUTING.md", "LICENSE"):
         if any(re.search(p, (ROOT / name).read_text().replace("tperkowitz-tech", ""), re.I) for p in patterns):
             found.append(name)
     if found:
