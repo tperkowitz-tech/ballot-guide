@@ -1,0 +1,700 @@
+{
+  "place": "Washington, DC",
+  "test_address_label": "John A. Wilson Building (public building)",
+  "election": "2026-11-03 General",
+  "researched": "2026-10-06",
+  "official_office": {
+    "name": "DC Board of Elections",
+    "url": "https://dcboe.org/Elections/2026-Elections"
+  },
+  "districts": [
+    {
+      "type": "Ward",
+      "name": "Ward 2",
+      "source": "https://geocoder.dc.gov/"
+    },
+    {
+      "type": "Advisory Neighborhood Commission",
+      "name": "ANC 2C",
+      "source": "https://geocoder.dc.gov/"
+    },
+    {
+      "type": "Single Member District",
+      "name": "SMD 2C03",
+      "source": "https://geocoder.dc.gov/"
+    },
+    {
+      "type": "Voting precinct",
+      "name": "Precinct 129",
+      "source": "https://geocoder.dc.gov/"
+    }
+  ],
+  "ballot": {
+    "races": [
+      {
+        "office": "Mayor of the District of Columbia",
+        "position": "Rank up to 4 choices (ranked-choice voting)",
+        "candidates": "Rhonda Hamilton (Independent) | Janeese Lewis George (Democratic) | Robert L. Gross (DC Statehood Green) | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      },
+      {
+        "office": "Delegate to the U.S. House of Representatives from the District of Columbia",
+        "position": "Rank up to 4 choices (ranked-choice voting)",
+        "candidates": "Denise Rosado (Republican) | Robert White (Democratic) | Kymone Freeman (DC Statehood Green) | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      },
+      {
+        "office": "Chairman of the Council of the District of Columbia",
+        "position": "Vote for 1",
+        "candidates": "Phil Mendelson (Democratic) | Abi-Ananiah Prudent (Republican) | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      },
+      {
+        "office": "At-Large Member of the Council of the District of Columbia",
+        "position": "Rank up to 5 choices (ranked-choice voting); number of seats UNVERIFIED",
+        "candidates": "Oye Owolewa (Democratic) | Darryl Moch (DC Statehood Green) | Darrell Green (Republican) | Elissa Silverman (Independent) | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      },
+      {
+        "office": "Attorney General for the District of Columbia",
+        "position": "Vote for 1",
+        "candidates": "Manuel Rivera (Republican) | Brian L. Schwalb (Democratic) | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      },
+      {
+        "office": "United States Senator (DC shadow office)",
+        "position": "Vote for 1",
+        "candidates": "Robert Simmons (Republican) | Paul Strauss (Democratic) | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      },
+      {
+        "office": "United States Representative (DC shadow office)",
+        "position": "Vote for 1",
+        "candidates": "Ciprian Ivanof (Republican) | Franklin Garcia (Democratic) | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      },
+      {
+        "office": "Advisory Neighborhood Commissioner, ANC 2C03",
+        "position": "Vote for 1",
+        "candidates": "Thomas S. Lee | Darren Sheets | write-in",
+        "status": "CONTESTED",
+        "source": "https://dcboe.org/getContentAsset/5532a17e-37dc-4d52-a54b-a6ce21fdbe4b/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/2026-General-CANDIDATES-07162026.pdf"
+      }
+    ],
+    "measures": [
+      {
+        "name": "Initiative Measure No. 86, Prohibiting Force-Feeding of Birds Act of 2026",
+        "summary": "If enacted: prohibits force-feeding a bird to enlarge its liver, bans sale or distribution of products resulting from it (including foie gras), assigns enforcement to the Department of Energy and Environment during routine food safety inspections, and provides civil penalties. Ballot choices: Yes, to approve / No, to reject.",
+        "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
+      }
+    ],
+    "not_on_ballot": [
+      "No Ward 2 Council seat on the 2026 candidate list (Ward 1, 3, 5, 6 seats only)",
+      "No State Board of Education seat for Ward 2 (Ward 1, 3, 5, 6 seats only)"
+    ],
+    "unverified": [
+      "Number of at-large Council seats being filled: Ballotpedia lists two seats; the printed ballot says only 'Rank up to 5 choices'.",
+      "The BOE general candidate list is a July 15, 2026 version; later withdrawals or challenges may not be reflected (the ANC list file shows a 10/5/26 withdrawal in 2E01, so it is updated in place; the main list shows no such note). Recheck the BOE site near the election.",
+      "Initiative 86 text and fiscal statement: I read the BOE Notice of Publication that labels the same measure 'No. 85' (Dec 3, 2025 formulation) with the CFO fiscal impact statement dated Nov 26, 2025. The printed ballot summary matches, but I did not find the final certified text under the 'No. 86' number.",
+      "Initiative 86 passage threshold and congressional review effects beyond the 30-day review in the text: not confirmed from an official source.",
+      "Initiative 86 supporter and opponent funding totals (OCF): not found.",
+      "Two sources say different things about Janeese Lewis George's housing target (Street Sense: 72,000 affordable units by 2030; GGWash questionnaire: 72,000 new homes in five years). Not used as a number in evidence rows.",
+      "Voting logistics (registration, deadlines, vote centers, mail ballots) were not researched; see BOE election pages and vote.org.",
+      "Elissa Silverman's current term: the DC Council release says she fills the remainder of Kenyan McDuffie's term; 51st News (https://51st.news/elissa-silverman-wins-dc-at-large-special-election/) says it ends in January 2027. The earlier \"through Jan 2, 2029\" claim from her campaign site and BallotReady was removed. BOE certified results page was not opened."
+    ]
+  },
+  "gray": [],
+  "races": [
+    {
+      "race": "Mayor of the District of Columbia",
+      "summary": "Open seat (incumbent not running) with three names on the ballot plus write-ins, using ranked-choice voting for the first time.",
+      "turns_on": "Check how each candidate's housing, public safety and budget plans would be paid for and carried out, and what executive experience each brings.",
+      "options": [
+        {
+          "name": "Janeese Lewis George",
+          "evidence": [
+            {
+              "axis": "Executive record",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://dccouncil.gov/council/ward-4-councilmember-janeese-lewis-george/",
+              "date": "2026-10-06",
+              "text": "Ward 4 Councilmember, elected 2020; chairs the Committee on Facilities; earlier worked as an Assistant Attorney General in the DC Attorney General's juvenile section (Council biography).",
+              "event": "lewisgeorge-bio"
+            },
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://fastdemocracy.com/bill-search/dc/25/bills/DCB00020496",
+              "date": "2024-03-05",
+              "text": "Voted yes on final reading of the Secure DC Omnibus Amendment Act of 2024 on 2024-03-05 (12 yes, 1 abstain; FastDemocracy roll call, an aggregator). Eagle Online reports she also introduced two amendments that passed.",
+              "event": "secure-dc-final-2024",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://janeesefordc.com/platform/homes-for-all/",
+              "date": "2026-10-06",
+              "text": "Campaign platform page proposes strengthening rent stabilization, zoning and permitting changes to add supply, a publicly owned mixed-income program called Dignified Homes DC, downpayment help, a stronger Tenant Opportunity to Purchase Act, and a public housing ombudsman.",
+              "event": "lewisgeorge-housing",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://janeesefordc.com/platform/safe-communities-for-all/",
+              "date": "2026-10-06",
+              "text": "Campaign platform page proposes community hubs in all eight wards with youth programs, job programs and access to mental health services, as part of a prevention, intervention and enforcement approach.",
+              "event": "lewisgeorge-safety",
+              "lean": {
+                "E": "+",
+                "P": "0"
+              }
+            },
+            {
+              "axis": "Homelessness",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://streetsensemedia.org/article/street-sense-voter-guide-responses/",
+              "date": "2026-05-20",
+              "text": "Street Sense Media's voter guide (May 20, 2026) summarizes her answers: a housing production target, the Dignified Homes DC social housing program, and a position that an encampment should not be closed until there is a plan for each resident.",
+              "event": "lewisgeorge-homelessness",
+              "lean": {
+                "E": "+",
+                "P": "+"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://ocf.dc.gov/sites/default/files/dc/sites/ocf/release_content/attachments/January2026%20BOE%20Mtg-1-26%20Stats.pdf",
+              "date": "2026-01-08",
+              "text": "OCF reports she was certified for the Fair Elections Program on 2026-01-08 and authorized $80,000 base plus $898,038.25 matching payment for the June primary. This is public matching money tied to small donations; no general-election totals were found.",
+              "event": "lewisgeorge-fair-elections"
+            }
+          ]
+        },
+        {
+          "name": "Rhonda Hamilton",
+          "evidence": [
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.rhondahamilton4dc.com",
+              "date": "2026-10-06",
+              "text": "Campaign site describes herself as a small business owner of 20+ years and mental health advocate, frames housing as healthcare, and proposes budget transparency and small business support. The site does not indicate prior elected office.",
+              "event": "hamilton-housing"
+            },
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://ballotpedia.org/Rhonda_Hamilton",
+              "date": "2026-10-06",
+              "text": "Ballotpedia quotes her campaign site's crime policy statement: support for law enforcement and training; accountability for offenders and for officers (agencies and officers held to transparent, accountable measures); plus drug-rehabilitation and juvenile-offender programs.",
+              "event": "hamilton-safety",
+              "lean": {
+                "P": "-"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Robert L. Gross",
+          "evidence": [
+            {
+              "axis": "Professional background",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://ballotpedia.org/Robert_Gross_(Washington,_D.C.)",
+              "date": "2026-10-06",
+              "text": "Ballotpedia lists service in the U.S. Air Force Reserve and a career as an information technology professional; no prior elected office is listed.",
+              "event": "gross-bio"
+            },
+            {
+              "axis": "Government operations",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://ballotpedia.org/Robert_Gross_(Washington,_D.C.)",
+              "date": "2026",
+              "text": "In his 2026 Ballotpedia Candidate Connection answers he proposes consolidating over 25 executive agencies into one data-driven structure and a 'Human Life Standard' with a D.C. Green New Deal and participatory budgeting.",
+              "event": "gross-government",
+              "lean": {
+                "E": "+",
+                "P": "+"
+              }
+            },
+            {
+              "axis": "Statehood",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://ballotpedia.org/Robert_Gross_(Washington,_D.C.)",
+              "date": "2026",
+              "text": "Same survey: calls for full DC statehood and protected local autonomy.",
+              "event": "gross-statehood",
+              "lean": {
+                "U": "0",
+                "P": "+"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "Delegate to the U.S. House of Representatives from the District of Columbia",
+      "summary": "Open seat (the current Delegate is retiring); the Delegate can serve on committees and vote in them but cannot vote on final House passage.",
+      "turns_on": "Check what each candidate would do with committee influence and federal funding requests, and their approach to statehood and federal oversight of DC.",
+      "options": [
+        {
+          "name": "Robert White",
+          "evidence": [
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://dccouncil.gov/council/councilmember-robert-c-white-jr/",
+              "date": "2026-10-06",
+              "text": "At-Large Councilmember since September 2016; chairs the Committee on Housing (since 2023). Earlier: Legislative Counsel to the current Delegate and first Director of Community Outreach at the DC Attorney General's office (Council biography).",
+              "event": "rwhite-bio"
+            },
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://fastdemocracy.com/bill-search/dc/25/bills/DCB00020496",
+              "date": "2024-03-05",
+              "text": "Voted yes on final reading of the Secure DC Omnibus Amendment Act of 2024 (12 yes, 1 abstain; FastDemocracy roll call, an aggregator). He voted yes on a failed amendment by Councilmember T. White as well.",
+              "event": "secure-dc-final-2024",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Statehood and federal oversight",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.joinrobertwhite.com/",
+              "date": "2026-10-06",
+              "text": "Campaign site lists DC statehood as the top priority, a 'D.C. Forward Economic Plan' to seek federal resources for housing and jobs, and defending DC's local budget from federal action.",
+              "event": "rwhite-statehood",
+              "lean": {
+                "U": "0",
+                "P": "+",
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.fec.gov/data/committee/C00921502/",
+              "date": "2026-06-30",
+              "text": "FEC committee page: $826,537.33 raised and $791,773.27 spent, cash on hand $40,442.00, for 2025-10-01 to 2026-06-30; individuals $716,037.33, other committees $110,500.00, no candidate loans. Later reports may differ.",
+              "event": "rwhite-fec-2026"
+            }
+          ]
+        },
+        {
+          "name": "Denise Rosado",
+          "evidence": [
+            {
+              "axis": "Professional background",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://washingtonian.com/2026/08/17/republican-candidates-dc-elections/",
+              "date": "2026-08-17",
+              "text": "Washingtonian (2026-08-17) describes her as a former FCC attorney under Chair Brendan Carr; no elected office is listed.",
+              "event": "rosado-bio"
+            },
+            {
+              "axis": "Taxes and statehood",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://washingtonian.com/2026/08/17/republican-candidates-dc-elections/",
+              "date": "2026-08-17",
+              "text": "Washingtonian reports she favors exempting DC residents from federal income tax rather than pursuing statehood, and attracting AI investment to DC.",
+              "event": "rosado-federal-tax",
+              "lean": {
+                "E": "-"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.fec.gov/data/committee/C00934083/",
+              "date": "2026-05-27",
+              "text": "FEC committee page: $6,188.02 raised (of which $5,167.95 candidate loans, $1,020.07 individual contributions), $1,062.66 spent, cash on hand $5,057.41, for 2026-01-01 to 2026-05-27.",
+              "event": "rosado-fec-2026"
+            }
+          ]
+        },
+        {
+          "name": "Kymone Freeman",
+          "evidence": [
+            {
+              "axis": "Professional background",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://ballotpedia.org/Kymone_Freeman",
+              "date": "2026-10-06",
+              "text": "Ballotpedia lists a career as media consultant, playwright, activist and author, with affiliations including We Act Radio; no elected office is listed.",
+              "event": "freeman-bio"
+            },
+            {
+              "axis": "Housing and public safety",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://statehoodgreensofdc.org/candidate-kymone-freeman.html",
+              "date": "2026-10-06",
+              "text": "Party candidate page gives the slogan 'No Representation, No Taxes': shift spending from corporate subsidies to neighborhoods, address crime and poverty through housing, health care and education, and press statehood through economic action.",
+              "event": "freeman-platform",
+              "lean": {
+                "E": "+",
+                "P": "+"
+              }
+            },
+            {
+              "axis": "Statehood",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://ballotpedia.org/Kymone_Freeman",
+              "date": "2024",
+              "text": "In a 2024 Ballotpedia Candidate Connection survey (a prior race) he said DC pays more in taxes per capita than most states and that taxation without representation should not stand; he lists health, housing, education and public safety as interests.",
+              "event": "freeman-statehood-2024",
+              "lean": {
+                "U": "0",
+                "P": "+"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "At-Large Member of the Council of the District of Columbia",
+      "summary": "Four named candidates, including incumbent Elissa Silverman (sworn in July 17, 2026 to finish a term that ends in January 2027), compete using ranked-choice voting.",
+      "turns_on": "Check how the number of seats being filled is printed on the ballot, and compare candidates' records and plans on housing, health care and the city budget.",
+      "options": [
+        {
+          "name": "Elissa Silverman",
+          "evidence": [
+            {
+              "axis": "Council service",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://dccouncil.gov/elissa-silverman-to-be-sworn-in-as-at-large-councilmember/",
+              "date": "2026-07-17",
+              "text": "Won the June 16, 2026 special election for the remainder of Kenyan McDuffie's at-large term; sworn in July 17, 2026 after the Board of Elections certified results (DC Council release). 51st News reports that term ends in January 2027.",
+              "event": "silverman-special-2026"
+            },
+            {
+              "axis": "Paid leave",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://www.afslaw.com/perspectives/alerts/dc-council-passes-groundbreaking-paid-leave-law-veto-proof-margin",
+              "date": "2016-12-20",
+              "text": "Co-sponsored the Universal Paid Leave Amendment Act of 2016, which the Council passed 9-4 on 2016-12-20 (law firm alert). The law created a payroll-tax-funded paid leave program.",
+              "event": "UniversalPaidLeave-2016",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Council service",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://www.ballotready.org/people/elissa-silverman",
+              "date": "2026-10-06",
+              "text": "BallotReady lists service as At-Large Councilmember 2015-2023 and a prior role at the DC Fiscal Policy Institute (2009-2014).",
+              "event": "silverman-bio"
+            },
+            {
+              "axis": "Housing and budget",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://ballotpedia.org/Elissa_Silverman",
+              "date": "2026",
+              "text": "Her 2026 Ballotpedia Candidate Connection answers cite work on inclusionary zoning, a senior homeowner program and downpayment assistance, and emphasize budget oversight and paid leave.",
+              "event": "silverman-housing",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.elissafordc.com",
+              "date": "2026-10-06",
+              "text": "Campaign site says she accepts only small-dollar contributions from DC residents, caps contributions at $100, and uses the Fair Elections Program (self-reported; OCF totals not found).",
+              "event": "silverman-finance"
+            }
+          ]
+        },
+        {
+          "name": "Oye Owolewa",
+          "evidence": [
+            {
+              "axis": "Elected service",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://ballotpedia.org/Oye_Owolewa",
+              "date": "2026",
+              "text": "Ballotpedia and his own survey list service as an Advisory Neighborhood Commissioner in Ward 8 and as DC's elected U.S. Shadow Representative since 2021 (re-elected 2022 and 2024).",
+              "event": "owolewa-bio"
+            },
+            {
+              "axis": "Housing and health care",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://ballotpedia.org/Oye_Owolewa",
+              "date": "2026",
+              "text": "2026 Ballotpedia Candidate Connection: calls for restoring emergency rental assistance, right to counsel in eviction, rent stabilization tied to inflation, and restoring DC Medicaid and the Healthcare Alliance.",
+              "event": "owolewa-housing-health",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Education",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.vote4oye.com",
+              "date": "2026-10-06",
+              "text": "Campaign site lists protecting housing affordability, restoring Medicaid access, tuition-free UDC, and statehood.",
+              "event": "owolewa-platform",
+              "lean": {
+                "E": "+",
+                "U": "0",
+                "P": "+"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Darryl Moch",
+          "evidence": [
+            {
+              "axis": "Housing and utilities",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://ballotpedia.org/Darryl_Moch",
+              "date": "2026-10-06",
+              "text": "Ballotpedia quotes his campaign site: social housing and community land trusts, municipalizing utilities, free Metro bus and rail, a DC public bank, and tax changes aimed at large corporations and developers.",
+              "event": "moch-platform",
+              "lean": {
+                "E": "+",
+                "P": "+"
+              }
+            },
+            {
+              "axis": "Electoral history",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://ballotpedia.org/Darryl_Moch",
+              "date": "2024",
+              "text": "Ran for At-Large Council in 2024; certified result 29,789 votes (7.6%) per Ballotpedia.",
+              "event": "moch-2024-result"
+            }
+          ]
+        },
+        {
+          "name": "Darrell Green",
+          "evidence": [
+            {
+              "axis": "Public safety and education",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://ballotpedia.org/Darrell_Green",
+              "date": "2026-07-25",
+              "text": "Ballotpedia quotes his campaign site (July 25, 2026): safer communities with police support, stronger schools, affordable living, and local business support. No record or detailed plan was found.",
+              "event": "dgreen-platform",
+              "lean": {
+                "P": "-"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "Advisory Neighborhood Commissioner, ANC 2C03",
+      "summary": "Two named candidates for the single-member district seat in ANC 2C (Chinatown, Downtown, Penn Quarter).",
+      "turns_on": "ANCs only advise; check each candidate's stance on new housing, liquor licenses and neighborhood grants, and how they use the commission's advisory weight.",
+      "options": [
+        {
+          "name": "Thomas S. Lee",
+          "evidence": [
+            {
+              "axis": "Commission record",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://oanc.dc.gov/sites/default/files/2025-11/ANC2C%20Meeting%20Minutes%202025.08.20.pdf",
+              "date": "2025-08-20",
+              "text": "Current 2C03 commissioner and ANC 2C Treasurer. In the 2025-08-20 minutes he presented the treasurer report and FY2026 budget (approved 4-0-0, including $10,000 for grants), and seconded motions that passed 4-0-0.",
+              "event": "lee-anc-minutes-2025"
+            },
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://ggwash.org/files/2026_2C03_Lee.pdf",
+              "date": "2026",
+              "text": "Greater Greater Washington (GGWash) questionnaire: says there are not enough homes, supports legalizing apartments citywide, prefers by-right development, and supports office-to-residential conversions; also agrees 15 percent of homes in each planning area should be affordable (Q22).",
+              "event": "lee-ggwash-housing",
+              "lean": {
+                "E": "0"
+              }
+            },
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "endorsement",
+              "source": "https://ggwash.org/view/104868/ggwashs-endorsements-for-2026-advisory-neighborhood-commission-candidates",
+              "date": "2026-09-16",
+              "text": "GGWash endorsed him; it says it endorses candidates who advance more housing, fewer car trips and reliable transit. It endorsed him in 2024 as well. Advocacy group with stated criteria.",
+              "event": "lee-ggwash-endorsement"
+            }
+          ]
+        },
+        {
+          "name": "Darren Sheets",
+          "evidence": [
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://ggwash.org/files/2026_2C03_Sheets.pdf",
+              "date": "2026",
+              "text": "GGWash questionnaire: favors tenant protections and inclusionary zoning, supports legalizing apartments in all neighborhoods, agrees 15 percent of homes in each planning area should be affordable (Q22), and prefers negotiating planned unit developments for public benefits.",
+              "event": "sheets-ggwash-housing",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "questionnaire",
+              "source": "https://ggwash.org/files/2026_2C03_Sheets.pdf",
+              "date": "2026",
+              "text": "Same questionnaire: says the ANC is already dense and adding 210 homes there is likely not feasible soon.",
+              "event": "sheets-210-homes"
+            },
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "endorsement",
+              "source": "https://ggwash.org/view/104868/ggwashs-endorsements-for-2026-advisory-neighborhood-commission-candidates",
+              "date": "2026-09-16",
+              "text": "GGWash did not endorse; it says Sheets' questionnaire views are less compatible with its priorities than the other candidate's. Advocacy group with stated criteria.",
+              "event": "sheets-ggwash-endorsement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "Initiative Measure No. 86, Prohibiting Force-Feeding of Birds Act of 2026",
+      "measure": true,
+      "summary": "A citizen initiative to ban force-feeding birds to enlarge their livers and to ban selling the resulting products, including foie gras.",
+      "turns_on": "Check how broad the legal definition of covered products is, whether enforcement costs are funded, and how you weigh the sponsors' animal welfare case against the restaurant and consumer-choice case.",
+      "yes_means": "YES enacts the Act: no one may force-feed a bird to enlarge its liver, and sale or distribution of products resulting from it, including foie gras, is banned, with DOEE enforcement during routine inspections and civil penalties of $1,000 to $5,000 per violation (Sec. 6), applying from July 1, 2027, after a 30-day congressional review. Source: https://dcboe.org/getmedia/8235b613-c9a8-4a53-a9dc-499710bd71f1/formulation-of-the-bird-initiative.pdf and the printed ballot https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf. The legislative text (Sec. 3 and 4(b)) defines covered 'fattened bird liver products' as made from birds fattened 'through any method or practice,' which reads wider than the ballot summary; confirm against final certified text (UNVERIFIED).",
+      "no_means": "NO rejects the Act, so the ban is not enacted through this initiative and current law stays as is; the Council keeps its general power to legislate (UNVERIFIED whether any bill is pending). Source: ballot text https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf.",
+      "fiscal": "CFO fiscal impact statement (2025-11-26): implementation costs $314,000 over FY2026-FY2029 ($0 in FY2026, $109,000 in FY2027, $101,000 in FY2028, $104,000 in FY2029; $274,000 for one inspector, $40,000 for education), and funds are not sufficient in the current budget and financial plan; the Office of Revenue Analysis knows of no bird farms in the District. Source: https://dcboe.org/getmedia/8235b613-c9a8-4a53-a9dc-499710bd71f1/formulation-of-the-bird-initiative.pdf",
+      "for": {
+        "text": "Pro-Animal D.C. argues force-feeding causes severe suffering, foie gras is a luxury item no DC business depends on, and the question should go to voters after four years of unsuccessful legislative efforts (campaign site; also reported by WJLA). The campaign's poll claim (nearly 8 in 10 DC voters) is self-reported and UNVERIFIED.",
+        "source": "https://proanimaldc.org/"
+      },
+      "against": {
+        "text": "The Restaurant Association of Metropolitan Washington says a citywide ban is a significant response to a product served by relatively few District restaurants and menus are best left to businesses and diners (WJLA). Chef Ashish Alfred argues the force-feeding period is brief and mainstream meat production deserves equal scrutiny (NBC4). Funding totals for either side were not found.",
+        "source": "https://www.nbcwashington.com/news/local/question-on-the-menu-dc-voters-to-decide-whether-to-ban-foie-gras/4140561/"
+      },
+      "options": [
+        {
+          "name": "YES (approve Initiative 86)",
+          "evidence": [
+            {
+              "axis": "Animal welfare",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf",
+              "date": "2026",
+              "text": "Official ballot text: would prohibit force-feeding a bird to enlarge its liver; ban sale or distribution of resulting products, including foie gras; define force-feeding; provide enforcement by the Department of Energy and Environment during food safety inspections; and set civil penalties.",
+              "event": "Initiative86-yes",
+              "lean": {
+                "E": "+",
+                "P": "+"
+              }
+            },
+            {
+              "axis": "Fiscal impact",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://dcboe.org/getmedia/8235b613-c9a8-4a53-a9dc-499710bd71f1/formulation-of-the-bird-initiative.pdf",
+              "date": "2025-11-26",
+              "text": "CFO fiscal impact statement: $314,000 over FY2026-FY2029 for one inspector and education, not funded in the current financial plan.",
+              "event": "I86-fiscal"
+            },
+            {
+              "axis": "Ballot access",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://wtop.com/dc/2026/08/a-foie-gras-ban-will-be-on-the-dc-ballot-in-november/",
+              "date": "2026",
+              "text": "WTOP reports sponsors submitted over 46,000 signatures; WJLA reports 31,726 were valid against 23,940 required.",
+              "event": "I86-signatures"
+            },
+            {
+              "axis": "Animal welfare",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://proanimaldc.org/",
+              "date": "2026-10-06",
+              "text": "Sponsor Pro-Animal D.C. states its case: force-feeding causes suffering, over 20 countries prohibit it, and foie gras is a luxury product.",
+              "event": "I86-sponsor-argument"
+            },
+            {
+              "axis": "Opposing argument",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://wjla.com/features/i-team/dc-voters-to-decide-foie-gras-ban-after-initiative-86-qualifies-for-november-ballot-controversial-cuisine-what-is-foie-gras-pro-animal-dc-august-2026",
+              "date": "2026",
+              "text": "Opposing argument (against YES; untagged): Restaurant Association of Metropolitan Washington statement opposing a citywide ban; restaurateur Bart Hutchins argues it targets only two U.S. producers while leaving industrial farming alone (WJLA).",
+              "event": "I86-opposing-argument"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    "Mayor: no OCF totals found for Hamilton or Gross; the OCF e-filing search could not be queried, and the Lewis George row covers only public matching payments through January 2026. No prior governing record found for Hamilton or Gross.",
+    "Council votes: DC Council LIMS needs an access token for its API, so roll calls came from FastDemocracy (aggregator) and news; only one final-passage vote per Council member was verified. Other bills should be checked in LIMS.",
+    "Delegate: Freeman's FEC page shows 2025-2026 data still processing. White's or Rosado's later FEC reports (pre-general) were not checked. Rosado and Freeman have no legislative records.",
+    "At-Large: no OCF totals found for any candidate. Darrell Green has only a website summary. Moch's party leadership role came from a search snippet and is not used. Candidate questionnaires from League of Women Voters or Vote411 were not found for 2026.",
+    "ANC 2C03: no records found for Sheets (could be a first-time candidate; not confirmed). Only GGWash questionnaire answers exist for both candidates, and GGWash is an advocacy group.",
+    "Initiative 86: funding totals for supporters and opponents not found; no independent estimate beyond the CFO statement; the final certified text under the No. 86 number was not located.",
+    "Not researched: Chairman of the Council, Attorney General, shadow Senator and shadow Representative contests (listed on the ballot only).",
+    "Sources: DC Council LIMS, OCF e-filing search and the BOE results site could not be read with the available tools; Ballotpedia pages were read with a browser user agent."
+  ]
+}

@@ -1,0 +1,732 @@
+{
+  "place": "San Francisco, California",
+  "test_address_label": "San Francisco City Hall (public building)",
+  "election": "2026-11-03 General",
+  "researched": "2026-10-06",
+  "official_office": {
+    "name": "San Francisco Department of Elections (also California Secretary of State)",
+    "url": "https://www.sf.gov/departments--department-elections"
+  },
+  "ballot": {
+    "races": [
+      {
+        "office": "U.S. Representative",
+        "position": "District 11",
+        "candidates": "Connie Chan | Scott Wiener",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Governor",
+        "position": "Statewide",
+        "candidates": "Xavier Becerra | Steve Hilton",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Lieutenant Governor",
+        "position": "Statewide",
+        "candidates": "Fiona Ma | Gloria Romero",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Secretary of State",
+        "position": "Statewide",
+        "candidates": "Shirley N. Weber | Donald P. (Don) Wagner",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Controller",
+        "position": "Statewide",
+        "candidates": "Malia M. Cohen | Herb W Morgan",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Treasurer",
+        "position": "Statewide",
+        "candidates": "Eleni Kounalakis | Jennifer Hawks",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Attorney General",
+        "position": "Statewide",
+        "candidates": "Rob Bonta | Michael E. Gates",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Insurance Commissioner",
+        "position": "Statewide",
+        "candidates": "Ben Allen | Jane Kim",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Superintendent of Public Instruction",
+        "position": "Statewide",
+        "candidates": "Richard Barrera | Sonja Shaw",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Board of Equalization Member",
+        "position": "District 2 (UNVERIFIED that this address is in District 2)",
+        "candidates": "Sally J. Lieber | John Pimentel",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "State Assembly Member",
+        "position": "District 17",
+        "candidates": "Matt Haney | Manuel Noris-Barrera",
+        "status": "CONTESTED",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Associate Justice, Supreme Court",
+        "position": "Retention (statewide)",
+        "candidates": "Kelli M. Evans (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Associate Justice, Supreme Court",
+        "position": "Retention (statewide)",
+        "candidates": "Joshua Groban (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 1",
+        "candidates": "Charles A. Smiley (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 1",
+        "candidates": "Kathleen M. Banke (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 1",
+        "candidates": "Monique Langhorne Wilson (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Presiding Justice, Div. 2",
+        "candidates": "Therese M. Stewart (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 2",
+        "candidates": "Tara M. Desautels (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 3",
+        "candidates": "Ioana Petrou (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 3",
+        "candidates": "Victor A. Rodriguez (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Presiding Justice, Div. 4",
+        "candidates": "Tracie L. Brown (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 5",
+        "candidates": "Mark Simons (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 5",
+        "candidates": "Danny Y. Chou (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Court of Appeal, First District",
+        "position": "Associate Justice, Div. 5",
+        "candidates": "Gordon Burns (retention)",
+        "status": "RETENTION",
+        "source": "https://elections.cdn.sos.ca.gov/statewide-elections/2026-general/cert-list-candidates.pdf"
+      },
+      {
+        "office": "Assessor-Recorder",
+        "position": "Citywide",
+        "candidates": "Joaquin Torres",
+        "status": "UNCONTESTED",
+        "source": "https://www.sf.gov/candidates-november-3-2026-general-election"
+      },
+      {
+        "office": "Public Defender",
+        "position": "Citywide",
+        "candidates": "Manohar (Mano) Raju",
+        "status": "UNCONTESTED",
+        "source": "https://www.sf.gov/candidates-november-3-2026-general-election"
+      },
+      {
+        "office": "Board of Education",
+        "position": "Citywide, vote for up to 3 (8 filed; qualification status UNVERIFIED)",
+        "candidates": "Autumn Brown Garibay | Virginia Cheung | Alida Fisher | Ryan Hazelton | Phil Kim | Laurance Lee | Reina Tello | Tim Tung",
+        "status": "CONTESTED",
+        "source": "https://www.sf.gov/candidates-november-3-2026-general-election"
+      },
+      {
+        "office": "Community College Board",
+        "position": "Citywide, vote for up to 3",
+        "candidates": "Elijah Ball | Rome Moses Jones | Monroe Lace | Leah LaCroix | Jeremy Lee | Bunny McFadden | Erwin Tam | Lisa Wynn",
+        "status": "CONTESTED",
+        "source": "https://www.sf.gov/candidates-november-3-2026-general-election"
+      },
+      {
+        "office": "Community College Board, Partial Term",
+        "position": "Citywide, vote for 1",
+        "candidates": "Ruth Ferguson",
+        "status": "UNCONTESTED",
+        "source": "https://www.sf.gov/candidates-november-3-2026-general-election"
+      },
+      {
+        "office": "BART Board",
+        "position": "District 8 (UNVERIFIED that this address is in BART District 8)",
+        "candidates": "Sara Barz",
+        "status": "UNCONTESTED",
+        "source": "https://www.sf.gov/candidates-november-3-2026-general-election"
+      }
+    ],
+    "measures": [
+      {
+        "name": "State Proposition 1",
+        "summary": "Authorizes Bonds for Housing Affordability Programs (Legislative statute). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/1/index.htm"
+      },
+      {
+        "name": "State Proposition 2",
+        "summary": "Increases State's Rainy Day Fund (Legislative constitutional amendment). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/2/index.htm"
+      },
+      {
+        "name": "State Proposition 3",
+        "summary": "Provides Permanent Funding for Schools and Health Care by Extending Existing Tax on High Incomes (Initiative constitutional amendment). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/3/index.htm"
+      },
+      {
+        "name": "State Proposition 4",
+        "summary": "Repeals Prohibition Against Public Funding of Election Campaigns (Legislative statute). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/4/index.htm"
+      },
+      {
+        "name": "State Proposition 5",
+        "summary": "Changes Recall Election Process for Statewide Officers (Legislative constitutional amendment). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/5/index.htm"
+      },
+      {
+        "name": "State Proposition 37",
+        "summary": "Creates Loan Program for Middle-Income Buyers of Qualified New Homes (Initiative statute). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/37/index.htm"
+      },
+      {
+        "name": "State Proposition 38",
+        "summary": "Authorizes Bonds for Immunology Medical Research (Initiative statute). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/38/index.htm"
+      },
+      {
+        "name": "State Proposition 39",
+        "summary": "Prohibits Citizens from Voting Unless They Present Government-Issued Identification (Initiative constitutional amendment). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/39/index.htm"
+      },
+      {
+        "name": "State Proposition 40",
+        "summary": "Imposes One-Time Tax on Certain Taxpayers (Initiative constitutional amendment and statute). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/40/index.htm"
+      },
+      {
+        "name": "State Proposition 41",
+        "summary": "Prohibits New State Taxes That Exclude Revenues from State Spending Limit. Requires Audits for New State Special Taxes (Initiative constitutional amendment). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/41/index.htm"
+      },
+      {
+        "name": "State Proposition 42",
+        "summary": "Prohibits New State Personal Property Taxes and Certain Retroactive State Taxes (Initiative constitutional amendment). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/42/index.htm"
+      },
+      {
+        "name": "State Proposition 43",
+        "summary": "Limits Voters' Ability to Raise Revenues for Local Government Services (Legislative constitutional amendment). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/43/index.htm"
+      },
+      {
+        "name": "State Proposition 44",
+        "summary": "Requires Community Health Clinics Spend 90% Of Revenue on Program Services (Initiative statute). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/44/index.htm"
+      },
+      {
+        "name": "State Proposition 45",
+        "summary": "Modifies Environmental Review for Certain Projects (Initiative statute). Official SoS title.",
+        "source": "https://voterguide.sos.ca.gov/propositions/45/index.htm"
+      },
+      {
+        "name": "San Francisco Proposition A",
+        "summary": "Charter amendment: Charter Changes Affecting Various City Departments and Commissions. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition B",
+        "summary": "Charter amendment: Establishing a Municipal Finance Corporation and a Public Bank. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition C",
+        "summary": "Charter amendment: Contributions to the Housing Fund (Housing Trust Fund). Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition D",
+        "summary": "Charter amendment: Changes to Ballot Measure Process. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition E",
+        "summary": "Charter amendment: City Administrator's Authority and Changes to City Contracting. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition F",
+        "summary": "Charter amendment: Changes to Executive Branch Management. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition G",
+        "summary": "Ordinance: Allowing Private Vehicles on the Great Highway in Sunset Dunes Park. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition H",
+        "summary": "Ordinance: Parcel Tax to Fund Public Muni Operations. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition I",
+        "summary": "Ordinance: Changes to Real Property Transfer Tax. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "San Francisco Proposition J",
+        "summary": "Ordinance: Removal of Foreclosure Exemption for Real Property Transfer Tax. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      },
+      {
+        "name": "Regional Transit Measure (RTM)",
+        "summary": "Regional measure: Regional Transit Measure. Titles as listed by SF Department of Elections (sf.gov); letters assigned Aug 2026.",
+        "source": "https://www.sf.gov/qualified-ballot-measures"
+      }
+    ],
+    "unverified": [
+      "District for this address: Congressional District 11 and Assembly District 17 come from the U.S. Census Bureau geocoder (geocoding.geo.census.gov), a federal lookup, not the CA/SF election office voter portal; confirm in the SF Voter Portal.",
+      "Supervisorial District 5 for this address comes from SF open data (data.sf.gov dataset f2zs-jevy); District 5 is not on the Nov 2026 ballot (the candidate list shows even-numbered districts only). Confirm in the SF Voter Portal.",
+      "Board of Equalization district and BART Board district for this address were not confirmed from an official lookup.",
+      "Board of Education: the SF candidates page says '8 filed' and does not mark them qualified; names are listed as printed there. Confirm on the sample ballot.",
+      "State Senate District 11 (Scott Wiener) and U.S. Senate: no contest found for this address in the certified/SF lists; not independently confirmed as not up for election.",
+      "Official SF Voter Information Pamphlet and the full state Voter Information Guide were not read in full; SF measure descriptions rely on sf.gov titles and the Final Digest for Prop H only.",
+      "Prop RTM, Props A-G, I, J: names and one-line descriptions only; text, fiscal statements and ballot arguments not reviewed.",
+      "Candidate lists reflect sf.gov and the CA Secretary of State certified list dated 2026-08-27; late withdrawals possible (a news report says one D8 candidate withdrew; not verified).",
+      "Wiener SB 79 final-passage vote counts (event wiener-sb79): UNVERIFIED; leginfo could not be opened and sources disagree."
+    ]
+  },
+  "gray": [],
+  "races": [
+    {
+      "race": "U.S. Representative, District 11",
+      "summary": "Two candidates, both printed as Democratic, are on the general ballot for the seat held by Nancy Pelosi, who is not on the ballot.",
+      "turns_on": "How do the candidates' housing and local-transportation records and positions compare, and which matters to you?",
+      "options": [
+        {
+          "name": "Connie Chan",
+          "evidence": [
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://missionlocal.org/2025/11/sf-supervisor-connie-chan-congress/",
+              "date": "2025-11-20",
+              "text": "Reported (Mission Local, Nov 20, 2025; date of the act not given): as District 1 Supervisor she attempted to pass amendments to \"exempt existing housing stock\" from the mayor's upzoning plan. Per the article, the amendments were not integrated because they \"would have effectively gutted it and made it noncompliant with state requirements.\"",
+              "event": "chan-upzoning-amend",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Great Highway",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://missionlocal.org/2026/09/sunset-dunes-san-francisco-congress-race-prop-g/",
+              "date": "2026-09",
+              "text": "Per Mission Local, in January 2026 she was the first to sign a failed measure to reopen the Great Highway, and she backs Prop G.",
+              "event": "chan-gh-sign"
+            },
+            {
+              "axis": "Great Highway",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://missionlocal.org/2025/11/sf-supervisor-connie-chan-congress/",
+              "date": "2025-11",
+              "text": "Mission Local reports she opposed Proposition K (2024, removing cars from the Great Highway).",
+              "event": "chan-propk"
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.kqed.org/news/12080294/big-money-pours-into-san-francisco-race-to-replace-rep-nancy-pelosi",
+              "date": "2026-04-17",
+              "text": "KQED reported on April 17, 2026 that she had raised about $456,000 (pre-primary); later periods not checked on the official FEC site.",
+              "event": "chan-fec-2026q1"
+            }
+          ]
+        },
+        {
+          "name": "Scott Wiener",
+          "evidence": [
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://sd11.senate.ca.gov/node/1399",
+              "date": "2025-10-10",
+              "text": "Senator's office page: he authored SB 79 (Abundant and Affordable Homes Near Transit Act), signed Oct 10, 2025; it sets state height standards near major transit stops. Final vote counts differ across sources and were not confirmed on leginfo (blocked), so UNVERIFIED.",
+              "event": "wiener-sb79",
+              "lean": {
+                "E": "-",
+                "U": "+"
+              }
+            },
+            {
+              "axis": "Great Highway",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://missionlocal.org/2026/09/sunset-dunes-san-francisco-congress-race-prop-g/",
+              "date": "2026-09",
+              "text": "Per Mission Local, he opposes Prop G, authored the official argument against it in the voter pamphlet, and spoke at the No on G kickoff on Aug 16.",
+              "event": "wiener-propg"
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.kqed.org/news/12080294/big-money-pours-into-san-francisco-race-to-replace-rep-nancy-pelosi",
+              "date": "2026-04-17",
+              "text": "KQED reported on April 17, 2026 that he had raised nearly $3.5 million from over 3,300 donors (pre-primary); later periods not checked on the official FEC site.",
+              "event": "wiener-fec-2026q1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "Governor of California",
+      "summary": "Two candidates, Xavier Becerra and Steve Hilton, advanced from the June 2 top-two primary.",
+      "turns_on": "Which candidate's stated plans on housing, taxes and homelessness, and track record in or out of office, match what you want the next governor to do?",
+      "options": [
+        {
+          "name": "Xavier Becerra",
+          "evidence": [
+            {
+              "axis": "Public safety and consumer protection",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://oag.ca.gov/news/press-releases/attorney-general-becerra-announces-lawsuit-against-two-multinational-companies",
+              "date": "2020-05-04",
+              "text": "As Attorney General he filed suit against Vitol, Inc. and SK Energy Americas alleging manipulation of California's gasoline market (Cartwright Act and Unfair Competition Law).",
+              "event": "becerra-vitol",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Federal-state relations",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.xavierbecerra2026.com/",
+              "date": "2026",
+              "text": "Campaign site says that as Attorney General he sued the Trump administration more than 120 times, and lists housing, homelessness, energy and AI among issues.",
+              "event": "becerra-site"
+            },
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://calmatters.org/california-voter-guide-2026/governor/",
+              "date": "2026",
+              "text": "CalMatters guide: would declare a state of emergency to fund 40,000 units of already-approved affordable housing and \"push cities to zone more residential land to build apartments, duplexes and condos.\"",
+              "event": "becerra-cm-housing",
+              "lean": {
+                "E": "+",
+                "U": "+"
+              }
+            },
+            {
+              "axis": "Homelessness",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://calmatters.org/california-voter-guide-2026/governor/",
+              "date": "2026",
+              "text": "CalMatters guide: he says people \"should not be allowed to voluntarily stay on the street when offered shelter,\" but stopped short of saying they should face arrest.",
+              "event": "becerra-cm-encampments",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Taxes",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://calmatters.org/politics/2026/09/california-general-election-gubernatorial-debate-cnn/",
+              "date": "2026-09-30",
+              "text": "At the Sept 30 debate he opposed Hilton's income-tax plan; CalMatters guide says he backs extending higher rates on high earners for schools.",
+              "event": "becerra-debate-tax",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://capitolweekly.net/becerra-laps-hilton-in-the-money-race/",
+              "date": "2026-08-18",
+              "text": "Capitol Weekly: mid-year cash on hand $6.2 million; $6 million raised since July 1 in large donations.",
+              "event": "becerra-cash-2026"
+            }
+          ]
+        },
+        {
+          "name": "Steve Hilton",
+          "evidence": [
+            {
+              "axis": "Record",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://calmatters.org/california-voter-guide-2026/governor/",
+              "date": "2026",
+              "text": "No prior elected office; CalMatters lists background as former U.K. prime minister adviser, Silicon Valley entrepreneur and former Fox News host (2017-2023). No voting record to cite.",
+              "event": "hilton-bg"
+            },
+            {
+              "axis": "Taxes",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://abcnews.com/Politics/wireStory/rivals-california-governor-clash-homelessness-trump-debate-ballots-136904053",
+              "date": "2026-09-30",
+              "text": "At the Sept 30 debate he said he would eliminate state income taxes on the first $150,000 of earnings; CalMatters guide also lists halving the gas tax.",
+              "event": "hilton-tax",
+              "lean": {
+                "E": "-"
+              }
+            },
+            {
+              "axis": "Homelessness",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://calmatters.org/california-voter-guide-2026/governor/",
+              "date": "2026",
+              "text": "CalMatters guide: street camping should be illegal and police should clear encampments; fund sober housing.",
+              "event": "hilton-homeless",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://calmatters.org/politics/2026/09/california-general-election-gubernatorial-debate-cnn/",
+              "date": "2026-09-30",
+              "text": "At the Sept 30 debate he advocated building 10 new cities and expanding construction on undeveloped land.",
+              "event": "hilton-housing",
+              "lean": {
+                "E": "-"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://capitolweekly.net/becerra-laps-hilton-in-the-money-race/",
+              "date": "2026-08-18",
+              "text": "Capitol Weekly: mid-year cash on hand $2.1 million, with $1.4 million in unpaid bills; $1.2 million raised since July 1 in large donations; spokesman said he has more than 100,000 donors.",
+              "event": "hilton-cash-2026"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "Public Defender (San Francisco)",
+      "summary": "One candidate, the incumbent, is on the ballot.",
+      "turns_on": "No alternative is on the ballot; the question is whether the office's recent case-refusal dispute and workload approach affect how you view a vote for or against filling this office as printed.",
+      "options": [
+        {
+          "name": "Manohar (Mano) Raju",
+          "evidence": [
+            {
+              "axis": "Public defense workload",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://missionlocal.org/2026/03/judge-fines-sf-public-defender-contempt-ruling/",
+              "date": "2026-03-24",
+              "text": "His office began declining new cases in May 2025 citing workload; on Mar 24, 2026 Judge Harry M. Dorfman imposed a $26,000 contempt fine ($1,000 per defendant) after a January order to resume; office said it would appeal. Appeal outcome not checked.",
+              "event": "raju-contempt"
+            },
+            {
+              "axis": "Public defense workload",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://missionlocal.org/2026/03/judge-fines-sf-public-defender-contempt-ruling/",
+              "date": "2026-03",
+              "text": "He said the office needs 36 additional attorneys and called it a constitutional fight.",
+              "event": "raju-quote"
+            },
+            {
+              "axis": "Criminal justice priorities",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://sfpublicdefender.org/personnel/mano-raju/",
+              "date": "2026",
+              "text": "Office bio lists priorities: public defense excellence, protecting constitutional rights, piloting public-safety approaches, systemic reform; notes a 2026 California Public Defenders Association recognition for work on workloads.",
+              "event": "raju-bio",
+              "lean": {
+                "P": "+"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "State Proposition 40 (Imposes One-Time Tax on Certain Taxpayers)",
+      "measure": true,
+      "summary": "Initiative constitutional amendment and statute that would impose a one-time tax of up to 5% on net worth over $1 billion for California residents as of Jan 1, 2026.",
+      "turns_on": "Whether a one-time wealth tax on billionaires, with 90% of revenue for health care, is worth the uncertain revenue and the possible loss of some ongoing income-tax revenue.",
+      "yes_means": "YES: billionaires who were California residents on Jan 1, 2026 would owe a one-time tax of up to 5% of net worth, due in 2027 (payable over five years at extra cost); 90% of revenue for health care, 10% for education or food assistance. https://vig.cdn.sos.ca.gov/2026/general/pdf/prop40-title-summ-analysis.pdf",
+      "no_means": "NO: no wealth tax is imposed and current tax law is unchanged. https://vig.cdn.sos.ca.gov/2026/general/pdf/prop40-title-summ-analysis.pdf",
+      "fiscal": "Legislative Analyst: temporary revenue increase probably in the tens of billions of dollars over several years, very hard to predict; possible ongoing income-tax decrease of less than $1 billion per year; administration costs possibly tens of millions per year. If Prop 41 or 42 gets more yes votes, courts could find a conflict that blocks Prop 40. https://vig.cdn.sos.ca.gov/2026/general/pdf/prop40-title-summ-analysis.pdf",
+      "for": {
+        "text": "Argument in official guide (as summarized): the tax addresses federal health-care funding cuts. Supporters include SEIU United Healthcare Workers West and Sen. Bernie Sanders; support committees total $31,411,525 through Aug 2, 2026.",
+        "source": "https://voterguide.sos.ca.gov/propositions/40/index.htm"
+      },
+      "against": {
+        "text": "Argument in official guide (as summarized): it is a flawed one-time scheme that hurts the economy and does not lower health-care costs. Opponents include California Teachers Association and California Medical Association; opposition committees total $11,270,000 through Aug 2, 2026.",
+        "source": "https://voterguide.sos.ca.gov/propositions/40/index.htm"
+      },
+      "options": [
+        {
+          "name": "YES",
+          "evidence": [
+            {
+              "axis": "Taxes",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.sos.ca.gov/campaign-lobbying/helpful-resources/measure-contributions/2026-ballot-measure-contribution-totals/proposition-40-imposes-one-time-tax-certain-individuals-and-trusts-initiative-constitutional-amendment-and-statute",
+              "date": "2026-08-02",
+              "text": "Support committees reported $31,411,525 and opposition committees $11,270,000 through Aug 2, 2026 (Secretary of State).",
+              "event": "Prop40-finance"
+            },
+            {
+              "axis": "Taxes",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://vig.cdn.sos.ca.gov/2026/general/pdf/prop40-title-summ-analysis.pdf",
+              "date": "2026",
+              "text": "Official Legislative Analyst estimate: tens of billions in temporary revenue; possible ongoing income-tax loss under $1 billion per year.",
+              "event": "Prop40-yes",
+              "lean": {
+                "E": "+"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "San Francisco Proposition H (Parcel Tax to Fund Public Muni Operations)",
+      "measure": true,
+      "summary": "Ordinance that would create a new annual parcel tax from July 1, 2027 through June 30, 2042 to fund Muni service.",
+      "turns_on": "Whether a new parcel tax is the right way to fund Muni operations, compared with possible service cuts and other funding sources.",
+      "yes_means": "YES: the City funds Muni service through a new annual parcel tax (2027 base tax $129 single-family, $249 multifamily, $799 non-residential, plus square-footage rates; inflation-adjusted; many seniors discounted or exempt; up to 50% pass-through to rent-controlled tenants capped at $65 per unit per year). https://media.api.sf.gov/documents/Final_Digest_-_Parcel_Tax_to_Fund_Muni_Operations.pdf",
+      "no_means": "NO: no parcel tax is created; Muni keeps its current funding sources. https://media.api.sf.gov/documents/Final_Digest_-_Parcel_Tax_to_Fund_Muni_Operations.pdf",
+      "fiscal": "City Controller economic impact report: tax would generate $184 million per year; Controller estimates 800 to 1,445 additional jobs and $310 to $400 million in GDP on average over 15 years versus a scenario with service cuts. This is an economic impact report, not the pamphlet Controller's statement, which was not read. https://media.api.sf.gov/documents/MUNI_parcel_tax_economic_impact_final.pdf",
+      "for": {
+        "text": "Official proponent argument (Mayor Daniel Lurie and others): Muni is a lifeline for workers, seniors and students; without Prop H service could be cut by 30% and at least 20 bus routes eliminated; the tax funds only Muni service, with oversight and independent audits.",
+        "source": "https://api.sf.gov/documents/61901/Nov2026_PropH_OfficialProponentArgument_Redacted.pdf"
+      },
+      "against": {
+        "text": "Official opponent argument (San Francisco Republican Party): the 15-year tax has no binding cost-cutting or efficiency requirements and no results-based sunset; the efficiency review comes in April 2028, after collection starts, and reports only to SFMTA's board; a square-footage tax is flat rather than value-based, and landlords can pass part of it to tenants.",
+        "source": "https://api.sf.gov/documents/61900/Nov2026_PropH_OfficialOpponentArgument_Redacted.pdf"
+      },
+      "options": [
+        {
+          "name": "YES",
+          "evidence": [
+            {
+              "axis": "Transit",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://media.api.sf.gov/documents/MUNI_parcel_tax_economic_impact_final.pdf",
+              "date": "2026",
+              "text": "City Controller report: $184 million annual revenue; 800 to 1,445 jobs and $310 to $400 million GDP over 15 years relative to the cuts scenario.",
+              "event": "PropH-yes",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Transit",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://missionlocal.org/2026/08/sf-election-campaign-finance-november/",
+              "date": "2026-06-30",
+              "text": "Yes committee raised $3.5 million as of end of June, with $500,000 each from OpenAI, Anthropic, Airbnb and Ripple Labs (Mission Local). No opposition committee total was found.",
+              "event": "PropH-finance"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    "Official SF Voter Information Pamphlet and sample ballot not read; district assignments for this address not from the SF Voter Portal.",
+    "No FEC totals checked for CD11; finance figures are pre-primary news reports (KQED) and may be stale.",
+    "Wiener SB 79 final-passage votes not confirmed on leginfo (blocked); sources disagree on counts.",
+    "No Chan board votes with dates and vote counts found; her record rows rely on Mission Local reporting.",
+    "Hilton has no elected record; Becerra record limited to one AG lawsuit and campaign-site claims. Neither returned a Voter's Edge questionnaire per GrowSF (not opened as primary).",
+    "Prop H: pamphlet Controller's statement not read; official proponent and opponent arguments read from the sf.gov PDFs (scanned; text read by OCR); no opposition funding total found.",
+    "Prop 40: argument text taken from the official guide page as summarized by the fetch tool; read the full ballot arguments to confirm wording.",
+    "Public Defender is uncontested, so there is no comparison; Assessor-Recorder and other offices not researched."
+  ]
+}

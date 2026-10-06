@@ -1,0 +1,17 @@
+{
+  "about": "Six example values profiles used only by the sample guides, so readers can see how different values change the same ballot's results. Evidence is tagged once on three value tensions; each profile weighs them (1-3) and leans toward one side. These mappings are judgment calls, shown so readers can disagree.",
+  "axes": {
+    "U": {"name": "Universalism vs. Particularism", "plus": "Universalism: rights and duties that extend to everyone, including people outside the community or nation (open immigration, international cooperation, universal programs)", "minus": "Particularism: priority for one's own nation, state or community (border enforcement, sovereignty, local control, local preference)"},
+    "E": {"name": "Equality vs. Freedom", "plus": "Equality: collective provision, redistribution, or rules for equity and safety (public programs, progressive taxes, regulation, worker and tenant protections)", "minus": "Freedom: individual choice, lower taxes, less regulation, merit-based rules, private property"},
+    "P": {"name": "Progress vs. Order and tradition", "plus": "Progress: changing institutions and norms toward social change and reform", "minus": "Order and tradition: stability, law enforcement, faith, family, cultural continuity, incremental change"}
+  },
+  "tagging": "Tag each evidence row on any of U, E, P it clearly bears on: + for the first pole, - for the second, 0 if genuinely mixed; leave an axis out if the row does not bear on it. For a measure, tag what a YES vote does. Tag what the action does, not who did it; never use party.",
+  "profiles": [
+    {"slug": "progressive-egalitarian", "name": "Progressive Egalitarian", "summary": "Reduce harm and inequality through collective action; expand rights and inclusion.", "axes": {"U": ["+", 3], "E": ["+", 3], "P": ["+", 3]}},
+    {"slug": "civic-institutionalist", "name": "Civic Institutionalist", "summary": "Protect rule of law, democratic norms and steady, evidence-based institutions; avoid radical disruption.", "axes": {"U": ["+", 2], "E": ["+", 1], "P": ["-", 1]}},
+    {"slug": "individualist-constitutionalist", "name": "Individualist Constitutionalist", "summary": "Individual liberty, self-reliance, economic freedom and strict limits on government.", "axes": {"E": ["-", 3], "P": ["-", 2], "U": ["-", 1]}},
+    {"slug": "traditionalist-moralist", "name": "Traditionalist Moralist", "summary": "Moral order, faith, family and cultural continuity anchor a healthy society.", "axes": {"P": ["-", 3], "U": ["-", 2]}},
+    {"slug": "populist-nationalist-producer", "name": "Populist Nationalist Producer", "summary": "Protect the national community, workers' livelihoods and sovereignty from elite or foreign interference.", "axes": {"U": ["-", 3], "P": ["-", 2], "E": ["+", 1]}},
+    {"slug": "libertarian-autonomist", "name": "Libertarian Autonomist", "summary": "Maximum personal freedom in social and economic life; voluntary cooperation over state coercion.", "axes": {"E": ["-", 3], "P": ["+", 1], "U": ["+", 1]}}
+  ]
+}
