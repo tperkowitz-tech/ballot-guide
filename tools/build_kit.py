@@ -81,7 +81,7 @@ def js_template(s):
     return s.replace("</", "<\\/")  # keep a literal "</script" from closing the script element
 
 
-def build_html(steps):
+def build_html(steps, intro=""):
     page = read("tools/page.template.html")
     how = ("<p><strong>How to use</strong></p>\n<p>" + html.escape(HOW_INTRO) + "</p>\n<p>Two ways to use it:</p>\n<ul>\n"
            + "".join(f"  <li>{html.escape(s)}</li>\n" for s in HOW_MODES)
@@ -97,10 +97,12 @@ def build_html(steps):
         if page.count(marker) != 1:
             sys.exit(f"Template marker {marker} must appear exactly once")
         page = page.replace(marker, value)
+    if intro:
+        page = page.replace("<p><strong>How to use</strong></p>", "<p>" + html.escape(intro) + "</p>\n<p><strong>How to use</strong></p>", 1)
     return page
 
 
-def build_md(steps):
+def build_md(steps, intro=""):
     out = ["# Ballot Guide Prompt Kit", "",
            "Build a sourced voter guide for your ballot. By default it compares each race and measure "
            "neutrally, using records and funders, with sources. If you want, it also scores each choice "
@@ -115,6 +117,8 @@ def build_md(steps):
             ""]
     for n, title, when, text in steps:
         out += [f"## Step {n} · {title}", "", f"_{when}_", "", "```text", text, "```", ""]
+    if intro:
+        out.insert(2, intro)
     return "\n".join(out)
 
 
@@ -122,9 +126,11 @@ def main():
     # Works before and after the skill moves into ballot-guide/.
     src = next(p for p in ("ballot-guide/references/prompts.md", "references/prompts.md")
                if os.path.exists(os.path.join(ROOT, p)))
-    steps = parse_steps(read(src))
-    write("docs/index.html", build_html(steps))
-    write("PROMPT-KIT.md", build_md(steps))
+    source = read(src)
+    intro = next((line for line in source.splitlines() if line.startswith("Neutral mode:")), "")
+    steps = parse_steps(source)
+    write("docs/index.html", build_html(steps, intro))
+    write("PROMPT-KIT.md", build_md(steps, intro))
     print("wrote docs/index.html and PROMPT-KIT.md")
 
 

@@ -1,5 +1,6 @@
 # Ballot Guide Prompt Kit
 
+Neutral mode: skip Step 1 and Step 5; no scores or calls in Step 7.
 Build a sourced voter guide for your ballot. By default it compares each race and measure neutrally, using records and funders, with sources. If you want, it also scores each choice against values you supply.
 
 A web version with copy buttons and a score calculator is at https://tperkowitz-tech.github.io/ballot-guide/

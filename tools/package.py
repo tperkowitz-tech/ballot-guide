@@ -17,7 +17,7 @@ def main():
     OUTPUT.parent.mkdir(exist_ok=True)
     with ZipFile(OUTPUT, "w", ZIP_DEFLATED) as archive:
         for path in files:
-            entry = ZipInfo(path.relative_to(SOURCE).as_posix(), (1980, 1, 1, 0, 0, 0))
+            entry = ZipInfo("ballot-guide/" + path.relative_to(SOURCE).as_posix(), (1980, 1, 1, 0, 0, 0))
             entry.compress_type = ZIP_DEFLATED
             entry.create_system = 3
             entry.external_attr = 0o100644 << 16
