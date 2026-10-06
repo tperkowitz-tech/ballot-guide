@@ -1,7 +1,8 @@
 // Checks the profile and Copy-for-chat text built by tools/kit.js. Run: node tools/kit_test.js
 const assert = require("assert");
 const {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, defaultState, letters, focusRuleSentence, buildProfile, fillStep, forChat,
-  parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine} = require("./kit.js");
+  parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
+  REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl} = require("./kit.js");
 const {parseWeights} = require("./calc.js");
 
 assert.deepStrictEqual(letters(4), ["A", "B", "C", "D"]);
@@ -191,5 +192,32 @@ assert.deepStrictEqual(checkSummary("CHECK SUMMARY:\n| CONFIRMED | WRONG | NOT F
 assert.strictEqual(checkSummary("nothing"), null);
 assert.strictEqual(checkSummary("CHECK SUMMARY: see below"), null);
 assert.strictEqual(checkSummary(null), null);
+
+// Test report URL: only allowed keys, encoded; the address and profile never leak even when passed in.
+{
+  const st = Object.assign(defaultState(), {address: "123 Main Street", stakes: "landlord", gray: "taxes"});
+  st.axes[0].name = "Transit";
+  const url = testReportUrl(Object.assign({}, st, {state: "New York", area: "", election_date: "2026-11-03",
+    used_in: "Web kit", mode: "Neutral comparison", steps: "- Ballot found\n- 3 of 4 races researched", overall: "Worked with fixes",
+    problems: "a&b=c", version: "v1.4.0"}));
+  const u = new URL(url);
+  assert.strictEqual(u.origin + u.pathname, "https://github.com/tperkowitz-tech/ballot-guide/issues/new");
+  assert.deepStrictEqual([...u.searchParams.keys()], ["template", "state", "election_date", "used_in", "mode", "steps", "overall", "problems", "version"]);
+  assert.ok([...u.searchParams.keys()].every(k => k === "template" || REPORT_KEYS.includes(k)));
+  assert.strictEqual(u.searchParams.get("problems"), "a&b=c");
+  assert.strictEqual(u.searchParams.get("steps"), "- Ballot found\n- 3 of 4 races researched");
+  assert.ok(!/Main|landlord|Transit|taxes|address/i.test(decodeURIComponent(url)));
+  assert.strictEqual(testReportUrl({}), "https://github.com/tperkowitz-tech/ballot-guide/issues/new?template=test-report.yml");
+  // Dropdown options the page sends must match the issue form, or GitHub drops them.
+  const form = require("fs").readFileSync(require("path").join(__dirname, "../.github/ISSUE_TEMPLATE/test-report.yml"), "utf8");
+  const options = id => { const m = form.split("    id: " + id + "\n")[1].split("  - type:")[0];
+    const inline = m.match(/options: \[(.*)\]/); return inline ? inline[1].split(", ") : [...m.matchAll(/^ {8}- "(.*)"$/gm)].map(x => x[1]); };
+  assert.deepStrictEqual(options("state"), REPORT_STATES);
+  assert.deepStrictEqual(options("overall"), REPORT_OVERALL);
+  assert.ok(options("used_in").includes("Web kit"));
+  assert.deepStrictEqual(options("mode").slice(0, 2), ["Neutral comparison", "Values match"]);
+  assert.deepStrictEqual([...form.matchAll(/^    id: (.*)$/gm)].map(x => x[1]), REPORT_KEYS);
+  console.log("kit_test: test report URL checks passed");
+}
 
 console.log("kit_test: all checks passed");

@@ -130,6 +130,7 @@ _New chat for each race, including uncontested races._
 
 ```text
 TASK: Collect evidence for ONE race. Do not score it.
+If you are a sub-agent, write only to your assigned file and include UNVERIFIED, GAPS and BLOCKERS.
 RACE: {{office, position, ALL candidates on the ballot}}
 Research every candidate, including minor ones. Do not skip a candidate because they are unlikely to win.
 
@@ -171,6 +172,7 @@ _New chat for each measure._
 
 ```text
 TASK: Collect facts about ONE ballot measure. Do not score it.
+If you are a sub-agent, write only to your assigned file and include UNVERIFIED, GAPS and BLOCKERS.
 MEASURE: {{name/number}}
 
 Search in this order:
@@ -306,6 +308,10 @@ STRUCTURE:
 8. Footer: the dates to vote and where to return the ballot, from the official election office. Links to the state election website, the county election website, and a nonpartisan service (for example vote.org). Add: "These scores compare records to one person's values. They are not endorsements."
 
 Write short sentences. Use the same order of items in each section.
+
+After the guide, you may offer an optional test report. It holds only: state, county or city (optional), election type and date, the tool used, the AI model, mode, steps completed, overall result (Worked well, Worked with fixes, or Did not work), problems, and version. Show it to the user with this link, adding each filled field as &key=value, URL-encoded (keys: state, area, election, election_date, used_in, model, mode, steps, overall, problems, version): https://github.com/tperkowitz-tech/ballot-guide/issues/new?template=test-report.yml
+Dropdown fields must use one of these values exactly, spelled as shown, or the form drops them: election: Primary, General, Special, Other; used_in: Web kit, Claude apps, Claude Code, Codex, Other agent tool, Plain prompts in another AI chat; mode: Neutral comparison, Values match, Both; overall: Worked well, Worked with fixes, Did not work; state: the full state name (for example New York or District of Columbia), or Other/territory.
+Never put an address, political views, votes or personal stakes in it. Never submit or post it; the user decides.
 ```
 
 ## Step 8 · Double-check an answer (optional, recommended)

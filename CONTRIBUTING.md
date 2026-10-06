@@ -15,6 +15,10 @@ is `tools/calc.js`. Keep their behavior in lockstep and run both calculator test
 evidence kinds, ranges and calls, including uneven evidence) through both calculators
 and fails on any mismatch.
 
+`ballot-guide/scripts/check_evidence.py` checks research JSON before scoring
+(see `ballot-guide/references/delegation.md`); `tools/check.py` runs its
+`--demo` self-test.
+
 Regenerate and check the web/chat kit before opening a pull request:
 
 ```bash
@@ -33,6 +37,13 @@ After checks pass and the PR is merged, check out merged `main`, rebuild the
 archive, and publish the authorized release (for example `v1.2.0`) targeting that
 commit, with `dist/ballot-guide.skill` attached.
 Generated archives and `dist/` are ignored by Git.
+
+Test reports arrive as issues labeled `tested` (form: `.github/ISSUE_TEMPLATE/test-report.yml`).
+To add one to `TESTED.md`, copy only the coarse fields (date, state, area if given or
+"(withheld)", election, tool, mode, result, a short note, version). Never copy names,
+addresses, political views, votes or other personal details; drop the area if it is
+smaller than a city. The kit version lives in `VERSION`; `tools/build_kit.py` puts it in
+the web kit's test-report link, so bump it with each release and rebuild.
 
 Before committing, check `git var GIT_AUTHOR_IDENT` and
 `git var GIT_COMMITTER_IDENT`. Use your GitHub noreply email; keep personal email
