@@ -488,8 +488,19 @@ function parseWeights(text) {
 // Chats reformat the requested plain text: bold, bullets, numbered lists, headings, tables.
 // Strip that dressing so a line reads the same however the chat styled it. Copy buttons that
 // give Markdown source escape punctuation ("\[A\]", "\|") and end lines with "\"; undo that first.
+// ChatGPT renders a pasted "\[A\]" as math, and its Copy button then gives "$A$$+$$RECORD$";
+// those tags at a line start (after any bullet) read as "[A][+][RECORD]". kit.js runs cleanMd on
+// stored answers before copying them, so neither form is pasted back into a chat.
+function cleanMd(text) {
+  return String(text).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/[^\S\r\n]*\\+[^\S\r\n]*$/gm, "")
+    .replace(/^([^\S\r\n]*(?:(?:[-*•_]|\d+[.)])[^\S\r\n]*)*)((?:\$[^$\r\n]+\$){2,})/gm, (all, pre, run) => {
+      // Only tag-like runs: a letter or topic first ("$5$$10$ fee" stays), and a kind or a sign.
+      const t = run.slice(1, -1).split("$$");
+      return /^\s*[A-Za-z]/.test(t[0]) && t.some(x => kindOf(x) || validSign(normSign(x))) ? pre + t.map(x => `[${x}]`).join("") : all;
+    });
+}
 function normLine(raw) {
-  return String(raw).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/\s*\\+\s*$/, "")
+  return cleanMd(raw)
     .replace(/\*\*|__|`/g, "").trim()
     .replace(/^#+\s*/, "")
     .replace(/^(?:[-*•]\s*|\d+[.)]\s+)+/, "")
@@ -530,6 +541,9 @@ function sourceAndDate(rest) {
 // A line that looks like it meant to be evidence; used so nothing is dropped without a warning.
 const LOOKS_LIKE_EVIDENCE = /\b(RECORD|QUESTIONNAIRE|STATED|FUNDER|ENDORSEMENT)\b|\[\s*[A-Za-z]\s*\]/;
 const TABLE_RULE = /^\|[\s|:-]+\|?$/;
+// "[A][+][RECORD] 2024: UNVERIFIED ..." is a placeholder the prompt asks for, not a fact.
+const UNCONFIRMED = /^(?:\d{4}(?:-\d{2}-\d{2})?\s*:?\s*)?UNVERIFIED\b/i;
+const NEUTRAL_ANSWER = "This answer was written for a neutral comparison. Copy the question again (it now asks for your priorities' letters) and paste the new answer.";
 const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
@@ -539,6 +553,12 @@ const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRON
 function parseResearch(text, weights, neutral) {
   const form = neutral ? "[TOPIC][0][RECORD]" : "[A][+][RECORD]";
   const options = [], errors = [], warnings = [];
+  // Values mode: an answer whose every axis is a topic word ("Housing", not "AA", "Axis A" or
+  // "A1", which are mistyped letters) was written for neutral mode; one message replaces the
+  // per-line errors on its topic lines.
+  const axisErrs = new Set();
+  let otherAxes = 0, topicAxes = 0;
+  const isTopic = a => (a.match(/[A-Za-z]/g) || []).length >= 3 && !/\b[A-Za-z]\b|\d/.test(a);
   let kind = null, name = "", cur = null, section = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = normLine(raw);
@@ -598,9 +618,17 @@ function parseResearch(text, weights, neutral) {
     if (!ev || (isTable && !kindOf(ev.kind))) {
       // A table row with a one-letter axis or a readable sign was meant as evidence: warn, never drop silently.
       const meant = isTable && ev && (/^[A-Za-z]$/.test(ev.axis) || validSign(normSign(ev.sign)));
+      if (/^\[\s*[A-Za-z]\s*\]/.test(line)) otherAxes++; // a mistyped values line: not a neutral answer
       if (meant || LOOKS_LIKE_EVIDENCE.test(line) || (!isTable && line.startsWith("["))) {
         errors.push({line, msg: `Could not read this evidence line (expected the form ${form}); skipped.`});
       }
+      continue;
+    }
+    const topic = isTopic(ev.axis);
+    if (topic) topicAxes++; else otherAxes++;
+    if (UNCONFIRMED.test(ev.rest)) {
+      warnings.push(`Not confirmed by the chat; not counted: ${line}`);
+      if (cur) cur.lines--;
       continue;
     }
     const axis = ev.axis.toUpperCase(), sign = neutral ? "0" : normSign(ev.sign), k = kindOf(ev.kind);
@@ -609,7 +637,12 @@ function parseResearch(text, weights, neutral) {
     if (!validSign(sign)) bad.push(`sign "${ev.sign}" (use + 0 - gray)`);
     if (!k) bad.push(`kind "${ev.kind}" (use RECORD, QUESTIONNAIRE, STATED, FUNDER or ENDORSEMENT)`);
     if (!cur) bad.push("no CANDIDATE: or MEASURE: line above it");
-    if (bad.length) { errors.push({line, msg: "Skipped: " + bad.join("; ") + "."}); continue; }
+    if (bad.length) {
+      const e = {line, msg: "Skipped: " + bad.join("; ") + "."};
+      if (!neutral && topic) axisErrs.add(e);
+      errors.push(e);
+      continue;
+    }
     const row = {axis, sign, kind: k, ...sourceAndDate(ev.rest), text: ev.rest};
     if (ev.event) row.event = ev.event;
     // Chats often give a citation title instead of the link; the line still counts.
@@ -617,9 +650,14 @@ function parseResearch(text, weights, neutral) {
     if (!row.date) delete row.date;
     cur.evidence.push(row);
   }
+  const wasNeutral = !neutral && topicAxes > 0 && !otherAxes;
+  if (wasNeutral) {
+    errors.splice(0, errors.length, ...errors.filter(e => !axisErrs.has(e)));
+    errors.push({line: "", msg: NEUTRAL_ANSWER});
+  }
   // An option with text under it but no usable evidence is almost always a format problem.
   for (const o of options) {
-    if (o.lines && !o.evidence.length) {
+    if (o.lines && !o.evidence.length && !wasNeutral) {
       errors.push({line: "", msg: `No evidence lines recognized for ${kind === "measure" ? name || "the measure" : o.name}; check the format.`});
     }
     delete o.lines;
@@ -906,7 +944,7 @@ function calculate(weightsText, researchText) {
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, normLine, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
+  module.exports = {pyRound, cleanMd, normLine, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
 }
 </script>
 <script>
@@ -925,8 +963,9 @@ const WEB_GATE = "First: if you cannot open web pages in this chat, and no sourc
 const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
 const DOUBLE_CHECK_STEP = 8;
-// Browser: calc.js is inlined before this file and defines normLine. Node: load it.
-const lineNorm = typeof require === "function" ? require("./calc.js").normLine : normLine;
+// Browser: calc.js is inlined before this file and defines these. Node: load it.
+const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount} =
+  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence};
 
 function defaultState() {
   return {
@@ -1047,7 +1086,7 @@ function fillCheck(stepText, state, ex) {
     const q = fillStep(ex.checkStep, ex.question, state, ex);
     text = text.replace("{{the original step prompt}}", () => q);
   }
-  if (ex.answer != null) text = text.replace("{{the answer}}", () => String(ex.answer).trim());
+  if (ex.answer != null) text = text.replace("{{the answer}}", () => mdPlain(ex.answer).trim());
   return text;
 }
 
@@ -1104,10 +1143,12 @@ function extractCorrected(text) {
 }
 
 // Whether a corrected answer is in a format the page can use: candidate or measure blocks, or a
-// ballot list's RACES/MEASURES section. "No changes needed" and other prose is not.
-function usableCorrected(text) {
-  return String(text || "").split(/\r?\n/).map(lineNorm)
+// ballot list's RACES/MEASURES section. "No changes needed" and other prose is not, and neither
+// is one whose evidence lines no longer parse when the original's did (original: the answer checked).
+function usableCorrected(text, original) {
+  const shaped = String(text || "").split(/\r?\n/).map(lineNorm)
     .some(l => /^(CANDIDATE|MEASURE):/i.test(l) || /^(RACES|MEASURES)\s*:?\s*$/i.test(l));
+  return shaped && !(original && evidenceCount(original).recognized && !evidenceCount(text).recognized);
 }
 
 // Counts from the "CHECK SUMMARY:" line. Each label takes the number written right before it
@@ -1165,9 +1206,11 @@ function cells(line) {
 // Broad on purpose: a held-back line is shown to the user, never lost, while a missed address
 // would be saved. Ballot numbering ("District 4", "Position 12345", "Proposition 50") is not a
 // house number or ZIP; street words are never articles or prepositions (as in check_evidence.py).
-// ponytail: "for 3 Circuit Court" still matches; add words to BALLOT_NO if real ballots trip it.
+// "Court" after an office word that follows an ordinal ("10th District Court") is a court; house
+// numbers are cardinals, so "12 County Ct" stays an address.
+// ponytail: cardinal "for 3 Circuit Court" still matches; add words to BALLOT_NO if real ballots trip it.
 const BALLOT_NO = String.raw`(?<!\b(?:District|Dist|Position|Pos|Seat|Proposition|Prop|Measure|Question|Issue|Amendment|Initiative|Referendum|Ordinance|Resolution|Department|Dept|Division|Ward|Precinct|Circuit|Article|Section|Chapter|Bill|HB|SB|No|Number|Num)\.?\s+#?)`;
-const STREET = new RegExp(BALLOT_NO + String.raw`\b\d{1,6}(?:st|nd|rd|th)?\s+(?:(?!(?:the|a|an|to|of|in|on|at|for|and|by|from)\s)[\w.'-]+\s+){0,4}?(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|Ct|Court|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square|Route|Rte)\b`, "i");
+const STREET = new RegExp(BALLOT_NO + String.raw`\b\d{1,6}(?:st|nd|rd|th)?\s+(?:(?!(?:the|a|an|to|of|in|on|at|for|and|by|from)\s)[\w.'-]+\s+){0,4}?(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|(?<!\d(?:st|nd|rd|th)\s+(?:[A-Za-z.'-]+\s+){0,3}(?:District|Circuit|Superior|Supreme|Appeals|Appellate|Municipal|County|Common|Pleas|Probate|Juvenile|Domestic|Claims|Tax|Family|Court)\s+)(?:Ct|Court)|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square|Route|Rte)\b`, "i");
 const ZIP = new RegExp(BALLOT_NO + String.raw`\b\d{5}(?:-\d{4})?\b`);
 function mayHaveAddress(line, address) {
   const a = String(address || "").trim().toLowerCase().split(",")[0].trim();
@@ -1186,11 +1229,11 @@ function parseBallot(text, address = "") {
     if (h) { section = h[1].toUpperCase(); sawHeading = true; continue; }
     // A checker's corrected list may append these; their rows are not ballot items.
     if (/^(GAPS|REMOVED|PROBLEMS|CHECK SUMMARY)\b/i.test(line)) { section = null; continue; }
-    if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
+    if (!line || /^\|[\s|:-]+\|?$/.test(line) || !section || section === "DISTRICTS") continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
-    // "UNVERIFIED: could not open PDF | ..." is a failure note, not a race or measure.
-    if (/^UNVERIFIED\b/i.test(c ? c[0] : line)) {
+    // "UNVERIFIED: could not open PDF | ..." and the UNVERIFIED section are notes, not items.
+    if (section === "UNVERIFIED" || /^UNVERIFIED\b/i.test(c ? c[0] : line)) {
       (mayHaveAddress(line, address) ? addressLines : unverified).push(line);
       continue;
     }
@@ -1201,15 +1244,16 @@ function parseBallot(text, address = "") {
     }
     const srcI = c.findIndex(x => /https?:\/\/|^source\s*:/i.test(x));
     const source = srcI < 0 ? "" : c[srcI].replace(/^source\s*:\s*/i, "");
+    const stI = section === "RACES" ? c.findIndex(x => /^(UNCONTESTED|CONTESTED|CROWDED)\b/i.test(x)) : -1;
+    const rest = c.filter((_, i) => i !== srcI && i !== stI), three = section === "RACES" && rest.length >= 3;
+    // A row whose candidates (race) or name (measure) are only UNVERIFIED placeholders is a note.
+    const who = section === "RACES" ? rest.slice(three ? 2 : 1) : rest.slice(0, 1);
+    if (who.length && who.every(x => /^UNVERIFIED\b/i.test(x))) { unverified.push(line); continue; }
     if (!/https?:\/\//i.test(source)) noUrl.push(line);
     if (section === "RACES") {
-      const stI = c.findIndex(x => /^(UNCONTESTED|CONTESTED|CROWDED)\b/i.test(x));
-      const rest = c.filter((_, i) => i !== srcI && i !== stI);
-      const three = rest.length >= 3;
       races.push({office: rest[0], position: three ? rest[1] : "", candidates: rest.slice(three ? 2 : 1).join(" | "),
         status: stI < 0 ? "" : c[stI].toUpperCase(), source});
     } else {
-      const rest = c.filter((_, i) => i !== srcI);
       measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
     }
   }
@@ -1239,7 +1283,7 @@ function bundleAnswers(items) {
   const out = ["BALLOT LIST (from Step 2)", ...(list.length ? list : ["- (empty)"])];
   items.forEach((it, i) => {
     out.push("", `=== ${it.kind.toUpperCase()} ${i + 1} OF ${items.length}: ${it.text} ===`,
-      it.answer.trim() || "(no answer pasted yet)");
+      mdPlain(it.answer).trim() || "(no answer pasted yet)");
     if (it.calc) out.push("CALCULATOR: " + it.calc);
     if (it.check) out.push("DOUBLE-CHECK: " + it.check);
   });
@@ -1570,7 +1614,7 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null;
-const KIT_VERSION="v1.5.0";
+const KIT_VERSION="v1.5.1";
 const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
 // checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
@@ -1855,7 +1899,7 @@ function refreshItem(it){
 }
 
 // ---- Double-check (Step 8) ----
-// One panel per answer, for Stage 2 and each Stage 3 item. h: {chat(), text(), setText(v),
+// One panel per answer, for Stage 2 and each Stage 3 item. h: {chat(), answer(), text(), setText(v),
 // use(corrected), undo(), checked(), canUndo(), skipped(), skip()}.
 function checkPanel(h){
   const d=el("details",null,"dc"), sum=el("summary"), badge=el("span","","st");
@@ -1878,7 +1922,7 @@ function checkPanel(h){
     else if(t.trim()){
       out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
       if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
-      else if(!usableCorrected(fixed))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
+      else if(!usableCorrected(fixed,h.answer()))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
       else if(!h.checked())row(use);
     }
     if(h.checked()){out.append(el("p","✓ The corrected answer is in use."));if(h.canUndo())row(undo)}
@@ -1888,7 +1932,7 @@ function checkPanel(h){
   ta.addEventListener("input",()=>{h.setText(ta.value);refresh()});
   copy.addEventListener("click",()=>copyText(h.chat(),copy));
   skip.addEventListener("click",()=>{h.skip();d.open=false;refresh()});
-  use.addEventListener("click",()=>{const f=extractCorrected(h.text());if(!usableCorrected(f))return;h.use(f);refresh();(undo.isConnected?undo:ta).focus()});
+  use.addEventListener("click",()=>{const f=extractCorrected(h.text());if(!usableCorrected(f,h.answer()))return;h.use(f);refresh();(undo.isConnected?undo:ta).focus()});
   undo.addEventListener("click",()=>{h.undo();refresh();(use.isConnected?use:ta).focus()});
   refresh();
   return {d,refresh};
@@ -1924,7 +1968,7 @@ function buildItem(it){
   const step=it.kind==="race"?3:4;
   const reEval=()=>{ta.value=it.answer;evalItem(it);refreshStages();save();advance(it)};
   const dc=checkPanel({
-    chat:()=>checkChat(step,{[it.kind]:it.text,answer:it.answer}),
+    chat:()=>checkChat(step,{[it.kind]:it.text,answer:it.answer}), answer:()=>it.answer,
     text:()=>it.checkAnswer, setText:v=>{it.checkAnswer=v;refreshStages();save()},
     use:f=>{it.original=it.answer;it.answer=f;it.checked=true;reEval()},
     undo:()=>{it.answer=it.original;it.original="";it.checked=false;reEval()},
@@ -2082,7 +2126,7 @@ function refreshShare(){
 
 // Stage 2 double-check. Its texts live only in memory, like the Step 2 answer itself.
 const ballotDc=checkPanel({
-  chat:()=>checkChat(BALLOT_STEP,{answer:$("ballot-answer").value}),
+  chat:()=>checkChat(BALLOT_STEP,{answer:$("ballot-answer").value}), answer:()=>$("ballot-answer").value,
   text:()=>ballotCheckText, setText:v=>{ballotCheckText=v},
   use:f=>{ballotOriginal=$("ballot-answer").value;$("ballot-answer").value=f;ballotChecked=true;readBallot()},
   undo:()=>{$("ballot-answer").value=ballotOriginal;ballotOriginal="";ballotChecked=false;readBallot()},
@@ -2119,7 +2163,7 @@ function readBallot(){
   if(prose)rows=p.skipped.map(x=>({kind:x.kind,text:x.line,note:""}));
   if(p.skipped.length||!rows.length)$("ballot-fix-row").hidden=false;
   if(p.addressLines.length)warn.append(noteBox(p.addressLines.map(line=>({msg:"Not kept, because it may include an address:",line}))));
-  if(p.unverified.length)warn.append(noteBox(p.unverified.map(line=>({msg:"The chat could not confirm this:",line}))));
+  if(p.unverified.length)warn.append(noteBox(p.unverified.map(line=>({msg:"The chat could not confirm:",line}))));
   if(!rows.length){
     found.textContent=p.sawHeading?"No races or measures found under RACES or MEASURES. Check the lines use | between parts, like the example."
       :"No RACES or MEASURES heading found. Paste the AI's whole answer, or add items by hand below.";

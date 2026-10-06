@@ -738,7 +738,7 @@ function refreshItem(it){
 }
 
 // ---- Double-check (Step 8) ----
-// One panel per answer, for Stage 2 and each Stage 3 item. h: {chat(), text(), setText(v),
+// One panel per answer, for Stage 2 and each Stage 3 item. h: {chat(), answer(), text(), setText(v),
 // use(corrected), undo(), checked(), canUndo(), skipped(), skip()}.
 function checkPanel(h){
   const d=el("details",null,"dc"), sum=el("summary"), badge=el("span","","st");
@@ -761,7 +761,7 @@ function checkPanel(h){
     else if(t.trim()){
       out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
       if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
-      else if(!usableCorrected(fixed))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
+      else if(!usableCorrected(fixed,h.answer()))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
       else if(!h.checked())row(use);
     }
     if(h.checked()){out.append(el("p","✓ The corrected answer is in use."));if(h.canUndo())row(undo)}
@@ -771,7 +771,7 @@ function checkPanel(h){
   ta.addEventListener("input",()=>{h.setText(ta.value);refresh()});
   copy.addEventListener("click",()=>copyText(h.chat(),copy));
   skip.addEventListener("click",()=>{h.skip();d.open=false;refresh()});
-  use.addEventListener("click",()=>{const f=extractCorrected(h.text());if(!usableCorrected(f))return;h.use(f);refresh();(undo.isConnected?undo:ta).focus()});
+  use.addEventListener("click",()=>{const f=extractCorrected(h.text());if(!usableCorrected(f,h.answer()))return;h.use(f);refresh();(undo.isConnected?undo:ta).focus()});
   undo.addEventListener("click",()=>{h.undo();refresh();(use.isConnected?use:ta).focus()});
   refresh();
   return {d,refresh};
@@ -807,7 +807,7 @@ function buildItem(it){
   const step=it.kind==="race"?3:4;
   const reEval=()=>{ta.value=it.answer;evalItem(it);refreshStages();save();advance(it)};
   const dc=checkPanel({
-    chat:()=>checkChat(step,{[it.kind]:it.text,answer:it.answer}),
+    chat:()=>checkChat(step,{[it.kind]:it.text,answer:it.answer}), answer:()=>it.answer,
     text:()=>it.checkAnswer, setText:v=>{it.checkAnswer=v;refreshStages();save()},
     use:f=>{it.original=it.answer;it.answer=f;it.checked=true;reEval()},
     undo:()=>{it.answer=it.original;it.original="";it.checked=false;reEval()},
@@ -965,7 +965,7 @@ function refreshShare(){
 
 // Stage 2 double-check. Its texts live only in memory, like the Step 2 answer itself.
 const ballotDc=checkPanel({
-  chat:()=>checkChat(BALLOT_STEP,{answer:$("ballot-answer").value}),
+  chat:()=>checkChat(BALLOT_STEP,{answer:$("ballot-answer").value}), answer:()=>$("ballot-answer").value,
   text:()=>ballotCheckText, setText:v=>{ballotCheckText=v},
   use:f=>{ballotOriginal=$("ballot-answer").value;$("ballot-answer").value=f;ballotChecked=true;readBallot()},
   undo:()=>{$("ballot-answer").value=ballotOriginal;ballotOriginal="";ballotChecked=false;readBallot()},
@@ -1002,7 +1002,7 @@ function readBallot(){
   if(prose)rows=p.skipped.map(x=>({kind:x.kind,text:x.line,note:""}));
   if(p.skipped.length||!rows.length)$("ballot-fix-row").hidden=false;
   if(p.addressLines.length)warn.append(noteBox(p.addressLines.map(line=>({msg:"Not kept, because it may include an address:",line}))));
-  if(p.unverified.length)warn.append(noteBox(p.unverified.map(line=>({msg:"The chat could not confirm this:",line}))));
+  if(p.unverified.length)warn.append(noteBox(p.unverified.map(line=>({msg:"The chat could not confirm:",line}))));
   if(!rows.length){
     found.textContent=p.sawHeading?"No races or measures found under RACES or MEASURES. Check the lines use | between parts, like the example."
       :"No RACES or MEASURES heading found. Paste the AI's whole answer, or add items by hand below.";

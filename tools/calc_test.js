@@ -156,6 +156,44 @@ assert.strictEqual(require("./calc.js").countEvidence(base + "\nGAPS:\n- [A][+][
   assert.strictEqual(v.errors.filter(e => e.line).length, 2);
 }
 
+// Copy-button escapes come off whole answers; ChatGPT's math-mangled tags read as brackets.
+{
+  const {cleanMd, countEvidence} = require("./calc.js");
+  assert.strictEqual(cleanMd("- \\[A\\]\\[+\\] x \\| y \\\nz\\"), "- [A][+] x | y\nz");
+  assert.strictEqual(cleanMd("CANDIDATE: J\n- $A$$+$$RECORD$ 2020: x\n1. $Housing$$0$$STATED$ y"), "CANDIDATE: J\n- [A][+][RECORD] 2020: x\n1. [Housing][0][STATED] y");
+  // Dollar amounts are not tags.
+  assert.strictEqual(cleanMd("$5$$10$ fee change"), "$5$$10$ fee change");
+  assert.strictEqual(cleanMd("$Fee$$Hike$ only"), "$Fee$$Hike$ only");
+  assert.deepStrictEqual(calculate("A=3", "MEASURE: M\n- [A][+][RECORD] 2020: x | https://e.org/1\n$5$$10$ fee change").errors, []);
+  const br = "CANDIDATE: J\n- [PublicSafety][0][STATED][F1] 2025-01-27: text | https://e.org/1";
+  const mm = "CANDIDATE: J\n- $PublicSafety$$0$$STATED$$F1$ 2025-01-27: text | https://e.org/1";
+  assert.deepStrictEqual(parseResearch(mm, {}, true), parseResearch(br, {}, true));
+  assert.strictEqual(countEvidence(mm).recognized, 1);
+  assert.deepStrictEqual(calculate("A=3", "CANDIDATE: J\n$A$$+$$RECORD$ 2020: x | https://e.org/1"),
+    calculate("A=3", "CANDIDATE: J\n[A][+][RECORD] 2020: x | https://e.org/1"));
+  // A fact the chat marked UNVERIFIED is a warning, never evidence.
+  const uv = countEvidence("CANDIDATE: J\n- [Housing][0][RECORD] 2025: a | https://a.gov/1\n- [Taxes][0][STATED] 2024-05-01: UNVERIFIED claim | https://b.org/2");
+  assert.deepStrictEqual([uv.recognized, uv.errors.length], [1, 0]);
+  assert.deepStrictEqual(uv.warnings.map(w => w.msg), ["Not confirmed by the chat; not counted: [Taxes][0][STATED] 2024-05-01: UNVERIFIED claim | https://b.org/2"]);
+  assert.deepStrictEqual(countEvidence("CANDIDATE: K\n- [Taxes][0][STATED] UNVERIFIED").errors, []);
+  // Values mode, all-topic axes: one "neutral answer" message instead of an error per line.
+  const na = calculate("A=3, B=2", "CANDIDATE: J\n- [Housing][0][RECORD] 2025: a | https://a.gov/1\nCANDIDATE: K\n- [Taxes][0][STATED] 2024: b | https://b.org/2");
+  assert.deepStrictEqual(na.errors.map(e => e.msg), ["This answer was written for a neutral comparison. Copy the question again (it now asks for your priorities' letters) and paste the new answer."]);
+  const mixed = calculate("A=3", "CANDIDATE: J\n- [A][+][RECORD] 2025: a | https://a.gov/1\n- [Housing][0][RECORD] 2025: c | https://c.gov/1");
+  assert.ok(mixed.errors.length === 1 && /axis "Housing"/.test(mixed.errors[0].msg));
+  // Mistyped letters keep their per-line errors; they are not a neutral answer.
+  for (const ax of ["AA", "Axis A", "A1"]) {
+    const m = calculate("A=3, B=2", `CANDIDATE: J\n- [${ax}][+][RECORD] 2025: a | https://a.gov/1`);
+    assert.ok(m.errors.some(e => e.line && /is not in your weights/.test(e.msg)) && !m.errors.some(e => /neutral comparison/.test(e.msg)), ax);
+  }
+  // An UNVERIFIED letter line still counts as a letter axis, so the Housing line keeps its error.
+  const um = calculate("A=3", "CANDIDATE: J\n- [A][+][RECORD] 2024: UNVERIFIED x\n- [Housing][0][RECORD] 2025: c | https://c.gov/1");
+  assert.ok(/axis "Housing"/.test(um.errors[0].msg) && !um.errors.some(e => /neutral comparison/.test(e.msg)));
+  // Neutral answer with a second fault on a topic line: only the one message.
+  const nk = calculate("A=3", "CANDIDATE: J\n- [Housing][0][POLL] 2025: a | https://a.gov/1\n- [Taxes][0][STATED] 2024: b | https://b.org/2");
+  assert.deepStrictEqual(nk.errors.map(e => e.msg), [na.errors[0].msg]);
+}
+
 console.log("calc_test: all checks passed");
 
 // Unopposed candidates: absolute cutoffs, but thin evidence is always "Your call".
