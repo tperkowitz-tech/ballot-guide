@@ -47,6 +47,8 @@ HOW_STEPS_MD = [
 ]
 HOW_CROWDED = ("Crowded races: if a race has 5 or more candidates, you can choose a focus set by a rule that "
                "is not about party; the guide still lists everyone left out and why.")
+HOW_DOUBLE_CHECK = ("Optional double-check: a second AI chat checks each answer against its sources (Step 8). "
+                    "Recommended, not required.")
 HOW_NOTE = ("Scores measure how well each choice fits your values, not who is likely to win. "
             "If you want to see viability too, ask for it in your profile (Step 1).")
 
@@ -71,8 +73,8 @@ def write(rel, text):
 
 def parse_steps(md):
     steps = [(int(n), title, when, text) for n, title, when, text in STEP_RE.findall(md)]
-    if [s[0] for s in steps] != list(range(8)) or md.count("## Step ") != 8:
-        sys.exit(f"Expected Steps 0-7 in ballot-guide/references/prompts.md, parsed {[s[0] for s in steps]}")
+    if [s[0] for s in steps] != list(range(9)) or md.count("## Step ") != 9:
+        sys.exit(f"Expected Steps 0-8 in ballot-guide/references/prompts.md, parsed {[s[0] for s in steps]}")
     return steps
 
 
@@ -87,7 +89,7 @@ def build_html(steps, intro=""):
            + "".join(f"  <li>{html.escape(s)}</li>\n" for s in HOW_MODES)
            + "</ul>\n<ol>\n"
            + "".join(f"  <li>{html.escape(s)}</li>\n" for s in HOW_STEPS_WEB)
-           + "</ol>\n<p>" + html.escape(HOW_CROWDED) + "</p>\n<p>" + html.escape(HOW_NOTE) + "</p>")
+           + "</ol>\n<p>" + html.escape(HOW_DOUBLE_CHECK) + "</p>\n<p>" + html.escape(HOW_CROWDED) + "</p>\n<p>" + html.escape(HOW_NOTE) + "</p>")
     js_steps = ",\n\n".join(
         f"{{title:`{js_template(title)}`, when:`{js_template(when)}`, text:\n`{js_template(text)}`}}"
         for _, title, when, text in steps)
@@ -111,7 +113,7 @@ def build_md(steps, intro=""):
            "## How to use", "", HOW_INTRO, "", "Two ways to use it:", ""]
     out += [f"- {s}" for s in HOW_MODES] + [""]
     out += [f"{i}. {s}" for i, s in enumerate(HOW_STEPS_MD, 1)]
-    out += ["", HOW_CROWDED, "", "The score calculator is on the web version. If you cannot use it, run Step 5 with the AI "
+    out += ["", HOW_DOUBLE_CHECK, "", HOW_CROWDED, "", "The score calculator is on the web version. If you cannot use it, run Step 5 with the AI "
                 "and check the math by hand.", "", HOW_NOTE, "",
             "Dates, deadlines and places to vote: use your official state or county election website, or vote.org.",
             ""]

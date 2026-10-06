@@ -39,6 +39,7 @@ campaign promises. The voter makes the choice. Read `references/rules.md` and
    Viability is separate from scoring and shown only on request; the voter owns
    tactical choices. See the rules for the existing electability treatment.
 5. Verify (Step 6) against primary sources; worker reports are claims until checked.
+   Optionally run Step 8 on each research answer with a different model or a fresh chat; recommended for close calls.
 6. Build the local guide (Step 7), with source links, research dates, uncertainty,
    open items and "where to look yourself". Sharing needs explicit authorization.
 7. Recheck disputed facts; in values mode, re-run the existing calculator after

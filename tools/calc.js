@@ -83,15 +83,31 @@ function sourceAndDate(rest) {
 // A line that looks like it meant to be evidence; used so nothing is dropped without a warning.
 const LOOKS_LIKE_EVIDENCE = /\b(RECORD|FUNDER|STATED)\b|\[\s*[A-Za-z]\s*\]/;
 const TABLE_RULE = /^\|[\s|:-]+\|?$/;
+const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
 // with their text and left out of the math instead of stopping the whole calculation.
 function parseResearch(text, weights) {
-  const options = [], errors = [];
-  let kind = null, name = "", cur = null;
+  const options = [], errors = [], warnings = [];
+  let kind = null, name = "", cur = null, section = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = normLine(raw);
     let m;
+    // The checker's REMOVED/PROBLEMS/summary sections list facts that were NOT confirmed, often in
+    // evidence form; scoring them would count removed facts. Skip until the next CANDIDATE:/MEASURE:.
+    if (/^(REMOVED|PROBLEMS|CHECK SUMMARY)\s*(:|$)/i.test(line)) { section = "stopped"; cur = null; continue; }
+    if (section === "stopped" && !/^(CANDIDATE|MEASURE):/i.test(line)) continue;
+    // GAPS sits inside an option (before RED LINE or EVIDENCE: is common), so it only pauses
+    // evidence until the option's next structural line; its items are unconfirmed, never scored.
+    if (/^GAPS\s*(:|$)/i.test(line)) { section = "gaps"; continue; }
+    if (section === "gaps" && !GAPS_END.test(line)) {
+      const ev = evidenceParts(line);
+      if ((ev && (!line.startsWith("|") || has(KIND, ev.kind.toLowerCase()))) || LOOKS_LIKE_EVIDENCE.test(line)) {
+        warnings.push(`Evidence line under GAPS ignored: ${line}`);
+      }
+      continue;
+    }
+    section = null;
     if ((m = line.match(/^CANDIDATE:\s*([^|]*)/i))) {
       if (kind === "measure") { errors.push({line, msg: "Paste one race or one measure at a time, not both."}); cur = null; continue; }
       kind = "race";
@@ -115,7 +131,7 @@ function parseResearch(text, weights) {
       }
       continue;
     }
-    if (!line || TABLE_RULE.test(line) || /^(RED LINE CROSSED|GAPS):/i.test(line)) continue;
+    if (!line || TABLE_RULE.test(line) || /^RED LINE CROSSED:/i.test(line)) continue;
     if (cur) cur.lines = (cur.lines || 0) + 1;
     const ev = evidenceParts(line);
     const isTable = line.startsWith("|");
@@ -148,7 +164,7 @@ function parseResearch(text, weights) {
     }
     delete o.lines;
   }
-  return {kind, name, options, errors};
+  return {kind, name, options, errors, warnings};
 }
 
 // Neutral mode has no weights; count what parses with every letter allowed, so the page can
@@ -158,7 +174,8 @@ function countEvidence(text) {
   for (let i = 0; i < 26; i++) any[String.fromCharCode(65 + i)] = 1;
   const p = parseResearch(text, any);
   if (!p.options.length) p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found."});
-  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors};
+  // Neutral mode has no warnings list on the page, so ignored GAPS evidence shows as a problem.
+  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors.concat(p.warnings.map(msg => ({line: "", msg})))};
 }
 
 const isGray = ev => ev.sign === "gray" || ev.gray === true;
@@ -347,11 +364,11 @@ function calculate(weightsText, researchText) {
   const p = parseResearch(researchText, weights);
   if (!p.options.length) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
-    return {warnings, errors: p.errors, result: null};
+    return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
   const res = scoreRace(p.options, weights, p.kind === "measure");
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
-  return {warnings: warnings.concat(res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
+  return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }
 
 if (typeof module === "object" && module.exports) {

@@ -7,6 +7,7 @@ const NEUTRAL_STEP7 = "Neutral mode: no scores, best matches or calls; use | Rac
 const WEB_GATE = "First: if you cannot open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
 const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
+const DOUBLE_CHECK_STEP = 8;
 // Browser: calc.js is inlined before this file and defines normLine. Node: load it.
 const lineNorm = typeof require === "function" ? require("./calc.js").normLine : normLine;
 
@@ -16,6 +17,7 @@ function defaultState() {
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
+    doubleCheck: true,
   };
 }
 
@@ -82,6 +84,18 @@ function fillStep(stepIndex, stepText, state, extras) {
   return text;
 }
 
+// Step 8 text with the checked question and answer filled in. extras: {checkStep, question (the
+// raw Step 2/3/4 text, filled here the same way the first chat got it), race/measure, answer}.
+function fillCheck(stepText, state, ex) {
+  let text = stepText;
+  if (ex.question != null) {
+    const q = fillStep(ex.checkStep, ex.question, state, ex);
+    text = text.replace("{{the original step prompt}}", () => q);
+  }
+  if (ex.answer != null) text = text.replace("{{the answer}}", () => String(ex.answer).trim());
+  return text;
+}
+
 // "Copy for chat": web gate, rules, profile, step, then any attached answers (extras.attach),
 // so a fresh chat has everything it needs.
 function forChat(stepIndex, rulesText, stepText, state, extras) {
@@ -89,9 +103,95 @@ function forChat(stepIndex, rulesText, stepText, state, extras) {
   let parts;
   if (stepIndex === 0) parts = [rulesText];
   else if (stepIndex === 1) parts = [buildProfile(state)];
+  // Checking the ballot list is the ballot lookup again, so only that check gets the address.
+  else if (stepIndex === DOUBLE_CHECK_STEP) parts = [rulesText, buildProfile(state, ex.checkStep === BALLOT_STEP), fillCheck(stepText, state, ex)];
   else parts = [rulesText, buildProfile(state, stepIndex === BALLOT_STEP), fillStep(stepIndex, stepText, state, ex)];
   if (ex.attach) parts.push(ex.attach);
   return [WEB_GATE, ...parts].join("\n\n");
+}
+
+// The checker's reply after its "CORRECTED ANSWER:" line, tolerating markdown bold and headings;
+// null when there is none. A fenced answer is taken from inside its fence. The only other cut is a
+// REMOVED: line, which the prompt places after the answer. Closing remarks are deliberately kept:
+// guessing where chatter starts deleted real candidates and red lines, and the calculator ignores
+// prose. GAPS: is not a cut point: Step 3/4 answers carry a GAPS: line inside each block.
+function extractCorrected(text) {
+  const ls = String(text || "").split(/\r?\n/);
+  const i = ls.findIndex(l => /^[\s#>*_]*CORRECTED ANSWER\b/i.test(l));
+  if (i < 0) return null;
+  const first = ls[i].replace(/^[\s#>*_]*CORRECTED ANSWER\b[\s*_:]*/i, "").replace(/^(below|follows)\b[\s*_:.]*/i, "");
+  let body = [first, ...ls.slice(i + 1)];
+  const isFence = l => /^\s*```/.test(l);
+  if (ls.slice(0, i).filter(isFence).length % 2) {
+    // The heading sits inside an open fence (the whole reply was fenced): the answer runs to its close.
+    const end = body.findIndex((l, j) => j > 0 && isFence(l));
+    if (end >= 0 && body.slice(0, end).some(l => l.trim())) body = body.slice(0, end);
+    else if (end >= 0) {
+      // The fence closed right after the heading; the answer is in the next fenced block.
+      const open = body.findIndex((l, j) => j > end && isFence(l));
+      const close = open < 0 ? -1 : body.findIndex((l, j) => j > open && isFence(l));
+      body = open < 0 ? [] : body.slice(open + 1, close < 0 ? body.length : close);
+    }
+  } else {
+    const fence = body.findIndex(isFence);
+    if (fence >= 0) {
+      const end = body.findIndex((l, j) => j > fence && isFence(l));
+      body = body.slice(fence + 1, end < 0 ? body.length : end);
+    }
+  }
+  // The prompt puts REMOVED: after the answer, so it is the only safe cut. Other closing remarks
+  // stay: the calculator ignores prose, and guessing where chatter starts deleted real answer lines.
+  const cut = body.findIndex(l => /^[\s#>*_]*REMOVED[\s*_]*:/i.test(l));
+  if (cut >= 0) body = body.slice(0, cut);
+  while (body.length && !body[0].trim()) body.shift();
+  while (body.length && !body[body.length - 1].trim()) body.pop();
+  return body.length ? body.join("\n") : null;
+}
+
+// Whether a corrected answer is in a format the page can use: candidate or measure blocks, or a
+// ballot list's RACES/MEASURES section. "No changes needed" and other prose is not.
+function usableCorrected(text) {
+  return String(text || "").split(/\r?\n/).map(lineNorm)
+    .some(l => /^(CANDIDATE|MEASURE):/i.test(l) || /^(RACES|MEASURES)\s*:?\s*$/i.test(l));
+}
+
+// Counts from the "CHECK SUMMARY:" line. Each label takes the number written right before it
+// ("12 CONFIRMED") if no earlier label claimed that number, else the one right after it
+// ("CONFIRMED: 12"), so both orders and mixed punctuation parse. Null when there are no counts.
+function checkSummary(text) {
+  const m = String(text || "").match(/CHECK SUMMARY[^\n]*(?:\n[^\n]*){0,4}/i);
+  if (!m) return null;
+  const seg = m[0].split(/PROBLEMS|CORRECTED ANSWER/i)[0];
+  const keys = [["confirmed", /^CONFIRMED$/i], ["wrong", /^WRONG$/i], ["notFound", /^NOT/i], ["noSource", /^NO/i]];
+  // A markdown table: label header row, then a row of numbers mapped by column (|---| rows skipped).
+  const rows = seg.split("\n").map(cells).filter(c => c && !c.every(x => /^:?-*:?$/.test(x)));
+  const hi = rows.findIndex(c => c.some(x => /CONFIRMED/i.test(x)));
+  if (hi >= 0 && rows[hi + 1] && rows[hi + 1].every(x => /^\d+$/.test(x.replace(/\*\*/g, "")))) {
+    const out = {confirmed: 0, wrong: 0, notFound: 0, noSource: 0};
+    rows[hi].forEach((h, j) => {
+      const k = keys.find(([, r]) => r.test(h.replace(/\*\*/g, "").trim()));
+      if (k && rows[hi + 1][j] !== undefined) out[k[0]] = Number(rows[hi + 1][j].replace(/\*\*/g, ""));
+    });
+    return out;
+  }
+  const toks = [...seg.matchAll(/\d+|\b(?:CONFIRMED|WRONG|NOT[\s_-]*FOUND|NO[\s_-]*SOURCE)\b/gi)].map(t => t[0]);
+  const used = new Set(), out = {confirmed: 0, wrong: 0, notFound: 0, noSource: 0};
+  let any = false;
+  toks.forEach((t, j) => {
+    if (/^\d/.test(t)) return;
+    const n = j > 0 && /^\d/.test(toks[j - 1]) && !used.has(j - 1) ? j - 1 : /^\d/.test(toks[j + 1] || "") ? j + 1 : -1;
+    if (n < 0) return;
+    used.add(n);
+    out[keys.find(([, r]) => r.test(t))[0]] = Number(toks[n]);
+    any = true;
+  });
+  return any ? out : null;
+}
+
+// "12 confirmed · 1 wrong · 2 not found"; zero counts other than confirmed are left out.
+function checkLine(sum) {
+  return [[sum.confirmed, "confirmed"], [sum.wrong, "wrong"], [sum.notFound, "not found"], [sum.noSource, "no source"]]
+    .filter(([n], i) => i === 0 || n).map(([n, l]) => `${n} ${l}`).join(" · ");
 }
 
 // Splits a markdown or plain row into cells; a row without "|" is not a row.
@@ -112,6 +212,8 @@ function parseBallot(text) {
     const line = lineNorm(raw);
     const h = line.match(/^(DISTRICTS|RACES|MEASURES|UNVERIFIED)\s*:?\s*$/i);
     if (h) { section = h[1].toUpperCase(); sawHeading = true; continue; }
+    // A checker's corrected list may append these; their rows are not ballot items.
+    if (/^(GAPS|REMOVED|PROBLEMS|CHECK SUMMARY)\b/i.test(line)) { section = null; continue; }
     if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
@@ -141,7 +243,7 @@ function measureText(m) {
 }
 
 // Steps 6 and 7 need the whole ballot list and every Step 3/4 answer in one paste, each under
-// its own header so the chat can tell them apart. items: {kind, text, note, answer, calc}.
+// its own header so the chat can tell them apart. items: {kind, text, note, answer, calc, check}.
 function bundleAnswers(items) {
   const list = items.map(it => `- ${it.kind.toUpperCase()}: ${it.text}${it.note ? " | " + it.note : ""}`);
   const out = ["BALLOT LIST (from Step 2)", ...(list.length ? list : ["- (empty)"])];
@@ -149,11 +251,12 @@ function bundleAnswers(items) {
     out.push("", `=== ${it.kind.toUpperCase()} ${i + 1} OF ${items.length}: ${it.text} ===`,
       it.answer.trim() || "(no answer pasted yet)");
     if (it.calc) out.push("CALCULATOR: " + it.calc);
+    if (it.check) out.push("DOUBLE-CHECK: " + it.check);
   });
   return out.join("\n");
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {WEB_GATE, ADDRESS_WITHHELD, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat,
-    parseBallot, raceText, measureText, bundleAnswers};
+  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat,
+    parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine};
 }

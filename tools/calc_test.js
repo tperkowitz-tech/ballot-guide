@@ -84,6 +84,42 @@ assert.ok(r.errors.some(e => e.msg.includes("No evidence lines recognized for Pr
 r = calculate("A=3", "CANDIDATE: P\n- [A][+][RECORD] r\nCANDIDATE: Q\nRED LINE CROSSED: no\nGAPS: no records found");
 assert.deepStrictEqual(r.errors, []);
 
+// Lines under GAPS:/REMOVED:/PROBLEMS:/CHECK SUMMARY: are never scored (a checker's corrected answer
+// may list removed, unconfirmed evidence there); the next CANDIDATE: line resumes reading.
+const base = "CANDIDATE: Z\n- [A][+][RECORD] z | https://z.org/1\nCANDIDATE: Y\n- [A][-][RECORD] y | https://y.org/1";
+const plain = calculate("A=3", base);
+for (const tail of ["\nGAPS:\n- [A][+][RECORD] y unconfirmed | https://y.org/2", "\n**REMOVED:** [A][+][RECORD] y unconfirmed",
+  "\n## PROBLEMS\n- [A][+][RECORD] y: WRONG", "\ncheck summary: 1 CONFIRMED\n- [A][+][RECORD] y",
+  "\nGAPS:\n- [A][+][RECORD] 2024-03-01: Unconfirmed vote. | https://e.org/3",
+  "\nREMOVED:\n- [A][+][RECORD] 2024-03-01: Unconfirmed vote. | https://e.org/3"]) {
+  r = calculate("A=3", base + tail);
+  assert.deepStrictEqual(r.errors, [], tail);
+  assert.deepStrictEqual(r.result, plain.result, tail);
+}
+r = calculate("A=3", "CANDIDATE: Z\n- [A][+][RECORD] z\nGAPS: none\n- [A][-][RECORD] gap item\nCANDIDATE: Y\n- [A][-][RECORD] y");
+assert.deepStrictEqual(r.errors, []);
+assert.deepStrictEqual(r.result.rows.map(x => x.score), plain.result.rows.map(x => x.score));
+
+// GAPS only pauses evidence inside the option: RED LINE CROSSED after it still excludes A
+// (reviewer repro r3), and EVIDENCE: after it in a measure is still scored (r4).
+const rl = "CANDIDATE: A | x | y\n- [A][+][RECORD][e1] 2020: f | https://e.org/1\n- [A][+][RECORD][e2] 2021: g | https://e.org/2\n";
+const rlTail = "RED LINE CROSSED: yes: took money from X | https://e.org/r\nCANDIDATE: B | x | y\n- [A][-][RECORD][e3] 2020: h | https://e.org/3\nRED LINE CROSSED: no\nGAPS: none";
+const noGaps = calculate("A | a | b | weight 3", rl + rlTail);
+r = calculate("A | a | b | weight 3", rl + "GAPS: no funder data\n" + rlTail);
+assert.deepStrictEqual(r.errors, []);
+assert.deepStrictEqual(r.result, noGaps.result);
+assert.strictEqual(r.result.rows[0].red_line, true);
+const ms = "MEASURE: M1\nWHAT YES DOES: x\nEVIDENCE:\n- [A][+][RECORD][e1] 2020: f | https://e.org/1\n- [A][+][RECORD][e2] 2021: g | https://e.org/2";
+r = calculate("A | a | b | weight 3", ms.replace("EVIDENCE:", "GAPS: no fiscal note\nEVIDENCE:"));
+assert.deepStrictEqual(r.errors, []);
+assert.deepStrictEqual(r.result, calculate("A | a | b | weight 3", ms).result);
+assert.strictEqual(r.result.rows[0].score, 83);
+// An evidence-shaped line under GAPS is not scored, and says so; plain prose there stays quiet.
+r = calculate("A=3", base + "\nGAPS:\ncould not find funders\n- [A][+][RECORD] y unconfirmed | https://y.org/2");
+assert.deepStrictEqual(r.result, plain.result);
+assert.deepStrictEqual(r.warnings, ["Evidence line under GAPS ignored: [A][+][RECORD] y unconfirmed | https://y.org/2"]);
+assert.strictEqual(require("./calc.js").countEvidence(base + "\nGAPS:\n- [A][+][RECORD] y").errors.length, 1);
+
 console.log("calc_test: all checks passed");
 
 // Unopposed candidates: absolute cutoffs, but thin evidence is always "Your call".

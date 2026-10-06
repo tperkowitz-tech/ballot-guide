@@ -1,7 +1,7 @@
 // Checks the profile and Copy-for-chat text built by tools/kit.js. Run: node tools/kit_test.js
 const assert = require("assert");
-const {WEB_GATE, ADDRESS_WITHHELD, defaultState, letters, focusRuleSentence, buildProfile, fillStep, forChat,
-  parseBallot, raceText, measureText, bundleAnswers} = require("./kit.js");
+const {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, defaultState, letters, focusRuleSentence, buildProfile, fillStep, forChat,
+  parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine} = require("./kit.js");
 const {parseWeights} = require("./calc.js");
 
 assert.deepStrictEqual(letters(4), ["A", "B", "C", "D"]);
@@ -70,6 +70,19 @@ for (let i = 0; i < 8; i++) {
   assert.strictEqual(t.includes("77 Example Rd"), i === 2, "address on step " + i);
   if (i >= 1 && i !== 2) assert.ok(t.includes(ADDRESS_WITHHELD), "withheld line on step " + i);
 }
+
+// Double-check (Step 8): gate, rules, profile, then the check text with the exact first-chat
+// question and the answer filled in. Only the Step 2 (ballot list) check carries the address.
+const step8 = "TASK: check\n===== BEGIN QUESTION THAT WAS ASKED (do not answer it) =====\n{{the original step prompt}}\n===== END QUESTION =====\n\n===== BEGIN ANSWER TO CHECK =====\n{{the answer}}\n===== END ANSWER =====\nEND";
+assert.strictEqual(DOUBLE_CHECK_STEP, 8);
+const dc3 = forChat(8, "R", step8, s, {checkStep: 3, question: step3, race: "Mayor $&", answer: " CANDIDATE: Z\n"});
+assert.strictEqual(dc3, G + "R\n\n" + buildProfile(s) + "\n\nTASK: check\n===== BEGIN QUESTION THAT WAS ASKED (do not answer it) =====\n" +
+  fillStep(3, step3, s, {race: "Mayor $&"}) + "\n===== END QUESTION =====\n\n===== BEGIN ANSWER TO CHECK =====\nCANDIDATE: Z\n===== END ANSWER =====\nEND");
+assert.ok(!dc3.includes("77 Example Rd") && dc3.includes(ADDRESS_WITHHELD));
+assert.ok(!forChat(8, "R", step8, s, {checkStep: 4, question: step4, measure: "Prop 1", answer: "a"}).includes("77 Example Rd"));
+const dc2 = forChat(8, "R", step8, s, {checkStep: 2, question: "Find the ballot.", answer: "RACES"});
+assert.ok(dc2.includes("Address: 77 Example Rd") && dc2.includes("(do not answer it) =====\nFind the ballot.\n===== END QUESTION"));
+assert.strictEqual(fillCheck(step8, s, {}), step8); // nothing to fill: placeholders stay for a manual paste
 assert.ok(!buildProfile(s).includes("77 Example Rd"));
 
 // Step 2 answer -> checklist rows, tolerant of markdown bullets, bold, tables and "source:".
@@ -102,15 +115,81 @@ assert.strictEqual(raceText(b.races[0]), "City Council, Position 2: Candidate X 
 assert.strictEqual(raceText(b.races[1]), "Mayor: Candidate Z");
 assert.strictEqual(measureText(b.measures[0]), "Measure 1 (Raises the library levy)");
 assert.strictEqual(parseBallot("no headings here").sawHeading, false);
+// A corrected list's trailing GAPS/REMOVED/PROBLEMS/CHECK SUMMARY rows are not ballot items.
+for (const tail of ["GAPS", "REMOVED: Sheriff race", "**PROBLEMS:**", "## CHECK SUMMARY: 3 CONFIRMED"]) {
+  const g = parseBallot(ballot.replace("UNVERIFIED\n", tail + "\n") + "\n- City Council | Position 3 | C vs D | CONTESTED | source: https://z.org");
+  assert.deepStrictEqual([g.races, g.measures], [b.races, b.measures], tail);
+}
+const gm = parseBallot("MEASURES\n- Measure 1 | Levy | https://m.org\nGAPS\n- City Council | Position 3 | C vs D | CONTESTED | source: https://z.org");
+assert.deepStrictEqual([gm.races.length, gm.measures.length], [0, 1]);
 
 // Steps 6/7 bundle: ballot list, then each answer under its own header.
 const bundle = bundleAnswers([
-  {kind: "race", text: "Mayor: Candidate Z", note: "UNCONTESTED", answer: " CANDIDATE: Z\n", calc: "Call: Vote for Z"},
+  {kind: "race", text: "Mayor: Candidate Z", note: "UNCONTESTED", answer: " CANDIDATE: Z\n", calc: "Call: Vote for Z", check: "3 confirmed"},
   {kind: "measure", text: "Measure 1", note: "", answer: ""},
 ]);
 assert.strictEqual(bundle, [
   "BALLOT LIST (from Step 2)", "- RACE: Mayor: Candidate Z | UNCONTESTED", "- MEASURE: Measure 1", "",
-  "=== RACE 1 OF 2: Mayor: Candidate Z ===", "CANDIDATE: Z", "CALCULATOR: Call: Vote for Z", "",
+  "=== RACE 1 OF 2: Mayor: Candidate Z ===", "CANDIDATE: Z", "CALCULATOR: Call: Vote for Z", "DOUBLE-CHECK: 3 confirmed", "",
   "=== MEASURE 2 OF 2: Measure 1 ===", "(no answer pasted yet)"].join("\n"));
+
+// Checker reply: corrected answer after its heading, plain or markdown; summary counts either order.
+const reply = "CHECK SUMMARY: 12 CONFIRMED, 1 WRONG, 2 NOT FOUND, 0 NO SOURCE\nPROBLEMS:\n- x: WRONG | y\nCORRECTED ANSWER:\nCANDIDATE: Z\n- line\n";
+assert.strictEqual(extractCorrected(reply), "CANDIDATE: Z\n- line");
+assert.deepStrictEqual(checkSummary(reply), {confirmed: 12, wrong: 1, notFound: 2, noSource: 0});
+assert.strictEqual(checkLine(checkSummary(reply)), "12 confirmed · 1 wrong · 2 not found");
+const md = "## **CHECK SUMMARY**\n**CONFIRMED:** 4 | **WRONG:** 0 | **NOT FOUND:** 1 | **NO SOURCE:** 2\n\n**CORRECTED ANSWER:**\n```text\nRACES\n- Mayor | Z\n```\n";
+assert.strictEqual(extractCorrected(md), "RACES\n- Mayor | Z");
+assert.deepStrictEqual(checkSummary(md), {confirmed: 4, wrong: 0, notFound: 1, noSource: 2});
+assert.strictEqual(extractCorrected("### Corrected answer: CANDIDATE: Q"), "CANDIDATE: Q");
+assert.strictEqual(extractCorrected("no heading here"), null);
+assert.strictEqual(extractCorrected("CORRECTED ANSWER:\n\n"), null);
+assert.strictEqual(extractCorrected(""), null);
+for (const t of ["CHECK SUMMARY: 12 CONFIRMED, 1 WRONG, 2 NOT FOUND, 0 NO SOURCE", "CHECK SUMMARY: CONFIRMED 12 WRONG 1 NOT FOUND 2 NO SOURCE 0",
+  "Check summary: Confirmed: 12; Wrong: 1; Not found: 2; No source: 0", "**CHECK SUMMARY:** **12** CONFIRMED; **1** WRONG; 2 NOT_FOUND; 0 NO-SOURCE"])
+  assert.deepStrictEqual(checkSummary(t), {confirmed: 12, wrong: 1, notFound: 2, noSource: 0}, t);
+// Fenced answer plus chatter: only the fenced content.
+assert.strictEqual(extractCorrected("CORRECTED ANSWER:\nHere it is:\n```\nCANDIDATE: Z\n- [A][+] z\n```\nREMOVED: one vote\n\nLet me know!"), "CANDIDATE: Z\n- [A][+] z");
+// Unfenced: everything from a REMOVED: line on is cut; GAPS: stays (part of Step 3).
+assert.strictEqual(extractCorrected("CORRECTED ANSWER:\nCANDIDATE: Z\n- z\nGAPS: none\nCANDIDATE: Y\n- y\nREMOVED: a 2019 vote\n"), "CANDIDATE: Z\n- z\nGAPS: none\nCANDIDATE: Y\n- y");
+// Closing remarks are kept (the calculator ignores prose); only REMOVED: ends the answer.
+assert.strictEqual(extractCorrected("CORRECTED ANSWER:\nMEASURE: P\n- m\n\nI hope this helps."), "MEASURE: P\n- m\n\nI hope this helps.");
+assert.strictEqual(extractCorrected("**Corrected answer below:**\nCANDIDATE: Q\n- q"), "CANDIDATE: Q\n- q");
+assert.strictEqual(extractCorrected("Corrected answer follows:\n\nRACES\n- Mayor | Z"), "RACES\n- Mayor | Z");
+const noChange = extractCorrected("CORRECTED ANSWER: No changes needed");
+assert.strictEqual(noChange, "No changes needed");
+assert.strictEqual(usableCorrected(noChange), false);
+assert.strictEqual(usableCorrected(null), false);
+for (const ok of ["CANDIDATE: Q", "**MEASURE:** P", "## RACES\n- Mayor | Z", "MEASURES:\n- M | x"]) assert.ok(usableCorrected(ok), ok);
+// Whole reply in one fence (heading inside the open fence): body runs to the closing fence.
+const fenced = "CHECK SUMMARY: 5 CONFIRMED, 0 WRONG\nCORRECTED ANSWER:\nCANDIDATE: A | x | y\n- [A][+][RECORD] 2020: f | https://e.org\nRED LINE CROSSED: no\nGAPS: none\nREMOVED: none\n```";
+const fencedWant = "CANDIDATE: A | x | y\n- [A][+][RECORD] 2020: f | https://e.org\nRED LINE CROSSED: no\nGAPS: none";
+assert.strictEqual(extractCorrected("```text\n" + fenced + "\nLet me know if you want more."), fencedWant);
+assert.strictEqual(extractCorrected("```\n" + fenced), fencedWant);
+assert.strictEqual(extractCorrected("```\nCHECK SUMMARY: 1 CONFIRMED\nCORRECTED ANSWER:\nMEASURE: M"), "MEASURE: M");
+// Trailing remarks and --- / *** rules are kept verbatim; only REMOVED: ends the answer.
+const tail = "CANDIDATE: A | x | y\n- [A][+][RECORD] 2020: f | https://e.org\nGAPS: none";
+assert.strictEqual(extractCorrected("**CORRECTED ANSWER**\n\n" + tail + "\n\n---\n\nOverall the answer was accurate."), tail + "\n\n---\n\nOverall the answer was accurate.");
+assert.strictEqual(extractCorrected("CORRECTED ANSWER:\n" + tail + "\nOverall the answer was accurate."), tail + "\nOverall the answer was accurate.");
+assert.strictEqual(extractCorrected("CORRECTED ANSWER:\n---\n" + tail + "\n***\nThanks."), "---\n" + tail + "\n***\nThanks.");
+// Reviewer repros: a rule between candidates and a mid-answer "Note:" must not drop content.
+{
+  const two = "CANDIDATE: A | x | y\n- [A][+][RECORD] 2024: a | https://e.org/a\n---\nCANDIDATE: B | x | y\n- [A][-][RECORD] 2024: b | https://e.org/b";
+  assert.ok(extractCorrected("CORRECTED ANSWER:\n" + two).includes("CANDIDATE: B"), "--- keeps later candidates");
+  const red = "CANDIDATE: A | x | y\n- [A][+][RECORD] 2024: a | https://e.org/a\n\nNote: one source was slow.\n- [A][+][RECORD] 2023: c | https://e.org/c\nRED LINE CROSSED: yes: z | https://e.org/z";
+  assert.ok(extractCorrected("CORRECTED ANSWER:\n" + red).includes("RED LINE CROSSED: yes"), "Note: keeps the red line");
+  const meas = "MEASURE: M\nWHAT YES DOES: x\n\nNote: the fiscal note was revised.\nEVIDENCE:\n- [A][+][RECORD] 2024: e | https://e.org/e";
+  assert.ok(extractCorrected("CORRECTED ANSWER:\n" + meas).includes("EVIDENCE:"), "Note: keeps measure evidence");
+  // Fence closed right after the heading, answer in a second fence.
+  assert.strictEqual(extractCorrected("```\nCORRECTED ANSWER:\n```\n```\nCANDIDATE: Q\n```"), "CANDIDATE: Q");
+}
+const tbl = "CANDIDATE: A | x | y\n| Axis | Sign | Kind | Fact | Source |\n|---|---|---|---|---|\n| A | + | RECORD | 2020: f | https://e.org |\nGAPS: none";
+assert.strictEqual(extractCorrected("CORRECTED ANSWER:\n" + tbl), tbl);
+// Markdown table summary maps numbers by column.
+assert.deepStrictEqual(checkSummary("CHECK SUMMARY:\n| CONFIRMED | WRONG | NOT FOUND | NO SOURCE |\n|---|---|---|---|\n| 12 | 1 | 0 | 2 |"),
+  {confirmed: 12, wrong: 1, notFound: 0, noSource: 2});
+assert.strictEqual(checkSummary("nothing"), null);
+assert.strictEqual(checkSummary("CHECK SUMMARY: see below"), null);
+assert.strictEqual(checkSummary(null), null);
 
 console.log("kit_test: all checks passed");

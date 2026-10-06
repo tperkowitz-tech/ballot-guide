@@ -21,7 +21,7 @@ In regular ChatGPT, use the web kit or paste `PROMPT-KIT.md` with web search ena
 1. **Find the ballot:** districts, the official candidate list, uncontested races, and offices *not* on your ballot. The web kit sends your address only to this step.
 2. **Research each race:** records first, then funders (FEC and state disclosure data), then statements. Every candidate, including unopposed ones. For races with 5+ candidates you may choose a focus rule that is not about party; excluded candidates are still listed.
 3. **Fact-check each measure:** legal text, official fiscal note, what YES does and what NO means, the strongest argument on each side, funders.
-4. **Verify:** re-open primary sources, especially for close calls.
+4. **Verify:** re-open primary sources, especially for close calls. Optional double-check: a second AI chat checks each answer against its sources (Step 8). Recommended, not required.
 5. **Build the guide:** summary, sourced evidence for each race, open items, and links to your official election office.
 
 **Values match (optional):** you list 3 to 6 policy values with weights, topics you are mixed on, and optional red lines. Each choice then gets a fit score and a call. Unopposed candidates get "Vote for", "Your call" or "Consider leaving blank". Scores measure fit with your values, not who is likely to win; viability is shown separately only if you ask.

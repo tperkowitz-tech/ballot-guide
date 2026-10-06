@@ -6,6 +6,9 @@ and shared research rules in `ballot-guide/references/rules.md`.
 Keep examples fictional; include neutral and paired contrasting examples rather
 than a contributor's address, political views, or personal stakes.
 
+The optional double-check (Step 8) has a second AI chat check each answer against
+its sources. It is recommended, not required.
+
 The Python calculator is `ballot-guide/scripts/score.py`; the browser calculator
 is `tools/calc.js`. Keep their behavior in lockstep and run both calculator tests.
 `node tools/calc_test.js` includes a parity fuzz that runs 2000 random races through

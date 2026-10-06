@@ -112,6 +112,9 @@ pre.example{padding:8px 10px;font-size:11.5px;border-left:3px solid var(--rule)}
 .st{font:600 .72rem var(--mono);padding:3px 8px;border:1px solid var(--muted);color:var(--muted);border-radius:4px;white-space:nowrap}
 .st.done{border-color:var(--pen);color:var(--pen);background:var(--pen-soft)}
 .st.problem{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+/* Double-check panel: folds away once skipped or done, and reopens from its summary. */
+.dc{border:1px solid var(--rule);min-width:0}
+.dc>summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:10px 12px;min-height:44px;cursor:pointer;font-weight:700}
 .spot{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .spot li{display:flex;gap:10px;align-items:flex-start}
 .spot input{width:22px;height:22px;flex:none;margin-top:2px}
@@ -151,6 +154,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <dt>Statement</dt><dd>What a candidate says, such as a website or interview.</dd>
       <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
       <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
+      <dt>Double-check</dt><dd>A second AI chat checks the first answer against its sources.</dd>
       <dt>Score</dt><dd>A summary of the evidence found and how each piece was marked as for or against your priorities. It is not a prediction of who will win.</dd>
       <dt>Coverage</dt><dd>How many of your priorities have any evidence.</dd>
       <dt>Evidence level</dt><dd>Strong, moderate or thin, based on how much independent evidence there is.</dd>
@@ -174,6 +178,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <li>Check and build: spot-check three sources, then copy the check (Step 6) and the guide (Step 7) into new chats.</li>
   <li>Your address goes only into the Find your ballot chat. Every other chat gets &quot;Address: withheld&quot;.</li>
 </ol>
+<p>Optional double-check: a second AI chat checks each answer against its sources (Step 8). Recommended, not required.</p>
 <p>Crowded races: if a race has 5 or more candidates, you can choose a focus set by a rule that is not about party; the guide still lists everyone left out and why.</p>
 <p>Scores measure how well each choice fits your values, not who is likely to win. If you want to see viability too, ask for it in your profile (Step 1).</p>
     </div>
@@ -242,6 +247,10 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
         <div class="field"><label for="f-always">Always include these candidates</label><input type="text" id="f-always" placeholder="e.g. Jane Doe, Sam Lee"></div>
       </div>
     </fieldset>
+    <div class="field">
+      <label class="opt"><input type="checkbox" id="f-dc" checked aria-describedby="f-dc-hint"> Double-check each AI answer (recommended)</label>
+      <p class="hint" id="f-dc-hint">After each answer, you can ask a second AI chat to check it against its sources. It takes one more copy and paste per item and catches many mistakes. You can skip it any time.</p>
+    </div>
     <div class="btn-row"><button type="button" class="copy" id="profile-clear">Clear form</button></div>
   </form>
   <div class="profile-out">
@@ -277,6 +286,7 @@ MEASURES
   <div class="btn-row"><button type="button" class="copy" id="ballot-read">Read the answer</button></div>
   <p id="ballot-found" aria-live="polite"></p>
   <div id="ballot-warn"></div>
+  <div id="ballot-dc"></div>
   <h3 id="race-h">Races</h3>
   <ul class="checklist" id="race-list" aria-labelledby="race-h"></ul>
   <div class="btn-row"><button type="button" class="copy" id="race-add">Add race</button></div>
@@ -302,6 +312,7 @@ MEASURES
 <summary><span class="num" aria-hidden="true">4</span><h2>Check and build</h2><span class="stage-status" id="s4-status"></span></summary>
 <p class="stage-why">Why: AI can be wrong. Opening a few sources yourself is the best check.</p>
 <div class="stage-body">
+  <p id="dc-count" hidden></p>
   <h3>Spot-check 3 sources</h3>
   <p id="spot-hint">Open each link and check that the page really says what the AI claimed. If one is wrong, tell the AI in the item's chat and paste the corrected answer.</p>
   <p class="hint" id="spot-empty">No links yet. Paste answers in Step 3 first.</p>
@@ -454,15 +465,31 @@ function sourceAndDate(rest) {
 // A line that looks like it meant to be evidence; used so nothing is dropped without a warning.
 const LOOKS_LIKE_EVIDENCE = /\b(RECORD|FUNDER|STATED)\b|\[\s*[A-Za-z]\s*\]/;
 const TABLE_RULE = /^\|[\s|:-]+\|?$/;
+const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
 // with their text and left out of the math instead of stopping the whole calculation.
 function parseResearch(text, weights) {
-  const options = [], errors = [];
-  let kind = null, name = "", cur = null;
+  const options = [], errors = [], warnings = [];
+  let kind = null, name = "", cur = null, section = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = normLine(raw);
     let m;
+    // The checker's REMOVED/PROBLEMS/summary sections list facts that were NOT confirmed, often in
+    // evidence form; scoring them would count removed facts. Skip until the next CANDIDATE:/MEASURE:.
+    if (/^(REMOVED|PROBLEMS|CHECK SUMMARY)\s*(:|$)/i.test(line)) { section = "stopped"; cur = null; continue; }
+    if (section === "stopped" && !/^(CANDIDATE|MEASURE):/i.test(line)) continue;
+    // GAPS sits inside an option (before RED LINE or EVIDENCE: is common), so it only pauses
+    // evidence until the option's next structural line; its items are unconfirmed, never scored.
+    if (/^GAPS\s*(:|$)/i.test(line)) { section = "gaps"; continue; }
+    if (section === "gaps" && !GAPS_END.test(line)) {
+      const ev = evidenceParts(line);
+      if ((ev && (!line.startsWith("|") || has(KIND, ev.kind.toLowerCase()))) || LOOKS_LIKE_EVIDENCE.test(line)) {
+        warnings.push(`Evidence line under GAPS ignored: ${line}`);
+      }
+      continue;
+    }
+    section = null;
     if ((m = line.match(/^CANDIDATE:\s*([^|]*)/i))) {
       if (kind === "measure") { errors.push({line, msg: "Paste one race or one measure at a time, not both."}); cur = null; continue; }
       kind = "race";
@@ -486,7 +513,7 @@ function parseResearch(text, weights) {
       }
       continue;
     }
-    if (!line || TABLE_RULE.test(line) || /^(RED LINE CROSSED|GAPS):/i.test(line)) continue;
+    if (!line || TABLE_RULE.test(line) || /^RED LINE CROSSED:/i.test(line)) continue;
     if (cur) cur.lines = (cur.lines || 0) + 1;
     const ev = evidenceParts(line);
     const isTable = line.startsWith("|");
@@ -519,7 +546,7 @@ function parseResearch(text, weights) {
     }
     delete o.lines;
   }
-  return {kind, name, options, errors};
+  return {kind, name, options, errors, warnings};
 }
 
 // Neutral mode has no weights; count what parses with every letter allowed, so the page can
@@ -529,7 +556,8 @@ function countEvidence(text) {
   for (let i = 0; i < 26; i++) any[String.fromCharCode(65 + i)] = 1;
   const p = parseResearch(text, any);
   if (!p.options.length) p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found."});
-  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors};
+  // Neutral mode has no warnings list on the page, so ignored GAPS evidence shows as a problem.
+  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors.concat(p.warnings.map(msg => ({line: "", msg})))};
 }
 
 const isGray = ev => ev.sign === "gray" || ev.gray === true;
@@ -718,11 +746,11 @@ function calculate(weightsText, researchText) {
   const p = parseResearch(researchText, weights);
   if (!p.options.length) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
-    return {warnings, errors: p.errors, result: null};
+    return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
   const res = scoreRace(p.options, weights, p.kind === "measure");
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
-  return {warnings: warnings.concat(res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
+  return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }
 
 if (typeof module === "object" && module.exports) {
@@ -739,6 +767,7 @@ const NEUTRAL_STEP7 = "Neutral mode: no scores, best matches or calls; use | Rac
 const WEB_GATE = "First: if you cannot open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
 const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
+const DOUBLE_CHECK_STEP = 8;
 // Browser: calc.js is inlined before this file and defines normLine. Node: load it.
 const lineNorm = typeof require === "function" ? require("./calc.js").normLine : normLine;
 
@@ -748,6 +777,7 @@ function defaultState() {
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
+    doubleCheck: true,
   };
 }
 
@@ -814,6 +844,18 @@ function fillStep(stepIndex, stepText, state, extras) {
   return text;
 }
 
+// Step 8 text with the checked question and answer filled in. extras: {checkStep, question (the
+// raw Step 2/3/4 text, filled here the same way the first chat got it), race/measure, answer}.
+function fillCheck(stepText, state, ex) {
+  let text = stepText;
+  if (ex.question != null) {
+    const q = fillStep(ex.checkStep, ex.question, state, ex);
+    text = text.replace("{{the original step prompt}}", () => q);
+  }
+  if (ex.answer != null) text = text.replace("{{the answer}}", () => String(ex.answer).trim());
+  return text;
+}
+
 // "Copy for chat": web gate, rules, profile, step, then any attached answers (extras.attach),
 // so a fresh chat has everything it needs.
 function forChat(stepIndex, rulesText, stepText, state, extras) {
@@ -821,9 +863,95 @@ function forChat(stepIndex, rulesText, stepText, state, extras) {
   let parts;
   if (stepIndex === 0) parts = [rulesText];
   else if (stepIndex === 1) parts = [buildProfile(state)];
+  // Checking the ballot list is the ballot lookup again, so only that check gets the address.
+  else if (stepIndex === DOUBLE_CHECK_STEP) parts = [rulesText, buildProfile(state, ex.checkStep === BALLOT_STEP), fillCheck(stepText, state, ex)];
   else parts = [rulesText, buildProfile(state, stepIndex === BALLOT_STEP), fillStep(stepIndex, stepText, state, ex)];
   if (ex.attach) parts.push(ex.attach);
   return [WEB_GATE, ...parts].join("\n\n");
+}
+
+// The checker's reply after its "CORRECTED ANSWER:" line, tolerating markdown bold and headings;
+// null when there is none. A fenced answer is taken from inside its fence. The only other cut is a
+// REMOVED: line, which the prompt places after the answer. Closing remarks are deliberately kept:
+// guessing where chatter starts deleted real candidates and red lines, and the calculator ignores
+// prose. GAPS: is not a cut point: Step 3/4 answers carry a GAPS: line inside each block.
+function extractCorrected(text) {
+  const ls = String(text || "").split(/\r?\n/);
+  const i = ls.findIndex(l => /^[\s#>*_]*CORRECTED ANSWER\b/i.test(l));
+  if (i < 0) return null;
+  const first = ls[i].replace(/^[\s#>*_]*CORRECTED ANSWER\b[\s*_:]*/i, "").replace(/^(below|follows)\b[\s*_:.]*/i, "");
+  let body = [first, ...ls.slice(i + 1)];
+  const isFence = l => /^\s*```/.test(l);
+  if (ls.slice(0, i).filter(isFence).length % 2) {
+    // The heading sits inside an open fence (the whole reply was fenced): the answer runs to its close.
+    const end = body.findIndex((l, j) => j > 0 && isFence(l));
+    if (end >= 0 && body.slice(0, end).some(l => l.trim())) body = body.slice(0, end);
+    else if (end >= 0) {
+      // The fence closed right after the heading; the answer is in the next fenced block.
+      const open = body.findIndex((l, j) => j > end && isFence(l));
+      const close = open < 0 ? -1 : body.findIndex((l, j) => j > open && isFence(l));
+      body = open < 0 ? [] : body.slice(open + 1, close < 0 ? body.length : close);
+    }
+  } else {
+    const fence = body.findIndex(isFence);
+    if (fence >= 0) {
+      const end = body.findIndex((l, j) => j > fence && isFence(l));
+      body = body.slice(fence + 1, end < 0 ? body.length : end);
+    }
+  }
+  // The prompt puts REMOVED: after the answer, so it is the only safe cut. Other closing remarks
+  // stay: the calculator ignores prose, and guessing where chatter starts deleted real answer lines.
+  const cut = body.findIndex(l => /^[\s#>*_]*REMOVED[\s*_]*:/i.test(l));
+  if (cut >= 0) body = body.slice(0, cut);
+  while (body.length && !body[0].trim()) body.shift();
+  while (body.length && !body[body.length - 1].trim()) body.pop();
+  return body.length ? body.join("\n") : null;
+}
+
+// Whether a corrected answer is in a format the page can use: candidate or measure blocks, or a
+// ballot list's RACES/MEASURES section. "No changes needed" and other prose is not.
+function usableCorrected(text) {
+  return String(text || "").split(/\r?\n/).map(lineNorm)
+    .some(l => /^(CANDIDATE|MEASURE):/i.test(l) || /^(RACES|MEASURES)\s*:?\s*$/i.test(l));
+}
+
+// Counts from the "CHECK SUMMARY:" line. Each label takes the number written right before it
+// ("12 CONFIRMED") if no earlier label claimed that number, else the one right after it
+// ("CONFIRMED: 12"), so both orders and mixed punctuation parse. Null when there are no counts.
+function checkSummary(text) {
+  const m = String(text || "").match(/CHECK SUMMARY[^\n]*(?:\n[^\n]*){0,4}/i);
+  if (!m) return null;
+  const seg = m[0].split(/PROBLEMS|CORRECTED ANSWER/i)[0];
+  const keys = [["confirmed", /^CONFIRMED$/i], ["wrong", /^WRONG$/i], ["notFound", /^NOT/i], ["noSource", /^NO/i]];
+  // A markdown table: label header row, then a row of numbers mapped by column (|---| rows skipped).
+  const rows = seg.split("\n").map(cells).filter(c => c && !c.every(x => /^:?-*:?$/.test(x)));
+  const hi = rows.findIndex(c => c.some(x => /CONFIRMED/i.test(x)));
+  if (hi >= 0 && rows[hi + 1] && rows[hi + 1].every(x => /^\d+$/.test(x.replace(/\*\*/g, "")))) {
+    const out = {confirmed: 0, wrong: 0, notFound: 0, noSource: 0};
+    rows[hi].forEach((h, j) => {
+      const k = keys.find(([, r]) => r.test(h.replace(/\*\*/g, "").trim()));
+      if (k && rows[hi + 1][j] !== undefined) out[k[0]] = Number(rows[hi + 1][j].replace(/\*\*/g, ""));
+    });
+    return out;
+  }
+  const toks = [...seg.matchAll(/\d+|\b(?:CONFIRMED|WRONG|NOT[\s_-]*FOUND|NO[\s_-]*SOURCE)\b/gi)].map(t => t[0]);
+  const used = new Set(), out = {confirmed: 0, wrong: 0, notFound: 0, noSource: 0};
+  let any = false;
+  toks.forEach((t, j) => {
+    if (/^\d/.test(t)) return;
+    const n = j > 0 && /^\d/.test(toks[j - 1]) && !used.has(j - 1) ? j - 1 : /^\d/.test(toks[j + 1] || "") ? j + 1 : -1;
+    if (n < 0) return;
+    used.add(n);
+    out[keys.find(([, r]) => r.test(t))[0]] = Number(toks[n]);
+    any = true;
+  });
+  return any ? out : null;
+}
+
+// "12 confirmed · 1 wrong · 2 not found"; zero counts other than confirmed are left out.
+function checkLine(sum) {
+  return [[sum.confirmed, "confirmed"], [sum.wrong, "wrong"], [sum.notFound, "not found"], [sum.noSource, "no source"]]
+    .filter(([n], i) => i === 0 || n).map(([n, l]) => `${n} ${l}`).join(" · ");
 }
 
 // Splits a markdown or plain row into cells; a row without "|" is not a row.
@@ -844,6 +972,8 @@ function parseBallot(text) {
     const line = lineNorm(raw);
     const h = line.match(/^(DISTRICTS|RACES|MEASURES|UNVERIFIED)\s*:?\s*$/i);
     if (h) { section = h[1].toUpperCase(); sawHeading = true; continue; }
+    // A checker's corrected list may append these; their rows are not ballot items.
+    if (/^(GAPS|REMOVED|PROBLEMS|CHECK SUMMARY)\b/i.test(line)) { section = null; continue; }
     if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
@@ -873,7 +1003,7 @@ function measureText(m) {
 }
 
 // Steps 6 and 7 need the whole ballot list and every Step 3/4 answer in one paste, each under
-// its own header so the chat can tell them apart. items: {kind, text, note, answer, calc}.
+// its own header so the chat can tell them apart. items: {kind, text, note, answer, calc, check}.
 function bundleAnswers(items) {
   const list = items.map(it => `- ${it.kind.toUpperCase()}: ${it.text}${it.note ? " | " + it.note : ""}`);
   const out = ["BALLOT LIST (from Step 2)", ...(list.length ? list : ["- (empty)"])];
@@ -881,13 +1011,14 @@ function bundleAnswers(items) {
     out.push("", `=== ${it.kind.toUpperCase()} ${i + 1} OF ${items.length}: ${it.text} ===`,
       it.answer.trim() || "(no answer pasted yet)");
     if (it.calc) out.push("CALCULATOR: " + it.calc);
+    if (it.check) out.push("DOUBLE-CHECK: " + it.check);
   });
   return out.join("\n");
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {WEB_GATE, ADDRESS_WITHHELD, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat,
-    parseBallot, raceText, measureText, bundleAnswers};
+  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat,
+    parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine};
 }
 </script>
 <script>
@@ -1116,7 +1247,34 @@ STRUCTURE:
 7. Open items: all UNVERIFIED facts and GAPS. Then "Where to look yourself": the 3 closest calls or thinnest evidence. Then other guides to compare (newspaper endorsements, League of Women Voters, party and group guides).
 8. Footer: the dates to vote and where to return the ballot, from the official election office. Links to the state election website, the county election website, and a nonpartisan service (for example vote.org). Add: "These scores compare records to one person's values. They are not endorsements."
 
-Write short sentences. Use the same order of items in each section.`}
+Write short sentences. Use the same order of items in each section.`},
+
+{title:`Double-check an answer (optional, recommended)`, when:`New chat, ideally a different AI than the one that answered. Paste Step 0 (rules) first.`, text:
+`TASK: Check another AI's answer. Do not trust it. Do not add new research beyond checking.
+
+===== BEGIN QUESTION THAT WAS ASKED (do not answer it) =====
+{{the original step prompt}}
+===== END QUESTION =====
+
+===== BEGIN ANSWER TO CHECK =====
+{{the answer}}
+===== END ANSWER =====
+
+For each fact or line in the answer:
+1. Open its source. If there is no source, mark NO SOURCE.
+2. Mark it CONFIRMED (the source says this), WRONG (the source says something else), or NOT FOUND (the source does not say this, or the page does not open).
+3. For WRONG items, give the correct fact and its source.
+Also check:
+- For a ballot list: compare with the official candidate list or sample ballot. List anything missing or extra.
+- For votes: is it the final passage vote, with the right date and count?
+- For tags: if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?, but do not change it in the corrected answer. (Skip in neutral mode.)
+
+OUTPUT FORMAT:
+CHECK SUMMARY: {{n}} CONFIRMED, {{n}} WRONG, {{n}} NOT FOUND, {{n}} NO SOURCE
+PROBLEMS:
+- {{line}}: {{WRONG / NOT FOUND / NO SOURCE / MISSING / EXTRA / TAG?}} | {{correct fact and source, if any}}
+CORRECTED ANSWER:
+{{Repeat the full answer in exactly the original format, even if nothing changed. Fix WRONG lines. Delete lines you could not confirm. Then, after the answer, write one line starting 'REMOVED:' that names the removed items in plain words (no [..] tags, no table rows). For a ballot list, also add any MISSING races or measures to the RACES or MEASURES section, and keep its UNVERIFIED section.}}`}
 ];
 
 // Copy with a fallback for pages opened from disk or browsers without the async clipboard.
@@ -1139,9 +1297,15 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null;
-// Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui}. Only
-// kind/text/note/answer/status are saved; the raw Step 2 answer never is (it may echo the address).
+// Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
+// checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
+// the address); only the parsed list and whether it was double-checked are.
 let items=[];
+// Double-check state of one Step 3/4 answer; `original` is the answer before the correction, for Undo.
+// Saved data is untrusted: a non-string field loads as empty rather than as "[object Object]".
+const str=v=>typeof v==="string"?v:"";
+const checkFields=x=>({checkAnswer:str(x.checkAnswer),original:str(x.original),checked:!!x.checked,checkSkipped:!!x.checkSkipped});
+let ballotChecked=false, ballotCheckText="", ballotOriginal="", ballotSkipped=false;
 const EXAMPLE={
   race:"CANDIDATE: Candidate X | nonpartisan | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no",
   measure:"MEASURE: Measure 1\nEVIDENCE:\n- [A][+][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
@@ -1211,6 +1375,7 @@ function readState(){
   st.gray=$("f-gray").value; st.red=$("f-red").value; st.stakes=$("f-stakes").value;
   st.viability=$("f-viability").checked;
   st.minShare=$("f-share").value; st.minMoney=$("f-money").value; st.includeOffice=$("f-office").checked; st.always=$("f-always").value;
+  st.doubleCheck=$("f-dc").checked;
   return st;
 }
 
@@ -1223,6 +1388,7 @@ function writeState(st){
   $("f-gray").value=st.gray||""; $("f-red").value=st.red||""; $("f-stakes").value=st.stakes||"";
   $("f-viability").checked=!!st.viability;
   $("f-share").value=st.minShare||""; $("f-money").value=st.minMoney||""; $("f-office").checked=!!st.includeOffice; $("f-always").value=st.always||"";
+  $("f-dc").checked=st.doubleCheck!==false;
 }
 
 function fillWeights(st){
@@ -1254,6 +1420,8 @@ function render(){
   // Re-score pasted answers only when the mode or the weights change, not on every keystroke.
   const scoring=neutral?"neutral":axisLines(st).join("\n");
   if(scoring!==lastScoring){lastScoring=scoring;items.forEach(evalItem)}
+  else items.forEach(refreshItem); // the double-check option shows or hides each item's panel
+  showBallotCheck();
   // Refill only when the axes change, so edits typed into the calculator survive other keystrokes.
   const axes=axisLines(st).join("\n");
   if(!neutral&&axes!==lastAxes)fillWeights(st);
@@ -1265,8 +1433,8 @@ function render(){
 function save(){
   // The address is deliberately left out of storage: it is the one field that identifies a person.
   const {address,...profile}=readState();
-  const keep=items.map(({kind,text,note,answer,status})=>({kind,text,note,answer,status}));
-  try{localStorage.setItem(STORE,JSON.stringify({profile,items:keep}))}catch(_){/* storage blocked or full: the page still works, nothing is remembered */}
+  const keep=items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:it.status,...checkFields(it)}));
+  try{localStorage.setItem(STORE,JSON.stringify({profile,items:keep,ballotChecked}))}catch(_){/* storage blocked or full: the page still works, nothing is remembered */}
 }
 
 function load(){
@@ -1278,7 +1446,8 @@ function load(){
   const {address,...rest}=prof;
   writeState({...defaultState(),...rest});
   items=(Array.isArray(s.items)?s.items:[]).filter(x=>x&&(x.kind==="race"||x.kind==="measure"))
-    .map(x=>({kind:x.kind,text:String(x.text||""),note:String(x.note||""),answer:String(x.answer||""),status:"to do"}));
+    .map(x=>({kind:x.kind,text:String(x.text||""),note:String(x.note||""),answer:String(x.answer||""),status:"to do",...checkFields(x)}));
+  ballotChecked=s.ballotChecked===true;
 }
 load();
 $("profile-form").addEventListener("input",render);
@@ -1391,7 +1560,52 @@ function refreshItem(it){
   u.status.className="st"+(isDone(it)?" done":it.status==="problem"?" problem":"");
   u.score.textContent=it.status==="scored"?it.call:"";
   u.copy.disabled=empty; u.need.hidden=!empty;
+  u.dcBadge.hidden=!it.checked;
+  u.dc.d.hidden=!$("f-dc").checked||!it.answer.trim();
 }
+
+// ---- Double-check (Step 8) ----
+// One panel per answer, for Stage 2 and each Stage 3 item. h: {chat(), text(), setText(v),
+// use(corrected), undo(), checked(), canUndo(), skipped(), skip()}.
+function checkPanel(h){
+  const d=el("details",null,"dc"), sum=el("summary"), badge=el("span","","st");
+  sum.append(el("span","Double-check (recommended)"),badge);
+  const body=el("div",null,"item-body"), btns=el("div",null,"btn-row");
+  const copy=el("button","Copy double-check for chat","copy primary"), skip=el("button","Skip double-check","copy");
+  const use=el("button","Use the corrected answer","copy primary"), undo=el("button","Undo","copy");
+  [copy,skip,use,undo].forEach(b=>b.type="button");
+  const ta=el("textarea"), lab=el("label","Paste the checker's answer"), out=el("div");
+  ta.id="check-"+(++uid); ta.rows=5; ta.autocomplete="off"; lab.htmlFor=ta.id; out.setAttribute("aria-live","polite");
+  btns.append(copy,skip);
+  body.append(el("p","Best: use a different AI than the one that answered, or at least a new chat.","hint"),btns,lab,ta,out);
+  d.append(sum,body);
+  const row=b=>{const r=el("div",null,"btn-row");r.append(b);out.append(r)};
+  function refresh(){
+    const t=h.text(), cs=checkSummary(t), fixed=extractCorrected(t);
+    if(ta.value!==t)ta.value=t;
+    out.replaceChildren();
+    if(/NO WEB ACCESS/.test(t))out.append(el("p","The checker said it cannot open web pages. Use a chat with web search turned on and try again.","warn"));
+    else if(t.trim()){
+      out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
+      if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
+      else if(!usableCorrected(fixed))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
+      else if(!h.checked())row(use);
+    }
+    if(h.checked()){out.append(el("p","✓ The corrected answer is in use."));if(h.canUndo())row(undo)}
+    badge.textContent=h.checked()?"✓ double-checked":h.skipped()?"skipped":"";
+    badge.className="st"+(h.checked()?" done":""); badge.hidden=!badge.textContent;
+  }
+  ta.addEventListener("input",()=>{h.setText(ta.value);refresh()});
+  copy.addEventListener("click",()=>copyText(h.chat(),copy));
+  skip.addEventListener("click",()=>{h.skip();d.open=false;refresh()});
+  use.addEventListener("click",()=>{const f=extractCorrected(h.text());if(!usableCorrected(f))return;h.use(f);refresh();(undo.isConnected?undo:ta).focus()});
+  undo.addEventListener("click",()=>{h.undo();refresh();(use.isConnected?use:ta).focus()});
+  refresh();
+  return {d,refresh};
+}
+const checkChat=(step,extra)=>forChat(DOUBLE_CHECK_STEP,STEPS[0].text,STEPS[DOUBLE_CHECK_STEP].text,readState(),{checkStep:step,question:STEPS[step].text,...extra});
+// Summary for the Step 6/7 bundles; empty when no checker reply with counts was pasted.
+function checkNote(it){const cs=checkSummary(it.checkAnswer);return cs?checkLine(cs)+(it.checked?" (corrected answer used)":""):""}
 
 function buildRow(it){
   const li=el("li"), inp=el("input"), del=el("button","Delete","copy");
@@ -1407,19 +1621,30 @@ function buildRow(it){
 
 function buildItem(it){
   const d=el("details",null,"item"), sum=el("summary"), st=el("span","","st"), title=el("span"), score=el("span","","hint");
-  sum.append(st,title,score);
+  const dcBadge=el("span","✓ double-checked","st done");
+  sum.append(st,dcBadge,title,score);
   const body=el("div",null,"item-body"), row=el("div",null,"btn-row"), copy=el("button","Copy for chat","copy primary");
   copy.type="button";
   const need=el("span",it.kind==="race"?"Enter the race first":"Enter the measure first","hint");
   row.append(copy,need);
   const ta=el("textarea"), lab=el("label","Paste the AI's answer for this item"), out=el("div",null,"item-out");
   ta.id="answer-"+(++uid); ta.rows=6; ta.value=it.answer; lab.htmlFor=ta.id; out.setAttribute("aria-live","polite");
-  body.append(row,lab,el("p","Example of the format (made-up data):","hint"),el("pre",EXAMPLE[it.kind],"example"),ta,out);
-  d.append(sum,body);
   const step=it.kind==="race"?3:4;
+  const reEval=()=>{ta.value=it.answer;evalItem(it);refreshStages();save()};
+  const dc=checkPanel({
+    chat:()=>checkChat(step,{[it.kind]:it.text,answer:it.answer}),
+    text:()=>it.checkAnswer, setText:v=>{it.checkAnswer=v;refreshStages();save()},
+    use:f=>{it.original=it.answer;it.answer=f;it.checked=true;reEval()},
+    undo:()=>{it.answer=it.original;it.original="";it.checked=false;reEval()},
+    checked:()=>it.checked, canUndo:()=>!!it.original, skipped:()=>it.checkSkipped, skip:()=>{it.checkSkipped=true;save()},
+  });
+  dc.d.open=!it.checked&&!it.checkSkipped;
+  body.append(row,lab,el("p","Example of the format (made-up data):","hint"),el("pre",EXAMPLE[it.kind],"example"),ta,out,dc.d);
+  d.append(sum,body);
   copy.addEventListener("click",()=>copyText(forChat(step,STEPS[0].text,STEPS[step].text,readState(),{[it.kind]:it.text}),copy));
-  ta.addEventListener("input",()=>{it.answer=ta.value;evalItem(it);refreshStages();save()});
-  Object.assign(it.ui,{status:st,title,score,copy,need,out});
+  // A new or edited answer has not been checked, so its earlier check no longer applies.
+  ta.addEventListener("input",()=>{it.answer=ta.value;Object.assign(it,checkFields({}));dc.refresh();evalItem(it);refreshStages();save()});
+  Object.assign(it.ui,{status:st,title,score,copy,need,out,dc,dcBadge});
   $("items").append(d);
   evalItem(it);
   d.open=!isDone(it);
@@ -1434,12 +1659,12 @@ function buildLists(){
 }
 
 function addItem(kind){
-  const it={kind,text:"",note:"",answer:"",status:"to do"};
+  const it={kind,text:"",note:"",answer:"",status:"to do",...checkFields({})};
   items.push(it); buildLists(); save(); it.ui.input.focus();
 }
 
 function bundleText(){
-  return bundleAnswers(items.map(({kind,text,note,answer,calc})=>({kind,text,note,answer,calc})));
+  return bundleAnswers(items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,calc:it.calc,check:checkNote(it)})));
 }
 const finalChat=step=>forChat(step,STEPS[0].text,STEPS[step].text,readState(),{attach:bundleText()});
 
@@ -1471,12 +1696,15 @@ function pickSpots(){
 function refreshStages(){
   const races=items.filter(i=>i.kind==="race").length, measures=items.length-races;
   const done=items.filter(isDone).length, problems=items.filter(i=>i.status==="problem").length;
-  $("s2-status").textContent=items.length?`${races} races, ${measures} measures`:"Not started";
+  $("s2-status").textContent=items.length?`${races} races, ${measures} measures`+(ballotChecked?" · ✓ double-checked":""):"Not started";
   $("s3-status").textContent=items.length?`${done} of ${items.length} done`+(problems?`, ${problems} with problems`:""):"Waiting for your ballot list";
   $("s3-empty").hidden=items.length>0;
   const urls=allUrls().map(x=>x.url);
   if(spotShown.length<Math.min(3,urls.length)||spotShown.some(u=>!urls.includes(u)))pickSpots();
   else{$("spot-empty").hidden=urls.length>0;$("spot-pick").disabled=urls.length<=3}
+  const checked=items.filter(i=>i.checked).length;
+  $("dc-count").hidden=!items.length;
+  $("dc-count").textContent=`${checked} of ${items.length} items double-checked.`+(checked<items.length?" Double-checking is optional but recommended for close calls.":"");
   $("s4-status").textContent=items.length&&done===items.length?"Ready":"Finish Step 3 first, or go ahead with what you have";
   const len=Math.max(finalChat(6).length,finalChat(7).length), w=$("bundle-warn");
   w.hidden=len<=30000;
@@ -1494,7 +1722,24 @@ $("spot-pick").addEventListener("click",pickSpots);
 $("check-copy").addEventListener("click",ev=>copyText(finalChat(6),ev.currentTarget));
 $("build-copy").addEventListener("click",ev=>copyText(finalChat(7),ev.currentTarget));
 
-$("ballot-read").addEventListener("click",()=>{
+// Stage 2 double-check. Its texts live only in memory, like the Step 2 answer itself.
+const ballotDc=checkPanel({
+  chat:()=>checkChat(BALLOT_STEP,{answer:$("ballot-answer").value}),
+  text:()=>ballotCheckText, setText:v=>{ballotCheckText=v},
+  use:f=>{ballotOriginal=$("ballot-answer").value;$("ballot-answer").value=f;ballotChecked=true;readBallot()},
+  undo:()=>{$("ballot-answer").value=ballotOriginal;ballotOriginal="";ballotChecked=false;readBallot()},
+  checked:()=>ballotChecked, canUndo:()=>!!ballotOriginal, skipped:()=>ballotSkipped, skip:()=>{ballotSkipped=true},
+});
+ballotDc.d.open=true;
+$("ballot-dc").append(ballotDc.d);
+function showBallotCheck(){ballotDc.d.hidden=!$("f-dc").checked||!$("ballot-answer").value.trim()}
+$("ballot-answer").addEventListener("input",()=>{
+  ballotCheckText=""; ballotOriginal=""; ballotChecked=false;
+  ballotDc.refresh(); showBallotCheck(); refreshStages(); save();
+});
+
+$("ballot-read").addEventListener("click",()=>readBallot());
+function readBallot(){
   const text=$("ballot-answer").value, warn=$("ballot-warn"), found=$("ballot-found");
   warn.replaceChildren();
   if(/NO WEB ACCESS/.test(text)){found.textContent="The chat said it cannot open web pages. Use a chat with web search turned on.";return}
@@ -1508,19 +1753,20 @@ $("ballot-read").addEventListener("click",()=>{
   }
   // Keep pasted Step 3 answers: matching rows keep theirs, and rows with an answer stay on the list.
   const old=new Map(items.map(it=>[it.kind+"\n"+it.text,it]));
-  const next=rows.map(r=>{const o=old.get(r.kind+"\n"+r.text);if(o)old.delete(r.kind+"\n"+r.text);return {...r,answer:o?o.answer:"",status:"to do"}});
+  const next=rows.map(r=>{const o=old.get(r.kind+"\n"+r.text);if(o)old.delete(r.kind+"\n"+r.text);return {...r,answer:o?o.answer:"",status:"to do",...checkFields(o||{})}});
   const kept=[...old.values()].filter(it=>it.answer.trim());
-  items=[...next,...kept.map(({kind,text,note,answer})=>({kind,text,note,answer,status:"to do"}))];
+  items=[...next,...kept.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:"to do",...checkFields(it)}))];
   found.textContent=`Found ${p.races.length} races and ${p.measures.length} measures.`+(kept.length?` Kept ${kept.length} earlier items that already have answers.`:"");
   if(p.skipped.length)warn.append(noteBox(p.skipped.map(line=>({msg:"Not read; add it by hand if it is a race or measure:",line}))));
   buildLists(); save();
-});
+}
 
 $("reset").addEventListener("click",()=>{$("reset-confirm").hidden=false;$("reset-yes").focus()});
 $("reset-no").addEventListener("click",()=>{$("reset-confirm").hidden=true;$("reset").focus()});
 $("reset-yes").addEventListener("click",()=>{
   try{localStorage.removeItem(STORE);localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: nothing saved to clear */}
   items=[]; spotShown=[];
+  ballotChecked=false; ballotCheckText=""; ballotOriginal=""; ballotSkipped=false; ballotDc.refresh();
   $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren();
   writeState(defaultState()); buildLists(); render();
   $("reset-confirm").hidden=true;
