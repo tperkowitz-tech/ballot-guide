@@ -41,6 +41,18 @@ def main():
             found.append(name)
     if found:
         raise SystemExit("Personal strings in publishable files: " + ", ".join(found))
+    # The privacy policy promises the page loads nothing from other sites and sends nothing.
+    # The browser enforces it through this exact Content-Security-Policy; the scan catches
+    # absolute URLs that would be loaded rather than merely linked.
+    page = (ROOT / "docs/index.html").read_text()
+    csp = ("default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+           "img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'")
+    problems = [] if f'http-equiv="Content-Security-Policy" content="{csp}"' in page else ["missing privacy CSP"]
+    no_links = re.sub(r"<a\b[^>]*>", "", page, flags=re.I)
+    problems += re.findall(r"\b(?:src|srcset|href|action|poster|data|ping)\s*=\s*[\"']?(?:https?:)?//[^\s\"'>]+", no_links, re.I)
+    problems += re.findall(r"(?:@import|url\()\s*[\"']?(?:https?:)?//[^\s\"')]+", page, re.I)
+    if problems:
+        raise SystemExit("docs/index.html breaks the privacy policy: " + ", ".join(problems))
     print("checks passed")
 
 

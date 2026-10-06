@@ -21,7 +21,7 @@ No. Party labels, party platforms and party endorsements are never used as evide
 
 ## Privacy
 
-The web page keeps your progress only in your own browser. Your address goes only into the question that looks up your ballot (and that question's optional double-check), which you paste into an AI chat yourself; that chat service may keep it. Nothing is sent to this project. The page loads fonts from Google, so Google and GitHub, which hosts the page, see a visitor's IP address, never their ballot address.
+The web page keeps your progress only in your own browser, on your own device. Your address goes only into the question that looks up your ballot (and that question's optional double-check), which you paste into an AI chat yourself; that chat service may keep it. The page collects nothing about you, uses no cookies or tracking, and loads nothing from other sites; GitHub, which hosts it, sees visitors' IP addresses like any website host. Press "Start over" to erase everything saved in your browser. Full details are in the [privacy section of the web kit](https://tperkowitz-tech.github.io/ballot-guide/#privacy).
 
 ## Good to know
 

@@ -3,19 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Privacy: the browser blocks every connection to other sites. tools/check.py requires this exact policy. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <title>Ballot Guide Prompt Kit</title>
 <meta name="description" content="Free copy-and-paste prompts that help any AI chat with web search build a personal, sourced voter guide scored against your own values, plus a score calculator that runs in your browser.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,600..800&family=Public+Sans:wght@400;600;700&family=Spline+Sans+Mono:wght@400;600&display=swap">
 <style>
 /* Layout: one reading column. Each step is a numbered card (the order is real) with a copyable prompt block. */
 :root{
   --paper:#f5f7f6; --sheet:#ffffff; --ink:#18242f; --muted:#5a6872; --rule:#d5dde0;
   --pen:#1d55b3; --pen-soft:#e4ecf9; --code:#eef2f1; --warn:#8a4b00; --warn-soft:#fbf0e1;
-  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
-  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"Spline Sans Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --display:system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --paper:#11181e; --sheet:#18222a; --ink:#e3e9ec; --muted:#9aa8b1; --rule:#2c3a44; --pen:#7fa8ef; --pen-soft:#1d2c45; --code:#101820; --warn:#f0b766; --warn-soft:#2e2414; color-scheme:dark}}
@@ -24,7 +23,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--body);padding-inline:16px;padding-block:24px 56px}
 .wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
-h1,h2{font-family:var(--display);font-stretch:85%;margin:0;line-height:1.1;text-wrap:balance}
+h1,h2{font-family:var(--display);margin:0;line-height:1.1;text-wrap:balance}
 h1{font-size:clamp(1.9rem,6vw,2.7rem);font-weight:800}
 h2{font-size:1.25rem;font-weight:750}
 p{margin:0}
@@ -98,7 +97,7 @@ details.math summary{cursor:pointer;color:var(--pen);font-weight:600}
 .stage-status{order:2;font-size:.84rem;color:var(--muted);flex-basis:100%;overflow-wrap:anywhere}
 .stage .profile{border:0}
 .stage-body{padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.stage-body h3{font:750 1.02rem/1.2 var(--display);font-stretch:85%;margin:8px 0 0}
+.stage-body h3{font:750 1.02rem/1.2 var(--display);margin:8px 0 0}
 .stage-body label{font-weight:700}
 pre.example{padding:8px 10px;font-size:11.5px;border-left:3px solid var(--rule)}
 .checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
@@ -134,6 +133,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <div class="eyebrow">Reusable · works with any AI that can search the web</div>
   <h1>Ballot Guide Prompt Kit</h1>
   <p class="lede">Build a sourced guide to your ballot. Neutral comparison by default; optional scores against your own values.</p>
+  <p class="lede"><strong>Private by design:</strong> this page collects nothing about you, and the page itself sends nothing anywhere. <a href="#privacy">Read the privacy policy</a>.</p>
 </header>
 
 <div class="how" role="region" aria-labelledby="start-h">
@@ -358,6 +358,19 @@ GAPS: no funder data found</textarea>
 </section>
 </div>
 </details>
+
+<section class="how" id="privacy" aria-labelledby="privacy-h">
+  <h2 id="privacy-h">Privacy</h2>
+  <p><strong>This page collects no information about you.</strong> It has no accounts, no cookies, no analytics or tracking, and no server of its own. Nothing you type is sent to this project or to anyone else by this page.</p>
+  <ul>
+    <li><strong>What stays on your computer:</strong> to keep your progress, your browser saves your profile choices, your race list and the AI answers you paste, in this browser on this device only. It stays until you press <em>Start over</em> or clear this site's data in your browser settings. This page never sends it anywhere.</li>
+    <li><strong>What is never saved:</strong> your address, the AI's answer that lists your ballot, and that answer's double-check reply (both may repeat your address).</li>
+    <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there. Links you open take you to other websites.</li>
+    <li><strong>Hosting:</strong> GitHub Pages serves this page. Like any website host, GitHub receives standard information such as your IP address when the page loads. The page loads nothing from any other site: no fonts, ads or scripts. Your browser enforces this with a security policy built into the page.</li>
+    <li><strong>Clipboard:</strong> the page writes to your clipboard only when you press a copy button. It never reads your clipboard.</li>
+  </ul>
+  <p>Questions or a privacy problem? See the project's <a href="https://github.com/tperkowitz-tech/ballot-guide/blob/main/SECURITY.md">security and privacy policy</a>.</p>
+</section>
 
 <footer>
   <p>Lessons in this kit come from building and reviewing a real 2026 guide. Typical errors were: an amendment vote read as a final vote, candidates matched to the wrong seat in pamphlet text, and an uncontested race shown as contested. A review then found ways to game the score (many weak items, empty records) and web pages that try to give the AI instructions. Steps 0, 5, and 6 now guard against each of these.</p>
