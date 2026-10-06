@@ -1,6 +1,6 @@
 # ballot-guide
 
-Build a sourced guide to any US ballot with an AI assistant. It finds the exact ballot for an address, checks candidates' records and funders instead of campaign promises, fact-checks ballot measures, and links every claim to a source. It has no politics of its own. It gives a **neutral comparison** of every choice, or, if you want, **scores each choice against values you supply**.
+Build a sourced guide to any US ballot with an AI assistant. It finds the exact ballot for an address, checks records first, then candidates' own questionnaire answers and statements, with donors and endorsements as limited signals, fact-checks ballot measures, and links every claim to a source. It has no politics of its own. It gives a **neutral comparison** of every choice, or, if you want, **scores each choice against values you supply**.
 
 ## Choose your version
 
@@ -19,7 +19,7 @@ In regular ChatGPT, use the web kit or paste `PROMPT-KIT.md` with web search ena
 ## What it does
 
 1. **Find the ballot:** districts, the official candidate list, uncontested races, and offices *not* on your ballot. The web kit sends your address only to this step.
-2. **Research each race:** records first, then funders (FEC and state disclosure data), then statements. Every candidate, including unopposed ones. For races with 5+ candidates you may choose a focus rule that is not about party; excluded candidates are still listed.
+2. **Research each race:** records first (including prior offices, boards and professional work), then published questionnaires, then donors (FEC and state disclosure data, grouped by industry), then issue-group endorsements, then other statements. Party is never used as evidence. Every candidate, including unopposed ones. For races with 5+ candidates you may choose a focus rule that is not about party; excluded candidates are still listed.
 3. **Fact-check each measure:** legal text, official fiscal note, what YES does and what NO means, the strongest argument on each side, funders.
 4. **Verify:** re-open primary sources, especially for close calls. Optional double-check: a second AI chat checks each answer against its sources (Step 8). Recommended, not required.
 5. **Build the guide:** summary, sourced evidence for each race, open items, and links to your official election office.
@@ -28,7 +28,7 @@ In regular ChatGPT, use the web kit or paste `PROMPT-KIT.md` with web search ena
 
 ## About the scores
 
-The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`ballot-guide/scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Each of your priorities gets a position from distinct events (lines from one source count once unless given distinct event ids, and donors together count no more than one statement per priority), and priorities with no evidence count as unknown rather than disappearing. Every score shows its coverage (how much of your priorities the evidence reaches) and an evidence level (strong, moderate or thin). A call that one event could flip is a toss-up that says what it turns on, and a crossed deal-breaker takes a choice out of the call while still showing its score.
+The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`ballot-guide/scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Each of your priorities gets a position from distinct events: records count 3; one answer to a published questionnaire counts 2, and two or more answers on a priority count 3 together, never more than one record; other statements count 1; and all donors and endorsements together no more than one statement per priority (lines from one source count once unless given distinct event ids). Party labels, platforms and party endorsements are never used. The score averages only the priorities with evidence, and a range (for example "62, could be 16–91") shows how far the priorities without the candidate's own evidence (records, answers or statements) could move it, so a missing record never reads as a neutral 50; with no evidence at all there is no score. Every score shows its coverage (how much of your priorities the evidence reaches) and an evidence level (strong, moderate or thin). A call that one event could flip is a toss-up that says what it turns on, a comparison where one side has much less evidence is labeled "(uneven evidence)" and is at most a lean, no firm call (a clear winner, "Vote for" or "Consider leaving blank" for an unopposed candidate, or a plain YES or NO on a measure) is made without at least one record, otherwise it is a lean or "Your call", and a crossed deal-breaker takes a choice out of the call while still showing its score.
 
 ## Limits
 

@@ -1,4 +1,4 @@
-"""Score ballot options against a user's weighted value axes (scoring model v2).
+"""Score ballot options against a user's weighted value axes (scoring model v2.1).
 
 Input JSON:
   {"axes": {"A": 3, "B": 2, ...},          # axis letter -> integer weight 1-3
@@ -8,7 +8,8 @@ Input JSON:
                            "red_line": optional bool or str (what was crossed, may end " | URL"),
                            "evidence": [{"axis": "A",
                                          "sign": "+" | "-" | "0" | "gray",
-                                         "kind": "record" | "stated" | "funder",
+                                         "kind": "record" | "questionnaire" | "stated"
+                                                 | "funder" | "endorsement",
                                          "event": optional str,
                                          "source": optional URL,
                                          "date": optional str,
@@ -18,8 +19,13 @@ Input JSON:
 "0" is genuinely mixed evidence and counts; "gray" (or gray: true) marks a topic the
 voter is torn on and is left out of the math. Rows sharing an event (explicit `event`,
 else the same normalized source, else the same normalized text) count once per axis. Per
-axis, all funder events together count as one entry (k = 1, sign = their mean), so donors
-never outweigh one statement. A measure has exactly one option: the YES side. Mirrored exactly by tools/calc.js; tools/calc_test.js checks parity.
+axis, all funder and endorsement events together count as one entry (k = 1, sign = their
+mean), so donors and endorsers never outweigh one statement, and all questionnaire answers
+together count as one entry (k = 2 for one answer, 3 for more, sign = their mean), so
+answers never outweigh one record. The score averages only the axes that have evidence;
+the low/high range treats axes without the candidate's own evidence as unknown and shows
+how far they could move it, so having no record never reads as a neutral 50. A measure has exactly one
+option: the YES side. Mirrored exactly by tools/calc.js; tools/calc_test.js checks parity.
 
 Usage: score.py [--demo | input.json]
 """
@@ -27,9 +33,12 @@ import json
 import re
 import sys
 
-KIND = {"record": 3, "stated": 1, "funder": 1}
-# Stated beats funder when they tie on weight: it is the candidate's own position.
-RANK = {"record": 3, "stated": 2, "funder": 1}
+KIND = {"record": 3, "questionnaire": 2, "stated": 1, "funder": 1, "endorsement": 1}
+# Breaks ties within one event: the candidate's own words beat what others give or say.
+RANK = {"record": 5, "questionnaire": 4, "stated": 3, "endorsement": 2, "funder": 1}
+AGGREGATE = ("funder", "endorsement")  # pooled to one entry per axis
+SOLO = ("record", "stated")  # counted per event; questionnaire answers pool per axis
+OWN = ("record", "questionnaire", "stated")  # the candidate's own evidence; counts toward coverage
 SIGN = {"+": 1, "0": 0, "-": -1}
 K0 = 3  # neutral prior worth one record, so one item cannot pin an axis at 100
 
@@ -80,7 +89,7 @@ def validate(race, axes):
             if ev.get("sign") not in SIGN and ev.get("sign") != "gray":
                 errs.append(f'{o.get("name")}: sign "{ev.get("sign")}" (use + - 0 gray)')
             if ev.get("kind") not in KIND:
-                errs.append(f'{o.get("name")}: kind "{ev.get("kind")}" (use record, stated, funder)')
+                errs.append(f'{o.get("name")}: kind "{ev.get("kind")}" (use record, questionnaire, stated, funder, endorsement)')
     return errs
 
 
@@ -113,42 +122,86 @@ def collapse(opt):
 
 
 def fit(events, axes):
+    """Return (score, low, high), or (None, None, None) when no axis has any evidence."""
     num = {a: 0 for a in axes}
     den = {a: 0 for a in axes}
-    funders = {a: [] for a in axes}
+    pooled = {a: [] for a in axes}
+    quest = {a: [] for a in axes}
     for ev in events:
         for axis, kind, s in ev["entries"]:
-            if kind == "funder":
-                funders[axis].append(s)
-                continue
-            num[axis] += KIND[kind] * s
-            den[axis] += KIND[kind]
-    # All donors on an axis count as one entry (k = 1, mean sign), so a flood of them
-    # never outweighs one statement.
+            if kind in AGGREGATE:
+                pooled[axis].append(s)
+            elif kind == "questionnaire":
+                quest[axis].append(s)
+            else:
+                num[axis] += KIND[kind] * s
+                den[axis] += KIND[kind]
     for a in sorted(axes):
-        if funders[a]:
-            num[a] += sum(funders[a]) / len(funders[a])
+        # All answers on an axis are one entry worth at most one record (k = 3), so a
+        # stack of answers never outweighs what the candidate did.
+        if quest[a]:
+            k = min(KIND["questionnaire"] * len(quest[a]), KIND["record"])
+            num[a] += k * (sum(quest[a]) / len(quest[a]))
+            den[a] += k
+        # All donors and endorsers on an axis count as one entry (k = 1, mean sign), so a
+        # flood of them never outweighs one statement.
+        if pooled[a]:
+            num[a] += sum(pooled[a]) / len(pooled[a])
             den[a] += 1
-    total = 0
-    for a in sorted(axes):  # fixed order so floats match calc.js
-        total += axes[a] * (num[a] / (den[a] + K0))
-    return round(50 + 50 * total / sum(axes.values()))
+    known = {a for ev in events for a, _, _ in ev["entries"]}
+    if not known:
+        return None, None, None
+    own = {a for ev in events for a, k, _ in ev["entries"] if k in OWN}
+    total = total_own = 0
+    for a in sorted(axes):  # fixed order so floats match calc.js; unknown axes add 0
+        t = axes[a] * (num[a] / (den[a] + K0))
+        total += t
+        if a in own:
+            total_own += t
+    w_all = sum(axes.values())
+    w_known = sum(axes[a] for a in known)
+    unknown = w_all - sum(axes[a] for a in own)
+    # Axes without the candidate's own evidence could sit anywhere from -1 to +1; donors
+    # and endorsers alone do not pin one down. Their pooled signal stays in the score, which
+    # therefore always falls inside the range.
+    return (round(50 + 50 * total / w_known), round(50 + 50 * (total_own - unknown) / w_all),
+            round(50 + 50 * (total_own + unknown) / w_all))
+
+
+def steps(events):
+    """Leave-one-out steps as (label, remaining events): each record/stated event alone,
+    then per axis all questionnaire answers together and all donors/endorsers together,
+    matching how fit() pools them."""
+    def drop(gone):
+        return [{"label": e["label"], "entries": [x for x in e["entries"] if not gone(e, x)]} for e in events]
+    out = [(ev["label"], drop(lambda e, x, ev=ev: e is ev and x[1] in SOLO))
+           for ev in events if any(k in SOLO for _, k, _ in ev["entries"])]
+    for a in sorted({x[0] for e in events for x in e["entries"]}):
+        for kinds, what in ((("questionnaire",), "questionnaire answers"), (AGGREGATE, "donors and endorsements")):
+            if any(x[0] == a and x[1] in kinds for e in events for x in e["entries"]):
+                out.append((f"{what} on {a}", drop(lambda e, x, a=a, kinds=kinds: x[0] == a and x[1] in kinds)))
+    return out
 
 
 def summarize(opt, axes):
     events, gray, warnings = collapse(opt)
     entries = [e for ev in events for e in ev["entries"]]
-    cov = sum(axes[a] for a in {a for a, k, _ in entries if k != "funder"}) / sum(axes.values())
+    covered = sum(axes[a] for a in {a for a, k, _ in entries if k in OWN})
+    cov = covered / sum(axes.values())
     records = sum(1 for ev in events if any(k == "record" for _, k, _ in ev["entries"]))
-    record_axes = {a for a, k, _ in entries if k == "record"}
+    # Answers pool per axis in the score, so they count once per axis here too.
+    quest = len({a for a, k, _ in entries if k == "questionnaire"})
+    firm = records + quest
+    firm_axes = {a for a, k, _ in entries if k in ("record", "questionnaire")}
     level = ("none" if not events
-             else "strong" if cov >= 0.75 and records >= 3 and len(record_axes) >= 2
-             else "moderate" if cov >= 0.5 and records >= 2 else "thin")
-    row = {"name": opt.get("name"), "score": fit(events, axes) if events else None,
+             else "strong" if cov >= 0.75 and firm >= 3 and records >= 1 and len(firm_axes) >= 2
+             else "moderate" if cov >= 0.5 and firm >= 2 else "thin")
+    score, low, high = fit(events, axes)
+    row = {"name": opt.get("name"), "score": score, "low": low, "high": high,
            "evidence": level, "confidence": level, "coverage": round(cov * 100) / 100,
-           "events": len(events), "records": records, "gray": gray,
+           "events": len(events), "records": records, "questionnaires": quest, "gray": gray,
            "excluded": excluded(opt.get("red_line"))}
-    return row, events, cov, warnings
+    return row, events, covered, warnings
 
 
 def excluded(red_line):
@@ -162,8 +215,10 @@ def leader(scores):
     return scores.index(top) if scores.count(top) == 1 else None
 
 
-def decide(rows, events, covs, eligible, measure, axes):
+def decide(rows, events, covered, eligible, measure, axes):
     """Return (call, turns_on). Leave-one-out: a call that one event can flip is a toss-up."""
+    w_all = sum(axes.values())
+    half = [2 * c >= w_all for c in covered]  # coverage >= 0.5, in exact integers
     if not eligible:
         return "All options crossed a red line", None
     if measure:
@@ -173,20 +228,25 @@ def decide(rows, events, covs, eligible, measure, axes):
         m = s - 50
         if m == 0:
             return "Toss-up", None
-        for ev in events[0]:
-            m2 = fit([e for e in events[0] if e is not ev], axes) - 50
-            if m2 == 0 or (m2 > 0) != (m > 0):
-                return f"Toss-up (turns on: {ev['label']})", ev["label"]
+        for label, rest in steps(events[0]):
+            s2 = fit(rest, axes)[0]
+            # None: the whole score rests on this one step.
+            if s2 is None or s2 == 50 or (s2 > 50) != (m > 0):
+                return f"Toss-up (turns on: {label})", label
         side = "YES" if m > 0 else "NO"
-        clear = abs(m) >= 10 and covs[0] >= 0.5 and rows[0]["evidence"] != "thin"
+        # As in contested races, a firm call needs at least one record, not words alone.
+        clear = abs(m) >= 10 and half[0] and rows[0]["evidence"] != "thin" and rows[0]["records"] >= 1
         return (side if clear else f"Lean {side}"), None
     if len(eligible) == 1:
-        r = rows[eligible[0]]
+        i = eligible[0]
+        r = rows[i]
         if r["score"] is None:
             return "Not enough evidence", None
-        if r["evidence"] != "thin" and r["score"] >= 60:
+        # A firm call needs at least one record, as in contested races.
+        firm = half[i] and r["evidence"] != "thin" and r["records"] >= 1
+        if r["score"] >= 60 and firm:
             return f"Vote for {r['name']}", None
-        if r["evidence"] != "thin" and r["score"] <= 40:
+        if r["score"] <= 40 and firm:
             return "Consider leaving blank or writing in", None
         return "Your call", None
     scores = [rows[i]["score"] for i in eligible]
@@ -196,17 +256,28 @@ def decide(rows, events, covs, eligible, measure, axes):
     if lead is None:
         return "Toss-up", None
     for j, i in enumerate(eligible):
-        for ev in events[i]:
+        for label, rest in steps(events[i]):
             alt = scores.copy()
-            alt[j] = fit([e for e in events[i] if e is not ev], axes)
+            alt[j] = fit(rest, axes)[0]
+            # None: that option's whole score rests on this one step. That flips the call
+            # only for the leader; a runner-up left with nothing cannot overtake it.
+            if alt[j] is None:
+                if j == lead:
+                    return f"Toss-up (turns on: {label})", label
+                continue
             if leader(alt) != lead:
-                return f"Toss-up (turns on: {ev['label']})", ev["label"]
+                return f"Toss-up (turns on: {label})", label
     second = max(s for j, s in enumerate(scores) if j != lead)
     runner = next(j for j, s in enumerate(scores) if j != lead and s == second)
-    name = rows[eligible[lead]]["name"]
-    # Statements alone never make a clear call: the leader needs more than thin evidence.
-    clear = (scores[lead] - second >= 10 and covs[eligible[lead]] >= 0.5
-             and covs[eligible[runner]] >= 0.5 and rows[eligible[lead]]["evidence"] != "thin")
+    li, ri = eligible[lead], eligible[runner]
+    name = rows[li]["name"]
+    # A full record against one statement is not a fair fight: coverage gap >= 0.4 caps it at Lean.
+    if 5 * abs(covered[li] - covered[ri]) >= 2 * w_all:
+        return f"Lean {name} (uneven evidence)", None
+    # The candidate's own words alone never make a clear call: the leader needs more than
+    # thin evidence and at least one record.
+    clear = (scores[lead] - second >= 10 and half[li] and half[ri] and rows[li]["evidence"] != "thin"
+             and rows[li]["records"] >= 1)
     return (name if clear else f"Lean {name}"), None
 
 
@@ -215,13 +286,13 @@ def score_race(race, axes):
     if errs:
         raise ValueError("; ".join(errs))
     opts = race["options"]
-    rows, events, covs, warnings = [], [], [], []
+    rows, events, covered, warnings = [], [], [], []
     for o in opts:
         row, evs, cov, warn = summarize(o, axes)
-        rows.append(row), events.append(evs), covs.append(cov), warnings.extend(warn)
+        rows.append(row), events.append(evs), covered.append(cov), warnings.extend(warn)
     eligible = [i for i, o in enumerate(opts) if not o.get("red_line")]
     measure = bool(race.get("measure"))
-    call, turns_on = decide(rows, events, covs, eligible, measure, axes)
+    call, turns_on = decide(rows, events, covered, eligible, measure, axes)
     return {"race": race.get("race"), "call": call, "turns_on": turns_on,
             "options": rows, "warnings": warnings}
 
@@ -255,9 +326,47 @@ def demo():
     assert r["warnings"] == ["X: No source: duplicates of this line cannot be detected (voted for HB 1)."], r
     # Distinct event ids on one URL count separately.
     assert one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record", source=urls[0], event=e) for e in "ab"]}])["options"][0]["events"] == 2
-    # One statement on 1 of 4 equal axes: 50 + 50 * (1/4) / 4 = 53.125 -> 53, thin.
+    # One statement on 1 of 4 equal axes: known axis only, 50 + 50 * (1/4) = 62.5 -> 62, thin;
+    # range 50 + 50 * (0.5 -/+ 6) / 8 = 15.625 / 90.625 -> 16 / 91.
     r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "stated")]}])["options"][0]
-    assert (r["score"], r["evidence"], r["coverage"]) == (53, "thin", 0.25), r
+    assert (r["score"], r["low"], r["high"], r["evidence"], r["coverage"]) == (62, 16, 91, "thin", 0.25), r
+    # One record on 1 of 4 equal axes: p = 3/6, score 75; range 50 + 50 * (1 -/+ 6) / 8 -> 19 / 94.
+    r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record")]}])["options"][0]
+    assert (r["score"], r["low"], r["high"]) == (75, 19, 94), r
+    # No events: no score and no range, never 50.
+    r = one(eq4, [{"name": "X", "evidence": []}])
+    assert (r["call"], r["options"][0]["score"], r["options"][0]["low"], r["options"][0]["high"]) == \
+        ("Not enough evidence", None, None, None), r
+    # A questionnaire answer counts 2: p = 2/5 -> 70. Answers on one axis pool to one entry
+    # (k = 3 for two or more, like one record: 3/6 -> 75) and one item for the level.
+    q = lambda axis, i, sign="+": ev(axis, sign, "questionnaire", event=f"q{axis}{i}")
+    r = one({"A": 1}, [{"name": "X", "evidence": [q("A", 0)]}])["options"][0]
+    assert (r["score"], r["questionnaires"]) == (70, 1), r
+    r = one({"A": 1}, [{"name": "X", "evidence": [q("A", i) for i in range(5)]}])["options"][0]
+    assert (r["score"], r["questionnaires"], r["evidence"]) == (75, 1, "thin"), r
+    r = one({"A": 1, "B": 1}, [{"name": "X", "evidence": [q("A", 0), q("A", 1), q("B", 0)]}])["options"][0]
+    assert r["evidence"] == "moderate", r
+    r = one({"A": 1, "B": 1}, [{"name": "X", "evidence": [q("A", 0), q("A", 1), ev("B", "+", "record")]}])["options"][0]
+    assert r["evidence"] == "moderate", r
+    # Ten favorable answers per axis against three opposing votes per axis weigh no more than
+    # one favorable record, and never give "Vote for".
+    opp = [ev(a, "-", "record", event=f"v{a}{i}") for a in "ABCD" for i in range(3)]
+    qs = [q(a, i) for a in "ABCD" for i in range(10)]
+    r = one(eq4, [{"name": "X", "evidence": opp + qs}])
+    rec = one(eq4, [{"name": "X", "evidence": opp + [ev(a, "+", "record", event=f"r{a}") for a in "ABCD"]}])
+    assert r["options"][0]["score"] <= rec["options"][0]["score"] and not r["call"].startswith("Vote for"), r
+    # Answers only, on all four axes: at most moderate, and no firm call over a fully
+    # documented mixed incumbent.
+    inc = [ev(a, sg, "record", event=a + sg) for a in "ABCD" for sg in "+-0"]
+    r = one(eq4, [{"name": "Inc", "evidence": inc}, {"name": "Q", "evidence": [q(a, i) for a in "ABCD" for i in range(3)]}])
+    assert (r["options"][1]["evidence"], r["call"]) == ("moderate", "Lean Q"), r
+    # Range: only the candidate's own evidence makes an axis known; an endorsement-only axis
+    # still moves the score, which stays inside the range.
+    r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record")] + [ev(a, "+", "endorsement") for a in "BCD"]}])["options"][0]
+    assert r["low"] < r["score"] < r["high"] and (r["low"], r["high"]) == (19, 94), r
+    # An endorsement-only axis is known (scored) but not covered.
+    r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), ev("B", "+", "endorsement")]}])["options"][0]
+    assert (r["coverage"], r["score"]) == (0.25, 69), r  # (2 * 0.5 + 2 * 0.25) / 4 -> 68.75
     # An opposing record plus a favorable funder: the funder moves the score <= 12.5.
     rec = one({"A": 3}, [{"name": "X", "evidence": [ev("A", "-", "record")]}])["options"][0]["score"]
     both = one({"A": 3}, [{"name": "X", "evidence": [ev("A", "-", "record"), ev("A", "+", "funder")]}])
@@ -267,6 +376,10 @@ def demo():
     solo = lambda evs: one({"A": 3}, [{"name": "X", "evidence": evs}])["options"][0]["score"]
     assert solo(fund(8)) == solo(fund(1)) == 62  # 50 + 50 * 1 / (1 + 3) = 62.5, half to even
     assert solo([ev("A", "-", "record")] + fund(8)) == 36  # (-3 + 1) / (3 + 1 + 3): moves 11 <= 12.5
+    # Eight endorsements plus eight funders on one axis are still one pooled entry.
+    endorse = lambda n, sign="+": [ev("A", sign, "endorsement", source=f"https://example.org/e{i}") for i in range(n)]
+    assert solo(endorse(8) + fund(8)) == solo(fund(1)) == 62
+    assert solo([ev("A", "-", "record")] + endorse(8) + fund(8, "-")) == 29  # (-3 + 0) / (3 + 1 + 3)
     # A gray row leaves the score unchanged and is listed.
     g = ev("B", "gray", "record", text="torn topic")
     base = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record")]}])["options"][0]
@@ -307,6 +420,31 @@ def demo():
     y = [ev(a, "-", "record", event=a + str(i)) for a in "AB" for i in range(3)]
     assert one({"A": 1, "B": 1}, [{"name": "X", "evidence": x}, {"name": "Y", "evidence": y}])["call"] == "X"
     assert one({"A": 1, "B": 1, "C": 3, "D": 3}, [{"name": "X", "evidence": x}, {"name": "Y", "evidence": y}])["call"] == "Lean X"
+    # Uneven evidence: a robust, non-thin lead is capped at Lean when coverage differs by >= 0.4.
+    full = x + [ev(a, "+", "stated", event=a + "s") for a in "CD"]
+    r = one({"A": 1, "B": 1, "C": 1, "D": 1}, [{"name": "X", "evidence": full}, {"name": "Y", "evidence": y}])
+    assert (r["call"], r["options"][0]["evidence"], r["options"][1]["coverage"]) == ("Lean X (uneven evidence)", "strong", 0.5), r
+    # Mixed full incumbent vs a newcomer with one statement: the newcomer leads and its score
+    # rests on one event (toss-up); with three statements on one axis it is uneven. Never a
+    # firm newcomer win.
+    jx = lambda n, sign="+", inc=inc: [{"name": "Inc", "evidence": inc},
+                                       {"name": "New", "evidence": [ev("A", sign, "stated", event=f"n{i}") for i in range(n)]}]
+    r = one(eq4, jx(1))
+    assert (r["call"], r["options"][0]["score"], r["options"][0]["evidence"], r["options"][1]["score"]) == \
+        ("Toss-up (turns on: n0)", 50, "strong", 62), r
+    assert one(eq4, jx(3))["call"] == "Lean New (uneven evidence)"
+    # A runner-up left with no evidence by one removal cannot overtake: no toss-up from that.
+    good = [ev(a, "+", "record", event=f"{a}{i}") for a in "ABCD" for i in range(4)]
+    assert one(eq4, jx(1, "-", good))["call"] == "Lean Inc (uneven evidence)"
+    # When the one-statement newcomer leads, its whole score is that statement: toss-up.
+    bad = [ev(a, "-", "record", event=f"{a}{i}") for a in "ABCD" for i in range(4)]
+    assert one(eq4, jx(1, "-", bad))["call"] == "Toss-up (turns on: n0)"
+    # A pooled step is removed whole and named by axis.
+    r = one({"A": 1}, [{"name": "X", "evidence": [q("A", 0), q("A", 1)]}, {"name": "Y", "evidence": [ev("A", "0", "record")]}])
+    assert r["turns_on"] == "questionnaire answers on A", r
+    r = one({"A": 1}, [{"name": "X", "evidence": [ev("A", "+", "funder", event="f"), ev("A", "+", "endorsement", event="e")]},
+                       {"name": "Y", "evidence": [ev("A", "0", "record")]}])
+    assert r["turns_on"] == "donors and endorsements on A", r
     # Statements only: big robust gap and full coverage, but thin evidence -> lean.
     sx = [ev("A", "+", "stated", event=f"s{i}") for i in range(3)]
     sy = [ev("A", "-", "stated", event=f"s{i}") for i in range(3)]
@@ -319,6 +457,9 @@ def demo():
     assert one({"A": 1}, [{"name": "Z", "evidence": x[:3]}])["call"] == "Vote for Z"
     assert one({"A": 1}, [{"name": "Z", "evidence": y[:3]}])["call"] == "Consider leaving blank or writing in"
     assert one({"A": 1}, [{"name": "Z", "evidence": []}])["call"] == "Not enough evidence"
+    # Questionnaire-only unopposed candidate: 70 and moderate, but no record -> "Your call".
+    r = one({"A": 2, "B": 2}, [{"name": "Z", "evidence": [q("A", 0), q("B", 0)]}])
+    assert (r["call"], r["options"][0]["score"], r["options"][0]["evidence"]) == ("Your call", 70, "moderate"), r
     # Measures: YES only; clear, lean, toss-up.
     r = one({"A": 1, "B": 1}, [{"name": "YES", "evidence": x}], measure=True)
     assert r["call"] == "YES" and [o["name"] for o in r["options"]] == ["YES"], r
@@ -327,6 +468,11 @@ def demo():
     r = one({"A": 1}, [{"name": "YES", "evidence": [ev("A", "+", "stated", event="ad")]}], measure=True)
     assert r["call"] == "Toss-up (turns on: ad)", r
     assert one({"A": 1}, [{"name": "YES", "evidence": [ev("A", "0", "record")]}], measure=True)["call"] == "Toss-up"
+    # Measure with only questionnaire or stated evidence: no record -> Lean, never firm.
+    r = one({"A": 2, "B": 2}, [{"name": "YES", "evidence": [q("A", 0), q("B", 0)]}], measure=True)
+    assert (r["call"], r["options"][0]["evidence"]) == ("Lean YES", "moderate"), r
+    st = [ev(a, "-", "stated", event=f"s{a}{i}") for a in "AB" for i in range(3)]
+    assert one({"A": 1, "B": 1}, [{"name": "YES", "evidence": st}], measure=True)["call"] == "Lean NO"
     print(json.dumps(one({"A": 3, "B": 2}, [{"name": "X", "evidence": x}, {"name": "Y", "evidence": y[:2]}]), indent=2))
     print("self-check OK")
 

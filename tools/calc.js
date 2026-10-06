@@ -1,12 +1,18 @@
 // Pure parse + score for the Ballot Guide score calculator. Mirrors ballot-guide/scripts/score.py
 // exactly (same formula, same rounding, same calls); tools/calc_test.js fuzzes the two for parity.
 // tools/build_kit.py inlines this file into docs/index.html.
-const KIND = {record: 3, stated: 1, funder: 1};
-// Stated beats funder when they tie on weight: it is the candidate's own position.
-const RANK = {record: 3, stated: 2, funder: 1};
+const KIND = {record: 3, questionnaire: 2, stated: 1, funder: 1, endorsement: 1};
+// Breaks ties within one event: the candidate's own words beat what others give or say.
+const RANK = {record: 5, questionnaire: 4, stated: 3, endorsement: 2, funder: 1};
+const AGGREGATE = ["funder", "endorsement"]; // pooled to one entry per axis
+const SOLO = ["record", "stated"]; // counted per event; questionnaire answers pool per axis
+const OWN = ["record", "questionnaire", "stated"]; // the candidate's own evidence; counts toward coverage
 const SIGN = {"+": 1, "0": 0, "-": -1};
 const K0 = 3; // neutral prior worth one record, so one item cannot pin an axis at 100
 const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+// Kind names as written in evidence lines, including the short forms Q and E; null if not a kind.
+const KIND_ALIAS = {q: "questionnaire", e: "endorsement"};
+const kindOf = s => { const k = s.trim().toLowerCase(); return has(KIND, k) ? k : has(KIND_ALIAS, k) ? KIND_ALIAS[k] : null; };
 
 // Python's round() is half-to-even; Math.round rounds 12.5 up to 13, score.py gives 12.
 function pyRound(x) {
@@ -81,7 +87,7 @@ function sourceAndDate(rest) {
 }
 
 // A line that looks like it meant to be evidence; used so nothing is dropped without a warning.
-const LOOKS_LIKE_EVIDENCE = /\b(RECORD|FUNDER|STATED)\b|\[\s*[A-Za-z]\s*\]/;
+const LOOKS_LIKE_EVIDENCE = /\b(RECORD|QUESTIONNAIRE|STATED|FUNDER|ENDORSEMENT)\b|\[\s*[A-Za-z]\s*\]/;
 const TABLE_RULE = /^\|[\s|:-]+\|?$/;
 const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
@@ -102,7 +108,7 @@ function parseResearch(text, weights) {
     if (/^GAPS\s*(:|$)/i.test(line)) { section = "gaps"; continue; }
     if (section === "gaps" && !GAPS_END.test(line)) {
       const ev = evidenceParts(line);
-      if ((ev && (!line.startsWith("|") || has(KIND, ev.kind.toLowerCase()))) || LOOKS_LIKE_EVIDENCE.test(line)) {
+      if ((ev && (!line.startsWith("|") || kindOf(ev.kind))) || LOOKS_LIKE_EVIDENCE.test(line)) {
         warnings.push(`Evidence line under GAPS ignored: ${line}`);
       }
       continue;
@@ -136,7 +142,7 @@ function parseResearch(text, weights) {
     const ev = evidenceParts(line);
     const isTable = line.startsWith("|");
     // A table row whose kind cell is not a kind (a header row, or a claims table) is not evidence.
-    if (!ev || (isTable && !has(KIND, ev.kind.toLowerCase()))) {
+    if (!ev || (isTable && !kindOf(ev.kind))) {
       // A table row with a one-letter axis or a readable sign was meant as evidence: warn, never drop silently.
       const meant = isTable && ev && (/^[A-Za-z]$/.test(ev.axis) || validSign(normSign(ev.sign)));
       if (meant || LOOKS_LIKE_EVIDENCE.test(line) || (!isTable && line.startsWith("["))) {
@@ -144,11 +150,11 @@ function parseResearch(text, weights) {
       }
       continue;
     }
-    const axis = ev.axis.toUpperCase(), sign = normSign(ev.sign), k = ev.kind.toLowerCase();
+    const axis = ev.axis.toUpperCase(), sign = normSign(ev.sign), k = kindOf(ev.kind);
     const bad = [];
     if (!has(weights, axis)) bad.push(`axis "${ev.axis}" is not in your weights (${Object.keys(weights).sort().join(", ") || "none"})`);
     if (!validSign(sign)) bad.push(`sign "${ev.sign}" (use + 0 - gray)`);
-    if (!has(KIND, k)) bad.push(`kind "${ev.kind}" (use RECORD, FUNDER or STATED)`);
+    if (!k) bad.push(`kind "${ev.kind}" (use RECORD, QUESTIONNAIRE, STATED, FUNDER or ENDORSEMENT)`);
     if (!cur) bad.push("no CANDIDATE: or MEASURE: line above it");
     if (bad.length) { errors.push({line, msg: "Skipped: " + bad.join("; ") + "."}); continue; }
     const row = {axis, sign, kind: k, ...sourceAndDate(ev.rest), text: ev.rest};
@@ -216,7 +222,7 @@ function validateRace(options, weights, isMeasure) {
     for (const ev of o.evidence || []) {
       if (!has(weights, ev.axis)) errs.push(`${o.name}: axis "${ev.axis}" not in profile (${axes.slice().sort().join(", ")})`);
       if (!validSign(ev.sign)) errs.push(`${o.name}: sign "${ev.sign}" (use + - 0 gray)`);
-      if (!has(KIND, ev.kind)) errs.push(`${o.name}: kind "${ev.kind}" (use record, stated, funder)`);
+      if (!has(KIND, ev.kind)) errs.push(`${o.name}: kind "${ev.kind}" (use record, questionnaire, stated, funder, endorsement)`);
     }
   }
   return errs;
@@ -251,47 +257,86 @@ function collapse(opt) {
   return {events, gray, warnings};
 }
 
-// Returns {score, total, W}; total and W feed the page's "Show the math".
+// Returns {score, low, high, total, W}; all null when no axis has any evidence. total and W
+// (the weight of axes with evidence) feed the page's "Show the math".
 function fitParts(events, weights) {
-  const num = {}, den = {}, funders = {};
-  for (const a of Object.keys(weights)) { num[a] = 0; den[a] = 0; funders[a] = []; }
+  const num = {}, den = {}, pooled = {}, quest = {};
+  for (const a of Object.keys(weights)) { num[a] = 0; den[a] = 0; pooled[a] = []; quest[a] = []; }
   for (const ev of events) {
     for (const [axis, kind, s] of ev.entries) {
-      if (kind === "funder") { funders[axis].push(s); continue; }
-      num[axis] += KIND[kind] * s; den[axis] += KIND[kind];
+      if (AGGREGATE.includes(kind)) pooled[axis].push(s);
+      else if (kind === "questionnaire") quest[axis].push(s);
+      else { num[axis] += KIND[kind] * s; den[axis] += KIND[kind]; }
     }
   }
-  // All donors on an axis count as one entry (k = 1, mean sign), as in score.py.
+  const mean = f => f.reduce((t, s) => t + s, 0) / f.length;
   for (const a of Object.keys(weights).sort()) {
-    const f = funders[a];
-    if (f.length) { num[a] += f.reduce((t, s) => t + s, 0) / f.length; den[a] += 1; }
+    // All answers on an axis are one entry worth at most one record (k = 3), as in score.py.
+    if (quest[a].length) {
+      const k = Math.min(KIND.questionnaire * quest[a].length, KIND.record);
+      num[a] += k * mean(quest[a]); den[a] += k;
+    }
+    // All donors and endorsers on an axis count as one entry (k = 1, mean sign), as in score.py.
+    if (pooled[a].length) { num[a] += mean(pooled[a]); den[a] += 1; }
   }
-  let total = 0, W = 0;
-  for (const a of Object.keys(weights).sort()) total += weights[a] * (num[a] / (den[a] + K0)); // same order as score.py
-  for (const a of Object.keys(weights)) W += weights[a];
-  return {score: pyRound(50 + 50 * total / W), total, W};
+  const known = new Set(events.flatMap(ev => ev.entries.map(e => e[0])));
+  if (!known.size) return {score: null, low: null, high: null, total: 0, W: 0};
+  const own = new Set(events.flatMap(ev => ev.entries.filter(e => OWN.includes(e[1])).map(e => e[0])));
+  let total = 0, totalOwn = 0, wAll = 0, wKnown = 0, wOwn = 0;
+  for (const a of Object.keys(weights).sort()) { // same order as score.py
+    const t = weights[a] * (num[a] / (den[a] + K0));
+    total += t;
+    if (own.has(a)) totalOwn += t;
+  }
+  for (const a of Object.keys(weights)) wAll += weights[a];
+  for (const a of known) wKnown += weights[a];
+  for (const a of own) wOwn += weights[a];
+  const unknown = wAll - wOwn;
+  // Axes without the candidate's own evidence could sit anywhere from -1 to +1; donors and
+  // endorsers alone do not pin one down. Their pooled signal stays in the score, inside the range.
+  return {score: pyRound(50 + 50 * total / wKnown), low: pyRound(50 + 50 * (totalOwn - unknown) / wAll),
+    high: pyRound(50 + 50 * (totalOwn + unknown) / wAll), total, W: wKnown};
 }
 const fit = (events, weights) => fitParts(events, weights).score;
+
+// Leave-one-out steps as [label, remaining events], same order as score.py steps(): each
+// record/stated event alone, then per axis all questionnaire answers and all donors/endorsers.
+function steps(events) {
+  const drop = gone => events.map(e => ({label: e.label, entries: e.entries.filter(x => !gone(e, x))}));
+  const out = events.filter(ev => ev.entries.some(x => SOLO.includes(x[1])))
+    .map(ev => [ev.label, drop((e, x) => e === ev && SOLO.includes(x[1]))]);
+  for (const a of [...new Set(events.flatMap(e => e.entries.map(x => x[0])))].sort()) {
+    for (const [kinds, what] of [[["questionnaire"], "questionnaire answers"], [AGGREGATE, "donors and endorsements"]]) {
+      if (events.some(e => e.entries.some(x => x[0] === a && kinds.includes(x[1])))) {
+        out.push([`${what} on ${a}`, drop((e, x) => x[0] === a && kinds.includes(x[1]))]);
+      }
+    }
+  }
+  return out;
+}
 
 function summarize(opt, weights) {
   const {events, gray, warnings} = collapse(opt);
   const entries = events.flatMap(ev => ev.entries);
   let covered = 0, W = 0;
-  for (const a of new Set(entries.filter(e => e[1] !== "funder").map(e => e[0]))) covered += weights[a];
+  for (const a of new Set(entries.filter(e => OWN.includes(e[1])).map(e => e[0]))) covered += weights[a];
   for (const a of Object.keys(weights)) W += weights[a];
   const cov = covered / W;
-  const records = events.filter(ev => ev.entries.some(e => e[1] === "record")).length;
-  const recordAxes = new Set(entries.filter(e => e[1] === "record").map(e => e[0])).size;
+  const count = kinds => events.filter(ev => ev.entries.some(e => kinds.includes(e[1]))).length;
+  // Answers pool per axis in the score, so they count once per axis here too.
+  const records = count(["record"]), questionnaires = new Set(entries.filter(e => e[1] === "questionnaire").map(e => e[0])).size;
+  const firm = records + questionnaires;
+  const firmAxes = new Set(entries.filter(e => e[1] === "record" || e[1] === "questionnaire").map(e => e[0])).size;
   const level = !events.length ? "none"
-    : cov >= 0.75 && records >= 3 && recordAxes >= 2 ? "strong"
-    : cov >= 0.5 && records >= 2 ? "moderate" : "thin";
-  const parts = events.length ? fitParts(events, weights) : {score: null, total: 0, W};
-  const row = {name: opt.name, score: parts.score, evidence: level, confidence: level,
-    coverage: pyRound(cov * 100) / 100, events: events.length, records, gray,
+    : cov >= 0.75 && firm >= 3 && records >= 1 && firmAxes >= 2 ? "strong"
+    : cov >= 0.5 && firm >= 2 ? "moderate" : "thin";
+  const parts = fitParts(events, weights);
+  const row = {name: opt.name, score: parts.score, low: parts.low, high: parts.high, evidence: level, confidence: level,
+    coverage: pyRound(cov * 100) / 100, events: events.length, records, questionnaires, gray,
     excluded: !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
     // Older page fields: num/den give "Score = round(50 + 50 × num / den)".
     red_line: !!opt.red_line, items: (opt.evidence || []).length, kinds: [], num: parts.total, den: parts.W, uncapped: parts.score};
-  return {row, events, cov, warnings};
+  return {row, events, covered, warnings};
 }
 
 function leaderOf(scores) {
@@ -300,26 +345,34 @@ function leaderOf(scores) {
 }
 
 // Returns [call, turns_on]. Leave-one-out: a call that one event can flip is a toss-up.
-function decide(rows, events, covs, eligible, measure, weights) {
-  const tossUp = ev => [`Toss-up (turns on: ${ev.label})`, ev.label];
+function decide(rows, events, covered, eligible, measure, weights) {
+  const tossUp = label => [`Toss-up (turns on: ${label})`, label];
+  let wAll = 0;
+  for (const a of Object.keys(weights)) wAll += weights[a];
+  const half = covered.map(c => 2 * c >= wAll); // coverage >= 0.5, in exact integers
   if (!eligible.length) return ["All options crossed a red line", null];
   if (measure) {
     const s = rows[0].score;
     if (s === null) return ["Not enough evidence", null];
     const m = s - 50;
     if (m === 0) return ["Toss-up", null];
-    for (const ev of events[0]) {
-      const m2 = fit(events[0].filter(e => e !== ev), weights) - 50;
-      if (m2 === 0 || (m2 > 0) !== (m > 0)) return tossUp(ev);
+    for (const [label, rest] of steps(events[0])) {
+      const s2 = fit(rest, weights);
+      // null: the whole score rests on this one step.
+      if (s2 === null || s2 === 50 || (s2 > 50) !== (m > 0)) return tossUp(label);
     }
     const side = m > 0 ? "YES" : "NO";
-    return [Math.abs(m) >= 10 && covs[0] >= 0.5 && rows[0].evidence !== "thin" ? side : `Lean ${side}`, null];
+    // As in contested races, a firm call needs at least one record, not words alone.
+    const clear = Math.abs(m) >= 10 && half[0] && rows[0].evidence !== "thin" && rows[0].records >= 1;
+    return [clear ? side : `Lean ${side}`, null];
   }
   if (eligible.length === 1) {
-    const r = rows[eligible[0]];
+    const i = eligible[0], r = rows[i];
     if (r.score === null) return ["Not enough evidence", null];
-    if (r.evidence !== "thin" && r.score >= 60) return [`Vote for ${r.name}`, null];
-    if (r.evidence !== "thin" && r.score <= 40) return ["Consider leaving blank or writing in", null];
+    // A firm call needs at least one record, as in contested races.
+    const firm = half[i] && r.evidence !== "thin" && r.records >= 1;
+    if (r.score >= 60 && firm) return [`Vote for ${r.name}`, null];
+    if (r.score <= 40 && firm) return ["Consider leaving blank or writing in", null];
     return ["Your call", null];
   }
   const scores = eligible.map(i => rows[i].score);
@@ -327,18 +380,23 @@ function decide(rows, events, covs, eligible, measure, weights) {
   const lead = leaderOf(scores);
   if (lead === null) return ["Toss-up", null];
   for (let j = 0; j < eligible.length; j++) {
-    for (const ev of events[eligible[j]]) {
+    for (const [label, rest] of steps(events[eligible[j]])) {
       const alt = scores.slice();
-      alt[j] = fit(events[eligible[j]].filter(e => e !== ev), weights);
-      if (leaderOf(alt) !== lead) return tossUp(ev);
+      alt[j] = fit(rest, weights);
+      // null: that option's whole score rests on this one step. That flips the call only for
+      // the leader; a runner-up left with nothing cannot overtake it.
+      if (alt[j] === null) { if (j === lead) return tossUp(label); continue; }
+      if (leaderOf(alt) !== lead) return tossUp(label);
     }
   }
   const second = Math.max(...scores.filter((s, j) => j !== lead));
   const runner = scores.findIndex((s, j) => j !== lead && s === second);
-  const name = rows[eligible[lead]].name;
-  // Statements alone never make a clear call: the leader needs more than thin evidence.
-  const clear = scores[lead] - second >= 10 && covs[eligible[lead]] >= 0.5 && covs[eligible[runner]] >= 0.5
-    && rows[eligible[lead]].evidence !== "thin";
+  const li = eligible[lead], ri = eligible[runner], name = rows[li].name;
+  // A full record against one statement is not a fair fight: coverage gap >= 0.4 caps it at Lean.
+  if (5 * Math.abs(covered[li] - covered[ri]) >= 2 * wAll) return [`Lean ${name} (uneven evidence)`, null];
+  // The candidate's own words alone never make a clear call: the leader needs more than thin
+  // evidence and at least one record.
+  const clear = scores[lead] - second >= 10 && half[li] && half[ri] && rows[li].evidence !== "thin" && rows[li].records >= 1;
   return [clear ? name : `Lean ${name}`, null];
 }
 
@@ -346,13 +404,13 @@ function decide(rows, events, covs, eligible, measure, weights) {
 function scoreRace(options, weights, isMeasure) {
   const errors = validateRace(options, weights, isMeasure);
   if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors};
-  const rows = [], events = [], covs = [], warnings = [];
+  const rows = [], events = [], covered = [], warnings = [];
   for (const o of options) {
     const s = summarize(o, weights);
-    rows.push(s.row); events.push(s.events); covs.push(s.cov); warnings.push(...s.warnings);
+    rows.push(s.row); events.push(s.events); covered.push(s.covered); warnings.push(...s.warnings);
   }
   const eligible = options.map((o, i) => i).filter(i => !options[i].red_line);
-  const [call, turns_on] = decide(rows, events, covs, eligible, !!isMeasure, weights);
+  const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights);
   return {call, turns_on, rows, warnings, errors};
 }
 
