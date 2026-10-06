@@ -8,7 +8,7 @@ _Paste at the top of every chat, before the step prompt._
 
 ```text
 RULES FOR THIS TASK. Follow all rules.
-1. Use facts only from sources you open. Give the URL for each fact.
+1. Use facts only from sources you open. Give the URL for each fact. Write each source as a full URL in plain text starting with https://. Do not use citation links or footnote markers.
 2. Do not invent URLs, votes, numbers, or quotes. If you cannot confirm a fact, write UNVERIFIED and continue.
 3. Evidence has 5 kinds. Label each item:
    RECORD = a vote, ruling, bill sponsored, official act, lawsuit, discipline, or audit.
@@ -17,7 +17,7 @@ RULES FOR THIS TASK. Follow all rules.
    FUNDER = who gave money or spent money for or against (campaign-finance data).
    ENDORSEMENT = an endorsement by an issue group that publishes its criteria.
    RECORD is strongest, then QUESTIONNAIRE, then STATED. All QUESTIONNAIRE items on one value together count no more than one RECORD. All FUNDER and ENDORSEMENT items on one value together count as one weak item.
-4. For a legislative vote, use the FINAL PASSAGE vote. Do not use amendment or procedural votes. Write the vote date and the yea-nay count.
+4. For a vote on a legislative bill, use the FINAL PASSAGE vote. Do not use amendment or procedural votes. Write the vote date and the yea-nay count. Votes and motions of boards, councils, commissions and courts count as RECORD on their own terms.
 5. Write short sentences. Use the exact output format that the step gives. Do not add other text.
 6. Do not give your own political opinion. Compare evidence only to the VALUES PROFILE.
 7. If a task is too large, stop and write: "SPLIT NEEDED:" and list the parts.
@@ -81,6 +81,7 @@ Do these steps in order:
 3. For each race, find the candidates who are on the GENERAL election ballot. Use the primary results or the official candidate list. Do not list candidates who lost the primary.
 4. Mark a race UNCONTESTED if only one candidate is on the ballot. Uncontested races are still researched and scored, so the voter can vote for the candidate or leave the race blank.
 5. CHECK: Pamphlet text can mix up the order of names and seats. For each judicial or multi-position race, confirm the position number for each candidate from a second source.
+6. If an official PDF will not open, try the same office's web pages (candidate lists, sample ballot lookup, results pages) or the state's candidate search. If you still cannot read it, say which document and stop for that part; do not guess.
 
 OUTPUT FORMAT:
 DISTRICTS
@@ -105,15 +106,16 @@ TASK: Collect evidence for ONE race. Do not score it.
 If you are a sub-agent, write only to your assigned file and include UNVERIFIED, GAPS and BLOCKERS.
 RACE: {{office, position, ALL candidates on the ballot}}
 Research every candidate, including minor ones. Do not skip a candidate because they are unlikely to win.
+If you find a candidate who is not in the race line above, write NEW CANDIDATE: name | source on its own line and do not research them.
 
 For EACH candidate, search in this order. Stop at about 8 evidence items for each candidate. If the record is thin, keep going down the list.
 1. RECORD:
-   - Legislators: final-passage votes on bills that touch the value axes. Use the official legislature roll-call pages. Bills they sponsored.
+   - Legislators: final-passage votes on bills that touch the value axes. Use the official legislature roll-call pages. Bills they sponsored. Votes and motions of boards, councils and commissions count as RECORD on their own terms.
    - Judges: opinions they wrote or joined, notable trial rulings, bar association ratings, judicial conduct actions.
    - Executives/administrators: official acts, audits, budgets, controversies, why they left past jobs.
    - People with no office: prior offices, boards and commissions, professional work, past races and results, lawsuits.
 2. QUESTIONNAIRE: written answers to published questionnaires: Vote Smart Political Courage Test, Vote411 (League of Women Voters), Ballotpedia Candidate Connection, and published interest-group or newspaper questionnaires. Write one line per question.
-3. FUNDER: Top 5 to 10 donors and PACs from the official campaign-finance data (for US federal: fec.gov; for states: the state disclosure agency). Group them by industry or interest (use OpenSecrets or FollowTheMoney categories when available), one item per group, not per check. Tag each group to the value its industry or interest relates to. If a top funder is a PAC or committee, also find who funds THAT committee (one level back), and any independent spending for or against. For each funder, write in 5 to 10 words what that funder wants.
+3. FUNDER: Top 5 to 10 donors and PACs from the official campaign-finance data (for US federal: fec.gov; for states: the state disclosure agency). Group them by industry or interest (use OpenSecrets or FollowTheMoney categories when available), one item per group, not per check. Tag each group to the value its industry or interest relates to. If a top funder is a PAC or committee, also find who funds THAT committee (one level back), and any independent spending for or against. For each funder, write in 5 to 10 words what that funder wants. Use the state's official campaign-finance site (secretary of state, elections or ethics commission) or the FEC for federal races. If itemized donors are not shown, report total raised and spent with the date. Label sites that collect filings (for example OpenSecrets, FollowTheMoney, Transparency USA) by name; never call them an official filing.
 4. ENDORSEMENT: endorsements by issue groups that publish their criteria. Tag each to the value that matches the group's issue. Note it when a group endorses only likely winners.
 5. STATED: other statements, such as the campaign website or interviews.
 
@@ -124,6 +126,7 @@ For each item, choose the axis letter from the VALUES PROFILE and a sign:
 gray = the topic is a GRAY AREA in the profile
 
 Tagging:
+- Tag by what the vote or action mainly does. If a bill mixes topics, use the topic of its main effect, or 0 if unclear.
 - Broad bills: tag only the provision tied to the priority, and say which provision.
 - Rulings a judge was legally required to make: tag only fairness/competence, not policy.
 - Conditional positions: STATED, with the condition in the fact.
@@ -151,7 +154,7 @@ Search in this order:
 1. The full text and the official explanatory statement. Write what it LEGALLY does (not what the campaign says) in 3 to 5 short points. Note: who must do what, what it costs, when each part starts, if it ends (sunset), who enforces it, if the money is legally dedicated or goes to a general fund, and how hard it is to change later (statute, charter, or constitution). Note any court change to the ballot wording.
 2. The official fiscal note or cost estimate. Give the numbers and the source. Also give the vote needed to pass (simple majority, 60%, two-thirds, or a turnout minimum).
 3. Track record: the history of this program or similar programs in other places, with results.
-4. FUNDER: the top funders of the YES campaign and the NO campaign, with amounts, from the official campaign-finance data. Flag it if one person or one company gives most of the money on a side.
+4. FUNDER: the top funders of the YES campaign and the NO campaign, with amounts, from the official campaign-finance data. Flag it if one person or one company gives most of the money on a side. Use the state's official campaign-finance site (secretary of state, elections or ethics commission) or the FEC for federal races. If itemized donors are not shown, report total raised and spent with the date. Label sites that collect filings (for example OpenSecrets, FollowTheMoney, Transparency USA) by name; never call them an official filing.
 5. What happens if it FAILS: the status quo, planned cuts, or other plans. Then write the 2 or 3 strongest arguments for each side in their best form, with sources. Do not use weak arguments to make one side look bad.
 6. Campaign claims: list 1 to 3 claims from each side. Mark each one TRUE, MISLEADING, or UNVERIFIED, with the source that shows it.
 
@@ -224,7 +227,7 @@ _One chat. Paste the outputs of Steps 2 to 5._
 TASK: Find errors. Do not add new opinions.
 
 Check each item. For each problem, write it in the output.
-1. Pick 5 votes at random. Open the roll-call source. Is it the FINAL PASSAGE vote, and is the candidate's vote correct?
+1. Pick 5 votes at random. Open the roll-call source. For a bill, is it the FINAL PASSAGE vote? Is the candidate's vote correct? Votes and motions of boards, councils, commissions and courts count on their own terms.
 2. Pick 5 other facts at random. Open the URL. Does the page say the same thing?
 3. Does each contested race have the same candidates as the official ballot? Is any race actually uncontested?
 4. Do the position numbers match the candidates (judges especially)?
@@ -307,7 +310,7 @@ For each fact or line in the answer:
 3. For WRONG items, give the correct fact and its source.
 Also check:
 - For a ballot list: compare with the official candidate list or sample ballot. List anything missing or extra.
-- For votes: is it the final passage vote, with the right date and count?
+- For votes on legislative bills: is it the final passage vote, with the right date and count? Votes and motions of boards, councils, commissions and courts count as RECORD on their own terms; do not remove them for not being a final-passage vote.
 - For tags: if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?, but do not change it in the corrected answer. (Skip in neutral mode.)
 
 OUTPUT FORMAT:

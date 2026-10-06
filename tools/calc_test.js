@@ -67,6 +67,29 @@ for (const [label, lines] of Object.entries(variants)) {
   assert.deepStrictEqual(rows(r), [["X", 60, "thin"], ["Y", 75, "thin"]], label);
   assert.strictEqual(r.result.call, "Your call", label);
 }
+// Markdown escapes from a chat's Copy button ("\[A\]", "\|", a trailing "\") read like plain text.
+{
+  const plainRace = "CANDIDATE: X | council\n- [A][+][RECORD][e1] 2025-01-02: voted for HB 1. | https://example.org/a_b\n"
+    + "1. [B][-][FUNDER] 2025: donor group (PAC) | https://example.org/f\nRED LINE CROSSED: no\nGAPS: none";
+  const escaped = plainRace.split("\n").map(l => l.replace(/[[\]|_.()#-]/g, "\\$&") + " \\").join("\n");
+  assert.ok(escaped.includes("\\[A\\]\\[+\\]") && escaped.includes("\\| https://example") && escaped.includes("a\\_b"));
+  assert.deepStrictEqual(calculate(W2, escaped), calculate(W2, plainRace));
+  assert.deepStrictEqual(parseResearch(escaped, {}, true), parseResearch(plainRace, {}, true));
+}
+// Source written as a title, not a link: the line still counts, with a warning naming it.
+r = calculate("A=3", "CANDIDATE: X\n- [A][+][RECORD][e1] 2025: voted yes | Ohio Secretary of State\n- [A][+][RECORD][e2] 2025: b | https://e.org/b");
+assert.deepStrictEqual([r.errors, r.result.rows[0].events], [[], 2]);
+assert.deepStrictEqual(r.warnings, ["No web address for the source; ask the chat for the full link: [A][+][RECORD][e1] 2025: voted yes | Ohio Secretary of State"]);
+assert.strictEqual(require("./calc.js").countEvidence("CANDIDATE: X\n- [Housing][0][RECORD] 2025: a | County site").warnings.length, 1);
+// NEW CANDIDATE lines are never scored or read as evidence; the page is told to check the ballot.
+{
+  const nc = "CANDIDATE: X\n- [A][+][RECORD] a | https://e.org/a\nNEW CANDIDATE: Pat Doe | https://e.org/new\nGAPS: none\nNEW CANDIDATE: Lee Roe | https://e.org/n2";
+  r = calculate("A=3", nc);
+  assert.deepStrictEqual([r.errors, r.result.rows.map(o => o.name)], [[], ["X"]]);
+  assert.deepStrictEqual(r.result, calculate("A=3", "CANDIDATE: X\n- [A][+][RECORD] a | https://e.org/a").result);
+  assert.strictEqual(r.warnings.filter(w => w.startsWith("The chat found a candidate not on your ballot list")).length, 2);
+  assert.strictEqual(require("./calc.js").countEvidence(nc).warnings.length, 2);
+}
 // Sign words for mixed: neutral, mixed and 0 all count as 0.
 r = calculate("A=3", "MEASURE: M\n- [A][neutral][STATED] a\n- [A][Mixed][STATED] b\n- [A][0][STATED] c");
 assert.deepStrictEqual(r.errors, []);
@@ -118,7 +141,7 @@ assert.strictEqual(r.result.rows[0].score, 83);
 r = calculate("A=3", base + "\nGAPS:\ncould not find funders\n- [A][+][RECORD] y unconfirmed | https://y.org/2");
 assert.deepStrictEqual(r.result, plain.result);
 assert.deepStrictEqual(r.warnings, ["Evidence line under GAPS ignored: [A][+][RECORD] y unconfirmed | https://y.org/2"]);
-assert.strictEqual(require("./calc.js").countEvidence(base + "\nGAPS:\n- [A][+][RECORD] y").errors.length, 1);
+assert.strictEqual(require("./calc.js").countEvidence(base + "\nGAPS:\n- [A][+][RECORD] y").warnings.length, 1);
 // Neutral counting: any topic word is an axis and the sign may be missing; letters still work.
 {
   const {countEvidence} = require("./calc.js");
@@ -174,11 +197,21 @@ console.log("calc_test: all checks passed");
   assert.strictEqual(one({A: 3}, [{name: "X", evidence: [ev("A", "-", "record"), ev("A", "+", "funder")]}]).rows[0].score, 36);
   // Gray rows (sign words or the flag) leave the score unchanged and are listed.
   const base = calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD] r");
-  r = calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD] r\n- [B][grey][STATED] torn topic\n- [C][torn][RECORD] t\n- [D][G][FUNDER] g");
+  const grayRows = "CANDIDATE: X\n- [A][+][RECORD] r\n- [B][grey][STATED] torn topic\n- [C][torn][RECORD] t\n- [D][G][FUNDER] g";
+  r = calculate(eq4 + "\nGray areas:\n- drug policy", grayRows);
   assert.deepStrictEqual(r.errors, []);
   assert.strictEqual(r.result.rows[0].score, base.result.rows[0].score);
   assert.deepStrictEqual(r.result.rows[0].gray.map(g => g.text), ["torn topic", "t", "g"]);
   assert.strictEqual(one({A: 1}, [{name: "X", evidence: [ev("A", "+", "record", {gray: true}), ev("A", "+", "stated")]}]).rows[0].score, 62); // 62.5 rounds half to even
+  // No torn topics in the profile: gray rows are not scored or listed, and the page is told.
+  r = calculate(eq4, grayRows);
+  assert.deepStrictEqual([r.result.rows[0].score, r.result.rows[0].gray], [base.result.rows[0].score, []]);
+  assert.ok(r.warnings.includes("X: tagged gray, but you listed no topics you are torn on (3 not counted)."), r.warnings);
+  // Gray topics come from text after or under "Gray areas:"; placeholders, "none" and EXAMPLES do not count.
+  const {hasGrayTopics} = require("./calc.js");
+  assert.deepStrictEqual(["Gray areas: taxes", "Gray areas:\n- taxes", "Gray area: drug policy.", "GRAY AREAS. Topics where you are MIXED.\n- zoning"].map(hasGrayTopics), [true, true, true, true]);
+  assert.deepStrictEqual(["A=3", "Gray areas:", "Gray areas: none", "Gray areas. Topics where you are MIXED.\n- {{topic, and why you are mixed}}\n\nRed lines:\n- bribery",
+    "Gray areas:\n- {{x}}\nEXAMPLES (format only)\nGray area: drug policy."].map(hasGrayTopics), [false, false, false, false, false]);
   // Four copies of one tagged record cannot give "strong".
   r = calculate("A=1", ["CANDIDATE: X", ...Array(4).fill("- [A][+][RECORD][hb1] 2025: voted | https://example.org/hb1")].join("\n"));
   assert.deepStrictEqual([r.result.rows[0].events, r.result.rows[0].records, r.result.rows[0].evidence], [1, 1, "thin"]);
@@ -222,7 +255,7 @@ console.log("calc_test: all checks passed");
   assert.deepStrictEqual([r.result.rows[0].events, r.warnings], [1, []]);
   r = calculate(eq4, "CANDIDATE: X\n" + Array(4).fill("- [A][+][RECORD] 2025: voted for HB 1").join("\n"));
   assert.deepStrictEqual(rows(r), rows(calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD] voted  for hb 1")));
-  assert.deepStrictEqual(r.warnings, ["X: No source: duplicates of this line cannot be detected (2025: voted for HB 1)."]);
+  assert.deepStrictEqual(r.warnings.filter(w => !w.startsWith("No web address")), ["X: No source: duplicates of this line cannot be detected (2025: voted for HB 1)."]);
   r = calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD][a] one | https://example.org/v\n- [A][+][RECORD][b] two | https://example.org/v");
   assert.strictEqual(r.result.rows[0].events, 2);
   // Funders: eight favorable == one (62.5 -> 62); opposing record + 8 favorable funders moves <= 12.5 (25 -> 36).
@@ -354,7 +387,7 @@ console.log("calc_test: all checks passed");
       }
       options.push({name: measure ? "YES" : "O" + o, red_line: rnd() < 0.15 && pick([true, "", " bribe ", "bribe | https://c.example"]), evidence});
     }
-    cases.push(JSON.parse(JSON.stringify({axes, race: {race: "R" + n, measure, options}})));
+    cases.push(JSON.parse(JSON.stringify({axes, gray: rnd() < 0.5, race: {race: "R" + n, measure, options}})));
   }
   const py = spawnSync("python3", ["-c", `
 import json, sys
@@ -363,7 +396,7 @@ from score import score_race
 out = []
 for c in json.load(sys.stdin):
     try:
-        r = score_race(c["race"], c["axes"])
+        r = score_race(c["race"], c["axes"], c["gray"])
         out.append({k: r[k] for k in ("call", "turns_on", "options", "warnings")})
     except ValueError as e:
         out.append({"error": str(e)})
@@ -373,7 +406,7 @@ print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")],
   const FIELDS = ["name", "score", "low", "high", "evidence", "confidence", "coverage", "events", "records", "questionnaires", "gray", "excluded"];
   let mismatches = 0, kinds = new Set();
   cases.forEach((c, i) => {
-    const r = scoreRace(c.race.options, c.axes, c.race.measure);
+    const r = scoreRace(c.race.options, c.axes, c.race.measure, c.gray);
     const got = r.errors.length ? {error: r.errors.join("; ")}
       : JSON.parse(JSON.stringify({call: r.call, turns_on: r.turns_on, warnings: r.warnings,
           options: r.rows.map(o => Object.fromEntries(FIELDS.map(f => [f, o[f]])))}));

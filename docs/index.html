@@ -146,6 +146,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 <div class="how" role="region" aria-labelledby="start-h">
   <h2 id="start-h">Before you start</h2>
   <p>You will need: an AI chat that can search the web (for example Gemini, Copilot, Perplexity, ChatGPT or Claude). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here.</p>
+  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Logged-out ChatGPT with search worked in testing.</p>
   <p><strong>How it works</strong></p>
   <ol>
     <li>Tell the page about you.</li>
@@ -300,10 +301,15 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 MEASURES
 - Measure 1 | YES raises the library levy | source: https://example.org/pamphlet</pre>
   <textarea id="ballot-answer" rows="8" autocomplete="off" aria-describedby="ballot-answer-help ballot-answer-hint"></textarea>
-  <p class="hint" id="ballot-answer-help">If the AI says NO WEB ACCESS, turn on web search in that chat or use a different AI, then try again. Try a free chat with web search, such as Copilot, Perplexity or ChatGPT with search turned on (as of October 2026). If it lists something wrong or misses something, fix the list below with Add or Delete.</p>
+  <p class="hint" id="ballot-answer-help">If the AI says NO WEB ACCESS, turn on web search in that chat or use a different AI, then try again. Try a free chat with web search; in testing (October 2026), ChatGPT with search worked without signing in. If it lists something wrong or misses something, fix the list below with Add or Delete.</p>
+  <p class="hint">If the chat says it could not open a PDF, open the link yourself and paste the text into the chat.</p>
   <p class="hint" id="ballot-answer-hint">This box is not saved, because the answer may repeat your address. Only the list of races and measures is saved.</p>
   <div class="btn-row"><button type="button" class="copy" id="ballot-read">Read the answer</button></div>
   <p id="ballot-found" aria-live="polite"></p>
+  <div id="ballot-old" class="warn" hidden>
+    <p id="ballot-old-msg"></p>
+    <div class="btn-row"><button type="button" class="copy" id="ballot-old-keep">Keep</button><button type="button" class="copy primary" id="ballot-old-remove">Remove</button></div>
+  </div>
   <div class="btn-row" id="ballot-fix-row" hidden><button type="button" class="copy" id="ballot-fix" aria-describedby="ballot-fix-hint">Copy a fix-the-format message</button><span class="hint" id="ballot-fix-hint">Paste it into the same chat, then paste the new answer above and read it again.</span></div>
   <div id="ballot-warn"></div>
   <div id="ballot-dc"></div>
@@ -480,9 +486,11 @@ function parseWeights(text) {
 }
 
 // Chats reformat the requested plain text: bold, bullets, numbered lists, headings, tables.
-// Strip that dressing so a line reads the same however the chat styled it.
+// Strip that dressing so a line reads the same however the chat styled it. Copy buttons that
+// give Markdown source escape punctuation ("\[A\]", "\|") and end lines with "\"; undo that first.
 function normLine(raw) {
-  return String(raw).replace(/\*\*|__|`/g, "").trim()
+  return String(raw).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/\s*\\+\s*$/, "")
+    .replace(/\*\*|__|`/g, "").trim()
     .replace(/^#+\s*/, "")
     .replace(/^(?:[-*•]\s*|\d+[.)]\s+)+/, "")
     .trim();
@@ -539,6 +547,11 @@ function parseResearch(text, weights, neutral) {
     // evidence form; scoring them would count removed facts. Skip until the next CANDIDATE:/MEASURE:.
     if (/^(REMOVED|PROBLEMS|CHECK SUMMARY)\s*(:|$)/i.test(line)) { section = "stopped"; cur = null; continue; }
     if (section === "stopped" && !/^(CANDIDATE|MEASURE):/i.test(line)) continue;
+    // Step 3 asks the chat to name, not research, a candidate missing from the race line.
+    if (/^NEW CANDIDATE\s*:/i.test(line)) {
+      warnings.push(`The chat found a candidate not on your ballot list. Check your official ballot, then edit the race line if needed: ${line}`);
+      continue;
+    }
     // GAPS sits inside an option (before RED LINE or EVIDENCE: is common), so it only pauses
     // evidence until the option's next structural line; its items are unconfirmed, never scored.
     if (/^GAPS\s*(:|$)/i.test(line)) { section = "gaps"; continue; }
@@ -599,7 +612,8 @@ function parseResearch(text, weights, neutral) {
     if (bad.length) { errors.push({line, msg: "Skipped: " + bad.join("; ") + "."}); continue; }
     const row = {axis, sign, kind: k, ...sourceAndDate(ev.rest), text: ev.rest};
     if (ev.event) row.event = ev.event;
-    if (!row.source) delete row.source;
+    // Chats often give a citation title instead of the link; the line still counts.
+    if (!row.source) { delete row.source; warnings.push(`No web address for the source; ask the chat for the full link: ${line}`); }
     if (!row.date) delete row.date;
     cur.evidence.push(row);
   }
@@ -618,8 +632,9 @@ function parseResearch(text, weights, neutral) {
 function countEvidence(text) {
   const p = parseResearch(text, {}, true);
   if (!p.options.length) p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found."});
-  // Neutral mode has no warnings list on the page, so ignored GAPS evidence shows as a problem.
-  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors.concat(p.warnings.map(msg => ({line: "", msg})))};
+  // Warnings (no link, new candidate, ignored GAPS evidence) are shown as "to check" and do not
+  // block the item; errors do.
+  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors, warnings: p.warnings.map(msg => ({line: "", msg}))};
 }
 
 const isGray = ev => ev.sign === "gray" || ev.gray === true;
@@ -753,8 +768,15 @@ function steps(events) {
   return out;
 }
 
-function summarize(opt, weights) {
-  const {events, gray, warnings} = collapse(opt);
+// grayTopics: the profile lists topics the voter is torn on. Without any, a gray tag cannot
+// mean "torn", so those rows are dropped from the list too, with a warning (as in score.py).
+function summarize(opt, weights, grayTopics) {
+  const c = collapse(opt), {events, warnings} = c;
+  let gray = c.gray;
+  if (gray.length && !grayTopics) {
+    warnings.push(`${opt.name}: tagged gray, but you listed no topics you are torn on (${gray.length} not counted).`);
+    gray = [];
+  }
   const entries = events.flatMap(ev => ev.entries);
   let covered = 0, W = 0;
   for (const a of new Set(entries.filter(e => OWN.includes(e[1])).map(e => e[0]))) covered += weights[a];
@@ -839,17 +861,33 @@ function decide(rows, events, covered, eligible, measure, weights) {
 }
 
 // Returns {call, turns_on, rows, warnings, errors}; errors means nothing was scored.
-function scoreRace(options, weights, isMeasure) {
+function scoreRace(options, weights, isMeasure, grayTopics) {
   const errors = validateRace(options, weights, isMeasure);
   if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors};
   const rows = [], events = [], covered = [], warnings = [];
   for (const o of options) {
-    const s = summarize(o, weights);
+    const s = summarize(o, weights, grayTopics);
     rows.push(s.row); events.push(s.events); covered.push(s.covered); warnings.push(...s.warnings);
   }
   const eligible = options.map((o, i) => i).filter(i => !options[i].red_line);
   const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights);
   return {call, turns_on, rows, warnings, errors};
+}
+
+// Whether the profile lists a topic the voter is torn on: text after "Gray areas:" or a
+// "- topic" line under it. Template placeholders, "none" and the Step 1 EXAMPLES do not count.
+function hasGrayTopics(text) {
+  const real = t => t.trim() && !t.includes("{{") && !/^(none|n\/a)\.?$/i.test(t.trim());
+  let under = false;
+  for (const line of String(text).split(/\r?\n/).map(l => l.trim())) {
+    if (!line) continue;
+    if (/^EXAMPLES\b/i.test(line)) break;
+    const m = line.match(/^gray areas?\b[^:]*:?(.*)$/i);
+    if (m) { if (real(m[1])) return true; under = true; continue; }
+    if (under && /^[-*•]/.test(line)) { if (real(line.replace(/^[-*•]\s*/, ""))) return true; continue; }
+    under = false;
+  }
+  return false;
 }
 
 function calculate(weightsText, researchText) {
@@ -862,13 +900,13 @@ function calculate(weightsText, researchText) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
     return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
-  const res = scoreRace(p.options, weights, p.kind === "measure");
+  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText));
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
   return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, normLine, parseWeights, parseResearch, countEvidence, scoreRace, calculate};
+  module.exports = {pyRound, normLine, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
 }
 </script>
 <script>
@@ -1124,14 +1162,23 @@ function cells(line) {
 // dropped because it is tied to the address. Rows it cannot read are returned in `skipped` as
 // {line, kind}, so the page can offer them as editable rows instead of dropping them. Unreadable
 // lines that may hold an address go to `addressLines` instead: they are shown, never saved.
-const STREET = /\b\d{1,6}\s+(?:[NSEW]\.?\s+)?(?:[\w.'-]+\s+){0,4}(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|Ct|Court|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square)\b/i;
+// Broad on purpose: a held-back line is shown to the user, never lost, while a missed address
+// would be saved. Ballot numbering ("District 4", "Position 12345", "Proposition 50") is not a
+// house number or ZIP; street words are never articles or prepositions (as in check_evidence.py).
+// ponytail: "for 3 Circuit Court" still matches; add words to BALLOT_NO if real ballots trip it.
+const BALLOT_NO = String.raw`(?<!\b(?:District|Dist|Position|Pos|Seat|Proposition|Prop|Measure|Question|Issue|Amendment|Initiative|Referendum|Ordinance|Resolution|Department|Dept|Division|Ward|Precinct|Circuit|Article|Section|Chapter|Bill|HB|SB|No|Number|Num)\.?\s+#?)`;
+const STREET = new RegExp(BALLOT_NO + String.raw`\b\d{1,6}(?:st|nd|rd|th)?\s+(?:(?!(?:the|a|an|to|of|in|on|at|for|and|by|from)\s)[\w.'-]+\s+){0,4}?(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|Ct|Court|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square|Route|Rte)\b`, "i");
+const ZIP = new RegExp(BALLOT_NO + String.raw`\b\d{5}(?:-\d{4})?\b`);
 function mayHaveAddress(line, address) {
   const a = String(address || "").trim().toLowerCase().split(",")[0].trim();
-  return STREET.test(line) || /\b\d{5}(?:-\d{4})?\b/.test(line) || /\bP\.?\s*O\.?\s*Box\b/i.test(line)
+  line = line.replace(/https?:\/\/\S+/gi, " "); // source links are not addresses
+  return STREET.test(line) || ZIP.test(line) || /\bP\.?\s*O\.?\s*Box\b/i.test(line)
     || /polling place|your address/i.test(line) || (a.length > 3 && line.toLowerCase().includes(a));
 }
+// `unverified`: rows the chat marked UNVERIFIED (never items); `noUrl`: rows kept whose source is
+// not a web address. Both are lines for the page to show, not save.
 function parseBallot(text, address = "") {
-  const races = [], measures = [], skipped = [], addressLines = [];
+  const races = [], measures = [], skipped = [], addressLines = [], unverified = [], noUrl = [];
   let section = null, sawHeading = false;
   for (const raw of String(text).split(/\r?\n/)) {
     const line = lineNorm(raw);
@@ -1142,13 +1189,19 @@ function parseBallot(text, address = "") {
     if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
+    // "UNVERIFIED: could not open PDF | ..." is a failure note, not a race or measure.
+    if (/^UNVERIFIED\b/i.test(c ? c[0] : line)) {
+      (mayHaveAddress(line, address) ? addressLines : unverified).push(line);
+      continue;
+    }
+    if (mayHaveAddress(line, address)) { addressLines.push(line); continue; }
     if (!c || c.length < 2) {
-      if (mayHaveAddress(line, address)) addressLines.push(line);
-      else skipped.push({line, kind: section === "RACES" ? "race" : "measure"});
+      skipped.push({line, kind: section === "RACES" ? "race" : "measure"});
       continue;
     }
     const srcI = c.findIndex(x => /https?:\/\/|^source\s*:/i.test(x));
     const source = srcI < 0 ? "" : c[srcI].replace(/^source\s*:\s*/i, "");
+    if (!/https?:\/\//i.test(source)) noUrl.push(line);
     if (section === "RACES") {
       const stI = c.findIndex(x => /^(UNCONTESTED|CONTESTED|CROWDED)\b/i.test(x));
       const rest = c.filter((_, i) => i !== srcI && i !== stI);
@@ -1160,7 +1213,15 @@ function parseBallot(text, address = "") {
       measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
     }
   }
-  return {races, measures, skipped, addressLines, sawHeading};
+  return {races, measures, skipped, addressLines, unverified, noUrl, sawHeading};
+}
+
+// The calculator's profile: the axis lines plus any gray (torn) topics, so calc.js knows a
+// gray tag is allowed. No address, stakes or red lines.
+function calcProfile(state) {
+  const gray = lines(state.gray);
+  // "=" and "weight" would read as an axis weight in parseWeights.
+  return axisLines(state).concat(gray.length ? ["Gray areas:", ...gray.map(l => "- " + l.replace(/=/g, " ").replace(/\bweight\b/gi, "wt"))] : []).join("\n");
 }
 
 // The text that fills RACE: or MEASURE: in Steps 3 and 4.
@@ -1205,7 +1266,7 @@ function testReportUrl(fields) {
 
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
-    parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
+    mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl};
 }
 </script>
@@ -1213,7 +1274,7 @@ if (typeof module === "object" && module.exports) {
 const STEPS = [
 {title:`Shared rules`, when:`Paste at the top of every chat, before the step prompt.`, text:
 `RULES FOR THIS TASK. Follow all rules.
-1. Use facts only from sources you open. Give the URL for each fact.
+1. Use facts only from sources you open. Give the URL for each fact. Write each source as a full URL in plain text starting with https://. Do not use citation links or footnote markers.
 2. Do not invent URLs, votes, numbers, or quotes. If you cannot confirm a fact, write UNVERIFIED and continue.
 3. Evidence has 5 kinds. Label each item:
    RECORD = a vote, ruling, bill sponsored, official act, lawsuit, discipline, or audit.
@@ -1222,7 +1283,7 @@ const STEPS = [
    FUNDER = who gave money or spent money for or against (campaign-finance data).
    ENDORSEMENT = an endorsement by an issue group that publishes its criteria.
    RECORD is strongest, then QUESTIONNAIRE, then STATED. All QUESTIONNAIRE items on one value together count no more than one RECORD. All FUNDER and ENDORSEMENT items on one value together count as one weak item.
-4. For a legislative vote, use the FINAL PASSAGE vote. Do not use amendment or procedural votes. Write the vote date and the yea-nay count.
+4. For a vote on a legislative bill, use the FINAL PASSAGE vote. Do not use amendment or procedural votes. Write the vote date and the yea-nay count. Votes and motions of boards, councils, commissions and courts count as RECORD on their own terms.
 5. Write short sentences. Use the exact output format that the step gives. Do not add other text.
 6. Do not give your own political opinion. Compare evidence only to the VALUES PROFILE.
 7. If a task is too large, stop and write: "SPLIT NEEDED:" and list the parts.
@@ -1276,6 +1337,7 @@ Do these steps in order:
 3. For each race, find the candidates who are on the GENERAL election ballot. Use the primary results or the official candidate list. Do not list candidates who lost the primary.
 4. Mark a race UNCONTESTED if only one candidate is on the ballot. Uncontested races are still researched and scored, so the voter can vote for the candidate or leave the race blank.
 5. CHECK: Pamphlet text can mix up the order of names and seats. For each judicial or multi-position race, confirm the position number for each candidate from a second source.
+6. If an official PDF will not open, try the same office's web pages (candidate lists, sample ballot lookup, results pages) or the state's candidate search. If you still cannot read it, say which document and stop for that part; do not guess.
 
 OUTPUT FORMAT:
 DISTRICTS
@@ -1295,15 +1357,16 @@ UNVERIFIED
 If you are a sub-agent, write only to your assigned file and include UNVERIFIED, GAPS and BLOCKERS.
 RACE: {{office, position, ALL candidates on the ballot}}
 Research every candidate, including minor ones. Do not skip a candidate because they are unlikely to win.
+If you find a candidate who is not in the race line above, write NEW CANDIDATE: name | source on its own line and do not research them.
 
 For EACH candidate, search in this order. Stop at about 8 evidence items for each candidate. If the record is thin, keep going down the list.
 1. RECORD:
-   - Legislators: final-passage votes on bills that touch the value axes. Use the official legislature roll-call pages. Bills they sponsored.
+   - Legislators: final-passage votes on bills that touch the value axes. Use the official legislature roll-call pages. Bills they sponsored. Votes and motions of boards, councils and commissions count as RECORD on their own terms.
    - Judges: opinions they wrote or joined, notable trial rulings, bar association ratings, judicial conduct actions.
    - Executives/administrators: official acts, audits, budgets, controversies, why they left past jobs.
    - People with no office: prior offices, boards and commissions, professional work, past races and results, lawsuits.
 2. QUESTIONNAIRE: written answers to published questionnaires: Vote Smart Political Courage Test, Vote411 (League of Women Voters), Ballotpedia Candidate Connection, and published interest-group or newspaper questionnaires. Write one line per question.
-3. FUNDER: Top 5 to 10 donors and PACs from the official campaign-finance data (for US federal: fec.gov; for states: the state disclosure agency). Group them by industry or interest (use OpenSecrets or FollowTheMoney categories when available), one item per group, not per check. Tag each group to the value its industry or interest relates to. If a top funder is a PAC or committee, also find who funds THAT committee (one level back), and any independent spending for or against. For each funder, write in 5 to 10 words what that funder wants.
+3. FUNDER: Top 5 to 10 donors and PACs from the official campaign-finance data (for US federal: fec.gov; for states: the state disclosure agency). Group them by industry or interest (use OpenSecrets or FollowTheMoney categories when available), one item per group, not per check. Tag each group to the value its industry or interest relates to. If a top funder is a PAC or committee, also find who funds THAT committee (one level back), and any independent spending for or against. For each funder, write in 5 to 10 words what that funder wants. Use the state's official campaign-finance site (secretary of state, elections or ethics commission) or the FEC for federal races. If itemized donors are not shown, report total raised and spent with the date. Label sites that collect filings (for example OpenSecrets, FollowTheMoney, Transparency USA) by name; never call them an official filing.
 4. ENDORSEMENT: endorsements by issue groups that publish their criteria. Tag each to the value that matches the group's issue. Note it when a group endorses only likely winners.
 5. STATED: other statements, such as the campaign website or interviews.
 
@@ -1314,6 +1377,7 @@ For each item, choose the axis letter from the VALUES PROFILE and a sign:
 gray = the topic is a GRAY AREA in the profile
 
 Tagging:
+- Tag by what the vote or action mainly does. If a bill mixes topics, use the topic of its main effect, or 0 if unclear.
 - Broad bills: tag only the provision tied to the priority, and say which provision.
 - Rulings a judge was legally required to make: tag only fairness/competence, not policy.
 - Conditional positions: STATED, with the condition in the fact.
@@ -1336,7 +1400,7 @@ Search in this order:
 1. The full text and the official explanatory statement. Write what it LEGALLY does (not what the campaign says) in 3 to 5 short points. Note: who must do what, what it costs, when each part starts, if it ends (sunset), who enforces it, if the money is legally dedicated or goes to a general fund, and how hard it is to change later (statute, charter, or constitution). Note any court change to the ballot wording.
 2. The official fiscal note or cost estimate. Give the numbers and the source. Also give the vote needed to pass (simple majority, 60%, two-thirds, or a turnout minimum).
 3. Track record: the history of this program or similar programs in other places, with results.
-4. FUNDER: the top funders of the YES campaign and the NO campaign, with amounts, from the official campaign-finance data. Flag it if one person or one company gives most of the money on a side.
+4. FUNDER: the top funders of the YES campaign and the NO campaign, with amounts, from the official campaign-finance data. Flag it if one person or one company gives most of the money on a side. Use the state's official campaign-finance site (secretary of state, elections or ethics commission) or the FEC for federal races. If itemized donors are not shown, report total raised and spent with the date. Label sites that collect filings (for example OpenSecrets, FollowTheMoney, Transparency USA) by name; never call them an official filing.
 5. What happens if it FAILS: the status quo, planned cuts, or other plans. Then write the 2 or 3 strongest arguments for each side in their best form, with sources. Do not use weak arguments to make one side look bad.
 6. Campaign claims: list 1 to 3 claims from each side. Mark each one TRUE, MISLEADING, or UNVERIFIED, with the source that shows it.
 
@@ -1399,7 +1463,7 @@ OUTPUT FORMAT:
 `TASK: Find errors. Do not add new opinions.
 
 Check each item. For each problem, write it in the output.
-1. Pick 5 votes at random. Open the roll-call source. Is it the FINAL PASSAGE vote, and is the candidate's vote correct?
+1. Pick 5 votes at random. Open the roll-call source. For a bill, is it the FINAL PASSAGE vote? Is the candidate's vote correct? Votes and motions of boards, councils, commissions and courts count on their own terms.
 2. Pick 5 other facts at random. Open the URL. Does the page say the same thing?
 3. Does each contested race have the same candidates as the official ballot? Is any race actually uncontested?
 4. Do the position numbers match the candidates (judges especially)?
@@ -1472,7 +1536,7 @@ For each fact or line in the answer:
 3. For WRONG items, give the correct fact and its source.
 Also check:
 - For a ballot list: compare with the official candidate list or sample ballot. List anything missing or extra.
-- For votes: is it the final passage vote, with the right date and count?
+- For votes on legislative bills: is it the final passage vote, with the right date and count? Votes and motions of boards, councils, commissions and courts count as RECORD on their own terms; do not remove them for not being a final-passage vote.
 - For tags: if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?, but do not change it in the corrected answer. (Skip in neutral mode.)
 
 OUTPUT FORMAT:
@@ -1506,7 +1570,7 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null;
-const KIT_VERSION="v1.4.0";
+const KIT_VERSION="v1.5.0";
 const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
 // checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
@@ -1522,7 +1586,7 @@ const EXAMPLE={
   values:"CANDIDATE: Candidate X | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no\n\nMEASURE: Measure 1\nEVIDENCE:\n- [A][+][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
   neutral:"CANDIDATE: Candidate X | council member\n- [Housing][0][RECORD] 2025-03-10: Voted yes on a zoning bill, final passage 7-2. | https://example.org/source\nGAPS: none\n\nMEASURE: Measure 1\nEVIDENCE:\n- [Libraries][0][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
 };
-const NO_WEB_TIP=" Try a free chat with web search, such as Copilot, Perplexity or ChatGPT with search turned on (as of October 2026).";
+const NO_WEB_TIP=" Try a free chat with web search; in testing (October 2026), ChatGPT with search worked without signing in.";
 
 const host=$("steps");
 STEPS.forEach((s,i)=>{
@@ -1605,7 +1669,7 @@ function writeState(st){
 }
 
 function fillWeights(st){
-  $("calc-weights").value=axisLines(st).join("\n");
+  $("calc-weights").value=calcProfile(st);
   runCalc();
 }
 
@@ -1631,13 +1695,13 @@ function render(){
   });
   $("s1-status").textContent=(neutral?"Neutral comparison":"Values match")+" · election "+(st.date||"date not set")+(st.address.trim()?" · address entered (used only in Step 2)":"");
   $("ballot-noaddr").hidden=!!st.address.trim();
-  // Re-score pasted answers only when the mode or the weights change, not on every keystroke.
-  const scoring=neutral?"neutral":axisLines(st).join("\n");
+  // Re-score pasted answers only when the mode, the weights or the gray topics change, not on every keystroke.
+  const scoring=neutral?"neutral":calcProfile(st);
   if(scoring!==lastScoring){lastScoring=scoring;items.forEach(evalItem)}
   else items.forEach(refreshItem); // the double-check option shows or hides each item's panel
   showBallotCheck();
   // Refill only when the axes change, so edits typed into the calculator survive other keystrokes.
-  const axes=axisLines(st).join("\n");
+  const axes=calcProfile(st);
   if(!neutral&&axes!==lastAxes)fillWeights(st);
   lastAxes=neutral?null:axes;
   refreshStages();
@@ -1748,7 +1812,7 @@ function evalItem(it){
     it.status="problem";
     out.append(noteBox([{msg:"The chat said it cannot open web pages. Use a chat with web search turned on and try again."+NO_WEB_TIP,line:""}]));
   }else if(st.mode==="values"){
-    const r=calculate(axisLines(st).join("\n"),text);
+    const r=calculate(calcProfile(st),text);
     renderCalc(out,r);
     it.status=r.result&&!r.errors.length?"scored":"problem";
     if(r.result)it.call="Call: "+r.result.call;
@@ -1760,9 +1824,9 @@ function evalItem(it){
     }
   }else{
     const c=countEvidence(text);
-    it.calc=`${c.recognized} evidence lines recognized, ${c.errors.length} problems`;
+    it.calc=`${c.recognized} evidence lines recognized, ${c.errors.length} problems`+(c.warnings.length?`, ${c.warnings.length} to check`:"");
     out.append(el("p",it.calc));
-    if(c.errors.length)out.append(noteBox(c.errors));
+    if(c.errors.length||c.warnings.length)out.append(noteBox(c.errors.concat(c.warnings)));
     it.status=c.recognized&&!c.errors.length?"pasted":"problem";
   }
   refreshItem(it);
@@ -2033,9 +2097,19 @@ $("ballot-answer").addEventListener("input",()=>{
 });
 
 $("ballot-read").addEventListener("click",()=>readBallot());
+// Earlier answered items that a re-read list does not have: kept until the user picks Keep or Remove.
+let oldItems=[];
+function settleOld(remove){
+  const n=oldItems.filter(it=>items.includes(it)).length;
+  if(remove){items=items.filter(it=>!oldItems.includes(it));buildLists();save()}
+  oldItems=[]; $("ballot-old").hidden=true;
+  announce(remove?`Removed ${n} earlier items`:`Kept ${n} earlier items`); $("ballot-read").focus();
+}
+$("ballot-old-keep").addEventListener("click",()=>settleOld(false));
+$("ballot-old-remove").addEventListener("click",()=>settleOld(true));
 function readBallot(){
   const text=$("ballot-answer").value, warn=$("ballot-warn"), found=$("ballot-found");
-  warn.replaceChildren(); $("ballot-fix-row").hidden=true;
+  warn.replaceChildren(); $("ballot-fix-row").hidden=true; oldItems=[]; $("ballot-old").hidden=true;
   if(/NO WEB ACCESS/.test(text)){found.textContent="The chat said it cannot open web pages. Use a chat with web search turned on."+NO_WEB_TIP;return}
   const p=parseBallot(text,readState().address);
   let rows=[...p.races.map(r=>({kind:"race",text:raceText(r),note:[r.status,r.source&&"source: "+String(r.source).split(/[?#]/)[0]].filter(Boolean).join(" · ")})),
@@ -2045,6 +2119,7 @@ function readBallot(){
   if(prose)rows=p.skipped.map(x=>({kind:x.kind,text:x.line,note:""}));
   if(p.skipped.length||!rows.length)$("ballot-fix-row").hidden=false;
   if(p.addressLines.length)warn.append(noteBox(p.addressLines.map(line=>({msg:"Not kept, because it may include an address:",line}))));
+  if(p.unverified.length)warn.append(noteBox(p.unverified.map(line=>({msg:"The chat could not confirm this:",line}))));
   if(!rows.length){
     found.textContent=p.sawHeading?"No races or measures found under RACES or MEASURES. Check the lines use | between parts, like the example."
       :"No RACES or MEASURES heading found. Paste the AI's whole answer, or add items by hand below.";
@@ -2054,10 +2129,16 @@ function readBallot(){
   const old=new Map(items.map(it=>[it.kind+"\n"+it.text,it]));
   const next=rows.map(r=>{const o=old.get(r.kind+"\n"+r.text);if(o)old.delete(r.kind+"\n"+r.text);return {...r,answer:o?o.answer:"",status:"to do",...checkFields(o||{})}});
   const kept=[...old.values()].filter(it=>it.answer.trim());
-  items=[...next,...kept.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:"to do",...checkFields(it)}))];
-  found.textContent=(prose?"We couldn't read the format, so here is each line; edit or delete.":`Found ${p.races.length} races and ${p.measures.length} measures.`)+(kept.length?` Kept ${kept.length} earlier items that already have answers.`:"");
+  oldItems=kept.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:"to do",...checkFields(it)}));
+  items=[...next,...oldItems];
+  found.textContent=prose?"We couldn't read the format, so here is each line; edit or delete.":`Found ${p.races.length} races and ${p.measures.length} measures.`;
   if(p.skipped.length&&!prose)warn.append(noteBox(p.skipped.map(x=>({msg:"Not read; add it by hand if it is a race or measure:",line:x.line}))));
+  if(p.noUrl.length)warn.append(noteBox(p.noUrl.map(line=>({msg:"No web address for the source; ask the chat for the full link:",line}))));
   buildLists(); save();
+  if(oldItems.length){
+    $("ballot-old-msg").textContent=`${oldItems.length} earlier items with answers are not on this new list. Keep them?`;
+    $("ballot-old").hidden=false; announce($("ballot-old-msg").textContent); $("ballot-old-remove").focus();
+  }
 }
 
 $("reset").addEventListener("click",()=>{$("reset-confirm").hidden=false;$("reset-yes").focus()});
@@ -2066,7 +2147,7 @@ $("reset-yes").addEventListener("click",()=>{
   try{localStorage.removeItem(STORE);localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: nothing saved to clear */}
   items=[]; spotShown=[];
   ballotChecked=false; ballotCheckText=""; ballotOriginal=""; ballotSkipped=false; ballotDc.refresh();
-  $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren(); $("ballot-fix-row").hidden=true; $("s3-next-item").hidden=true;
+  $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren(); $("ballot-fix-row").hidden=true; $("s3-next-item").hidden=true; oldItems=[]; $("ballot-old").hidden=true;
   writeState(defaultState()); buildLists(); render();
   $("reset-confirm").hidden=true;
   ["stage-2","stage-3","stage-4"].forEach(id=>$(id).open=false);

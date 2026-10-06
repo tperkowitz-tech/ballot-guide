@@ -2,6 +2,7 @@
 
 Input JSON:
   {"axes": {"A": 3, "B": 2, ...},          # axis letter -> integer weight 1-3
+   "gray": optional [str],                 # the profile's gray-area (torn) topics
    "races": [{"race": str,
               "measure": optional bool,
               "options": [{"name": str,
@@ -17,7 +18,8 @@ Input JSON:
                                          "text": optional str}]}]}]}
 
 "0" is genuinely mixed evidence and counts; "gray" (or gray: true) marks a topic the
-voter is torn on and is left out of the math. Rows sharing an event (explicit `event`,
+voter is torn on and is left out of the math. Gray rows are listed only when "gray" names
+at least one topic; otherwise they are dropped with a warning. Rows sharing an event (explicit `event`,
 else the same normalized source, else the same normalized text) count once per axis. Per
 axis, all funder and endorsement events together count as one entry (k = 1, sign = their
 mean), so donors and endorsers never outweigh one statement, and all questionnaire answers
@@ -183,8 +185,12 @@ def steps(events):
     return out
 
 
-def summarize(opt, axes):
+def summarize(opt, axes, gray_topics=False):
     events, gray, warnings = collapse(opt)
+    # Without torn topics in the profile a gray tag cannot mean "torn": drop it, say so.
+    if gray and not gray_topics:
+        warnings.append(f"{opt.get('name')}: tagged gray, but you listed no topics you are torn on ({len(gray)} not counted).")
+        gray = []
     entries = [e for ev in events for e in ev["entries"]]
     covered = sum(axes[a] for a in {a for a, k, _ in entries if k in OWN})
     cov = covered / sum(axes.values())
@@ -281,14 +287,14 @@ def decide(rows, events, covered, eligible, measure, axes):
     return (name if clear else f"Lean {name}"), None
 
 
-def score_race(race, axes):
+def score_race(race, axes, gray_topics=False):
     errs = validate(race, axes)
     if errs:
         raise ValueError("; ".join(errs))
     opts = race["options"]
     rows, events, covered, warnings = [], [], [], []
     for o in opts:
-        row, evs, cov, warn = summarize(o, axes)
+        row, evs, cov, warn = summarize(o, axes, gray_topics)
         rows.append(row), events.append(evs), covered.append(cov), warnings.extend(warn)
     eligible = [i for i, o in enumerate(opts) if not o.get("red_line")]
     measure = bool(race.get("measure"))
@@ -301,14 +307,14 @@ def score(data):
     out = []
     for race in data["races"]:
         try:
-            out.append(score_race(race, data["axes"]))
+            out.append(score_race(race, data["axes"], bool(data.get("gray"))))
         except ValueError as e:
             raise ValueError(f"{race.get('race')}: {e}") from e
     return out
 
 
 def demo():
-    one = lambda axes, opts, measure=False: score_race({"race": "R", "measure": measure, "options": opts}, axes)
+    one = lambda axes, opts, measure=False, gray=False: score_race({"race": "R", "measure": measure, "options": opts}, axes, gray)
     ev = lambda axis, sign, kind, **kw: {"axis": axis, "sign": sign, "kind": kind, **kw}
     eq4 = {"A": 2, "B": 2, "C": 2, "D": 2}
     # Same fact as 4 rows (same source and date) counts as 1 row.
@@ -383,10 +389,14 @@ def demo():
     # A gray row leaves the score unchanged and is listed.
     g = ev("B", "gray", "record", text="torn topic")
     base = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record")]}])["options"][0]
-    gr = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), g, ev("C", "gray", "stated")]}])["options"][0]
+    gr = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), g, ev("C", "gray", "stated")]}], gray=True)["options"][0]
     assert gr["score"] == base["score"] and gr["gray"] == [g, ev("C", "gray", "stated")]
     flagged = ev("B", "+", "record", gray=True)  # the flag form works too
-    assert one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), flagged]}])["options"][0]["score"] == base["score"]
+    assert one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), flagged]}], gray=True)["options"][0]["score"] == base["score"]
+    # No torn topics in the profile: gray rows are neither scored nor listed, and are reported.
+    r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), g]}])
+    assert (r["options"][0]["score"], r["options"][0]["gray"]) == (base["score"], []), r
+    assert r["warnings"][-1] == "X: tagged gray, but you listed no topics you are torn on (1 not counted).", r
     # Four copies of one record cannot give "strong".
     r = one({"A": 1}, [{"name": "X", "evidence": [ev("A", "+", "record", event="hb1")] * 4}])["options"][0]
     assert (r["events"], r["records"], r["evidence"]) == (1, 1, "thin"), r

@@ -1,9 +1,11 @@
 // Checks the profile and Copy-for-chat text built by tools/kit.js. Run: node tools/kit_test.js
 const assert = require("assert");
 const {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
-  parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
+  mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
   REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl} = require("./kit.js");
-const {parseWeights, countEvidence} = require("./calc.js");
+const {parseWeights, countEvidence, hasGrayTopics} = require("./calc.js");
+// A gray topic typed like a weight never becomes an axis.
+assert.deepStrictEqual(Object.keys(parseWeights(require("./kit.js").calcProfile({...require("./kit.js").defaultState(), mode: "values", axes: [{name: "Housing", meaning: "", weight: 2}], gray: "D=3 policing\nE weight 2"})).weights), ["A"]);
 
 assert.deepStrictEqual(letters(4), ["A", "B", "C", "D"]);
 
@@ -167,6 +169,48 @@ assert.ok(!JSON.stringify(b).includes("District 9"), "DISTRICTS are not kept");
   const a = parseBallot("RACES\nThese are the races for 987 Zebra Lane, Faketown, ZZ 99999:\nYour polling place is 12 Oak St.\nRaces at 55 Elm, Faketown:\n1. U.S. House: A vs. B\nMEASURES\n- Library Levy: raises tax", "55 Elm, Faketown, ZZ");
   assert.deepStrictEqual(a.skipped.map(x => x.line), ["U.S. House: A vs. B", "Library Levy: raises tax"]);
   assert.strictEqual(a.addressLines.length, 3);
+}
+// Address check: real ballot lines pass; streets, ZIPs, PO boxes and the entered address are held back.
+for (const ok of ["District 4 Court Judge: A", "Superior Court, Position 12345: X", "Proposition 50 Way Forward Act",
+  "Appointed in 2019 to the Supreme Court", "Measure 12 | raises the levy", "Seat No. 12345 | A vs B",
+  "Mayor | A vs B | https://vote.example.gov/2026/12345-ballot.pdf"]) assert.ok(!mayHaveAddress(ok, "55 Elm, Faketown, ZZ"), ok);
+for (const bad of ["987 Zebra Lane, Faketown, ZZ 99999", "Your polling place is 12 Oak St", "PO Box 12", "Races at 55 Elm, Faketown:",
+  "Faketown, ZZ 99999", "77 Oak Ave Apt 4", "1600 Pennsylvania Avenue NW, Washington", "Vote at 12 Oak St.",
+  "500 W 2nd St", "500 West 2nd Street, Austin", "1234 NE 5th Ave", "Ballot for 123 Main St Springfield", "Races for 12 Oak St:",
+  "12 Oak St; precinct 4", "ballot at 12 Oak St (precinct 4)", "12 Main Street North", "11 Wall Street New York NY",
+  "33 Maple Drive Anytown", "1 Infinite Loop Cupertino CA", "555 County Road 12", "100 Highway 1", "Springfield 62701",
+  "350 Fifth Avenue", "12 N Main St #4", "12 Oak St | Mayor", "Mayor | lives at 12 Oak St"]) assert.ok(mayHaveAddress(bad, "55 Elm, Faketown, ZZ"), bad);
+// Markdown escapes from a Copy button ("\[", "\|", trailing "\") parse like the plain answer.
+{
+  const esc = ballot.split("\n").map(l => l.replace(/[|*#.\-_[\]]/g, "\\$&") + "\\").join("\n");
+  assert.ok(esc.includes("City Council \\| Position 2"));
+  assert.deepStrictEqual(parseBallot(esc), b);
+}
+// UNVERIFIED rows under RACES/MEASURES are notes, never items; an address-like one is held back.
+{
+  const u = parseBallot("RACES\n- UNVERIFIED: could not open PDF | https://e.org/a.pdf\n- Mayor | Z | UNCONTESTED | https://e.org/b\n"
+    + "| Unverified | Sheriff | ? |\n- unverified could not confirm district for 12 Oak St\nMEASURES\n- UNVERIFIED | Measure 9 | https://e.org/m", "");
+  assert.deepStrictEqual([u.races.length, u.measures.length], [1, 0]);
+  assert.deepStrictEqual(u.unverified, ["UNVERIFIED: could not open PDF | https://e.org/a.pdf", "| Unverified | Sheriff | ? |", "UNVERIFIED | Measure 9 | https://e.org/m"]);
+  assert.deepStrictEqual(u.addressLines, ["unverified could not confirm district for 12 Oak St"]);
+  // Table rows with an address are held back too, not saved as items.
+  const t = parseBallot("RACES\n- Mayor | lives at 12 Oak St | https://a.gov/1\n- Council | A vs B | https://a.gov/2");
+  assert.deepStrictEqual([t.races.length, t.addressLines.length], [1, 1]);
+}
+// A row whose source is a title, not a link, is kept and listed in noUrl.
+{
+  const n = parseBallot("RACES\n- Mayor | Z | UNCONTESTED | source: Ohio Secretary of State\n- Clerk | Y | UNCONTESTED | source: https://e.org/c\nMEASURES\n- Issue 1 | Raises a levy");
+  assert.deepStrictEqual([n.races.length, n.measures.length], [2, 1]);
+  assert.deepStrictEqual(n.noUrl, ["Mayor | Z | UNCONTESTED | source: Ohio Secretary of State", "Issue 1 | Raises a levy"]);
+  assert.deepStrictEqual(b.noUrl, []);
+}
+// The calculator profile carries gray topics only when there are some, and never the address.
+{
+  const cs = Object.assign(defaultState(), {mode: "values", address: "77 Example Rd", red: "bribery"});
+  assert.ok(!hasGrayTopics(calcProfile(cs)) && !calcProfile(cs).includes("77 Example") && !calcProfile(cs).includes("bribery"));
+  cs.gray = "taxes\n";
+  assert.ok(hasGrayTopics(calcProfile(cs)) && calcProfile(cs).endsWith("Gray areas:\n- taxes"));
+  assert.deepStrictEqual(Object.keys(parseWeights(calcProfile(cs)).weights), ["A", "B", "C"]);
 }
 assert.strictEqual(raceText(b.races[0]), "City Council, Position 2: Candidate X vs Candidate Y");
 assert.strictEqual(raceText(b.races[1]), "Mayor: Candidate Z");
