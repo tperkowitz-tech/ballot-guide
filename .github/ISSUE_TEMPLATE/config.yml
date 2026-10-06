@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Use the web kit
+    url: https://tperkowitz-tech.github.io/ballot-guide/
+    about: Build your ballot guide in your browser. No install needed.
+  - name: Voting dates, registration and drop boxes
+    url: https://www.vote.org
+    about: For voting logistics, use your official election office. vote.org can point you there.

@@ -1,0 +1,17 @@
+name: Something does not work
+description: The web kit, calculator, or skill behaves unexpectedly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove your address and any personal details from pasted text."
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do, and what happened?
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser or AI app (and version, if you know it)

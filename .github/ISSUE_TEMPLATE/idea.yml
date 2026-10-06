@@ -1,0 +1,11 @@
+name: Idea or suggestion
+description: Suggest an improvement to the guide, the questions, or the scoring.
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What would make this more useful, clearer or fairer?
+    validations:
+      required: true

@@ -1,52 +1,45 @@
-# ballot-guide
+# Ballot Guide
 
-Build a sourced guide to any US ballot with an AI assistant. It finds the exact ballot for an address, checks records first, then candidates' own questionnaire answers and statements, with donors and endorsements as limited signals, fact-checks ballot measures, and links every claim to a source. It has no politics of its own. It gives a **neutral comparison** of every choice, or, if you want, **scores each choice against values you supply**.
+**Build your own sourced guide to any US ballot, with the AI chat you already use.** It finds the exact races and measures on your ballot, first checks what candidates have *done*, then what they say, fact-checks ballot measures, and links every claim to a source you can open. Free, open source, and not affiliated with any party, campaign or election office.
 
-## Choose your version
+### [→ Start in your browser](https://tperkowitz-tech.github.io/ballot-guide/) (no install, no account)
+
+[![The Ballot Guide web kit](docs/img/web-kit.jpg)](https://tperkowitz-tech.github.io/ballot-guide/)
+
+## How it works
+
+1. **Tell the page about you.** Your address finds your exact ballot. Optionally, list the issues that matter to you.
+2. **Ask the AI to list your ballot.** The page writes the question; you paste it into any AI chat with web search (Gemini, Copilot, Perplexity, ChatGPT, Claude) and paste the answer back.
+3. **Ask about each race and measure.** One short chat per item keeps the AI focused. An optional double-check has a second chat verify each answer against its sources.
+4. **Spot-check a few sources and build your guide.** The page picks links for you to open.
+
+A short ballot takes about 10 to 20 minutes.
+
+## Is it partisan?
+
+No. Party labels, party platforms and party endorsements are never used as evidence. By default you get a **neutral side-by-side comparison** with no scores. If you choose **values match**, choices are scored only against the priorities *you* enter, and every piece of evidence is shown so you can disagree with it. See [how the scores work](SCORING.md).
+
+## Privacy
+
+The web page keeps your progress only in your own browser. Your address goes only into the question that looks up your ballot (and that question's optional double-check), which you paste into an AI chat yourself; that chat service may keep it. Nothing is sent to this project. The page loads fonts from Google, so Google and GitHub, which hosts the page, see a visitor's IP address, never their ballot address.
+
+## Good to know
+
+- It supports your own research; it does not replace it. AI can be wrong, so open the sources, especially for close calls.
+- Dates, deadlines and places to vote come only from your official election office ([vote.org](https://www.vote.org) can point you there).
+- Found a wrong fact or a broken source? [Report it](https://github.com/tperkowitz-tech/ballot-guide/issues/new/choose).
+
+## Use it inside an AI app
 
 | You use | How |
 |---|---|
-| **Any AI chat** (Gemini, Copilot, Perplexity, ChatGPT, Claude, local models) | Open the web kit: https://tperkowitz-tech.github.io/ballot-guide/. A guided flow builds your profile, gives you each prompt to paste, reads the AI's answers back, scores them, and picks sources for you to spot-check. Plain-text version: [`PROMPT-KIT.md`](PROMPT-KIT.md). |
-| **Claude apps** | Download `ballot-guide.skill` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest) and upload it in the Skills section of Claude's settings. |
-| **Claude Code** | Unzip the release `.skill` into `~/.claude/skills/`, or copy `ballot-guide/` from a clone into `~/.claude/skills/ballot-guide/`. |
-| **Codex** | From a clone: `mkdir -p ~/.agents/skills && cp -R ballot-guide ~/.agents/skills/`, restart Codex, then ask `Use $ballot-guide to research my ballot.` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)) |
-| **Other Agent Skills hosts** | Install the shared `ballot-guide/` folder in the host's skills directory. |
+| Any AI chat | The [web kit](https://tperkowitz-tech.github.io/ballot-guide/) or the plain-text [`PROMPT-KIT.md`](PROMPT-KIT.md) |
+| Claude apps | Download `ballot-guide.skill` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest) and upload it in Claude's Skills settings |
+| Claude Code | Unzip the release file into `~/.claude/skills/` |
+| Codex | Copy the [`ballot-guide/`](ballot-guide/) folder to `~/.agents/skills/`, restart Codex, then ask `Use $ballot-guide to research my ballot.` |
 
-One shared [`ballot-guide/`](ballot-guide/) folder contains one entrypoint and [shared rules](ballot-guide/references/rules.md) for the default neutral comparison and opt-in values workflow. The web kit starts in neutral mode. Each host's capabilities and rules apply.
+## For contributors
 
-In regular ChatGPT, use the web kit or paste `PROMPT-KIT.md` with web search enabled; the local `~/.agents/skills/` installation is for Codex and is not loaded automatically by ChatGPT.
+The skill lives in [`ballot-guide/`](ballot-guide/); the web kit is generated from its prompts. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to edit, test (`python3 tools/check.py`) and release.
 
-## What it does
-
-1. **Find the ballot:** districts, the official candidate list, uncontested races, and offices *not* on your ballot. The web kit sends your address only to this step.
-2. **Research each race:** records first (including prior offices, boards and professional work), then published questionnaires, then donors (FEC and state disclosure data, grouped by industry), then issue-group endorsements, then other statements. Party is never used as evidence. Every candidate, including unopposed ones. For races with 5+ candidates you may choose a focus rule that is not about party; excluded candidates are still listed.
-3. **Fact-check each measure:** legal text, official fiscal note, what YES does and what NO means, the strongest argument on each side, funders.
-4. **Verify:** re-open primary sources, especially for close calls. Optional double-check: a second AI chat checks each answer against its sources (Step 8). Recommended, not required.
-5. **Build the guide:** summary, sourced evidence for each race, open items, and links to your official election office.
-
-**Values match (optional):** you list 3 to 6 policy values with weights, topics you are mixed on, and optional red lines. Each choice then gets a fit score and a call. Unopposed candidates get "Vote for", "Your call" or "Consider leaving blank". Scores measure fit with your values, not who is likely to win; viability is shown separately only if you ask.
-
-## About the scores
-
-The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`ballot-guide/scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Each of your priorities gets a position from distinct events: records count 3; one answer to a published questionnaire counts 2, and two or more answers on a priority count 3 together, never more than one record; other statements count 1; and all donors and endorsements together no more than one statement per priority (lines from one source count once unless given distinct event ids). Party labels, platforms and party endorsements are never used. The score averages only the priorities with evidence, and a range (for example "62, could be 16–91") shows how far the priorities without the candidate's own evidence (records, answers or statements) could move it, so a missing record never reads as a neutral 50; with no evidence at all there is no score. Every score shows its coverage (how much of your priorities the evidence reaches) and an evidence level (strong, moderate or thin). A call that one event could flip is a toss-up that says what it turns on, a comparison where one side has much less evidence is labeled "(uneven evidence)" and is at most a lean, no firm call (a clear winner, "Vote for" or "Consider leaving blank" for an unopposed candidate, or a plain YES or NO on a measure) is made without at least one record, otherwise it is a lean or "Your call", and a crossed deal-breaker takes a choice out of the call while still showing its score.
-
-## Limits
-
-- It supports your own research; it does not replace it.
-- Funders are a weak signal. Many groups give to every likely winner.
-- Dates, deadlines and places to vote come only from your official election office.
-
-## Layout
-
-- `ballot-guide/` — installable skill: entrypoint, shared rules, prompts, calculator, host metadata and license.
-- `tools/` — kit generator, checks and release packaging.
-- `docs/index.html` and `PROMPT-KIT.md` — generated web and chat kits.
-- `dist/ballot-guide.skill` — generated archive with a top-level `ballot-guide/` folder.
-
-## Maintainers
-
-`ballot-guide/references/prompts.md` is the source for the step prompts. After editing it, `tools/page.template.html`, `tools/kit.js` or `tools/calc.js`, run `python3 tools/build_kit.py` to regenerate `docs/index.html` and `PROMPT-KIT.md`, then `node tools/calc_test.js`, `node tools/kit_test.js` and `python3 ballot-guide/scripts/score.py --demo`. Keep `ballot-guide/scripts/score.py` and `tools/calc.js` in step. Run `python3 tools/check.py` for freshness, tests and privacy checks, then `python3 tools/package.py` to build `dist/ballot-guide.skill`. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## License
-
-MIT. See [LICENSE](LICENSE).
+MIT licensed. See [LICENSE](LICENSE).
