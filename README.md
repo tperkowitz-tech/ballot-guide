@@ -8,10 +8,13 @@ Build a sourced guide to any US ballot with an AI assistant. It finds the exact 
 |---|---|
 | **Any AI chat** (Gemini, Copilot, Perplexity, ChatGPT, Claude, local models) | Open the web kit: https://tperkowitz-tech.github.io/ballot-guide/. A guided flow builds your profile, gives you each prompt to paste, reads the AI's answers back, scores them, and picks sources for you to spot-check. Plain-text version: [`PROMPT-KIT.md`](PROMPT-KIT.md). |
 | **Claude apps** | Download `ballot-guide.skill` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest) and upload it in the Skills section of Claude's settings. |
-| **Claude Code** | Unzip the release `.skill` into `~/.claude/skills/`, or from a clone: `mkdir -p ~/.claude/skills/ballot-guide && cp -R SKILL.md references scripts ~/.claude/skills/ballot-guide/` |
-| **Codex** | From a clone: `mkdir -p ~/.agents/skills && cp -R codex/ballot-guide ~/.agents/skills/`, restart Codex, then ask `Use $ballot-guide to research my ballot.` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)) |
+| **Claude Code** | Unzip the release `.skill` into `~/.claude/skills/ballot-guide/`, or copy `ballot-guide/` from a clone into `~/.claude/skills/ballot-guide/`. |
+| **Codex** | From a clone: `mkdir -p ~/.agents/skills && cp -R ballot-guide ~/.agents/skills/`, restart Codex, then ask `Use $ballot-guide to research my ballot.` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)) |
+| **Other Agent Skills hosts** | Install the shared `ballot-guide/` folder in the host's skills directory. |
 
-The web kit starts in neutral mode; the Claude skill offers values matching for full guides and a neutral explainer otherwise. The Codex version is neutral-only: it compares choices with sources but does not collect values or produce scores.
+One shared [`ballot-guide/`](ballot-guide/) folder contains the original entrypoint and a [neutral research reference](ballot-guide/references/neutral-research.md). The web kit starts in neutral mode. Each host's capabilities and rules apply.
+
+In regular ChatGPT, use the web kit or paste `PROMPT-KIT.md` with web search enabled; the local `~/.agents/skills/` installation is for Codex and is not loaded automatically by ChatGPT.
 
 ## What it does
 
@@ -25,7 +28,7 @@ The web kit starts in neutral mode; the Claude skill offers values matching for 
 
 ## About the scores
 
-The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Thin evidence can produce extreme scores; check the confidence label.
+The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`ballot-guide/scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Thin evidence can produce extreme scores; check the confidence label.
 
 ## Limits
 
@@ -35,7 +38,7 @@ The score is a reproducible **summary of the evidence collected and how it was t
 
 ## Maintainers
 
-`references/prompts.md` is the source for the step prompts. After editing it, `tools/page.template.html`, `tools/kit.js` or `tools/calc.js`, run `python3 tools/build_kit.py` to regenerate `docs/index.html` and `PROMPT-KIT.md`, then `node tools/calc_test.js`, `node tools/kit_test.js` and `python3 scripts/score.py --demo`. Keep `scripts/score.py` and `tools/calc.js` in step.
+`ballot-guide/references/prompts.md` is the source for the step prompts. After editing it, `tools/page.template.html`, `tools/kit.js` or `tools/calc.js`, run `python3 tools/build_kit.py` to regenerate `docs/index.html` and `PROMPT-KIT.md`, then `node tools/calc_test.js`, `node tools/kit_test.js` and `python3 ballot-guide/scripts/score.py --demo`. Keep `ballot-guide/scripts/score.py` and `tools/calc.js` in step. Run `python3 tools/check.py` for freshness, tests and privacy checks, then `python3 tools/package.py` to build `dist/ballot-guide.skill`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
