@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ballot Guide"
+  short_description: "Research ballots and compare choices with sources"
+  default_prompt: "Use $ballot-guide to research my ballot and provide a neutral, sourced comparison of its candidates and measures."
