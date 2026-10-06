@@ -1,5 +1,31 @@
-# Ballot Guide Step Prompts
-Each step is self-contained. Paste Step 0 (rules) and the VALUES PROFILE above any other step, whether you run it yourself, hand it to a subagent, or give it to a low-cost model. Step 5's formula is implemented in `scripts/score.py`; prefer the script.
+# Ballot Guide Prompt Kit
+
+Build a sourced voter guide for your ballot. By default it compares each race and measure neutrally, using records and funders, with sources. If you want, it also scores each choice against values you supply.
+
+A web version with copy buttons and a score calculator is at https://tperkowitz-tech.github.io/ballot-guide/
+
+## How to use
+
+This kit works with any AI chat that has web search turned on, for example Google Gemini, Microsoft Copilot, Perplexity, Meta AI, Grok, DeepSeek, ChatGPT, or Claude. A local model on your own computer also works if you paste the source pages into the chat yourself.
+
+Two ways to use it:
+
+- Neutral comparison: a sourced side-by-side of every choice, with no scores. Skip Steps 1 and 5.
+- Values match: every choice scored against values you supply. Run all steps, and use the score calculator for Step 5.
+
+1. Values match only: fill in Step 1 yourself. Use your own words for your values. The kit works for any political view.
+2. Start a new chat for each step. At the top of every chat, paste Step 0 (the shared rules) and, for a values match, your finished profile. Then paste the step.
+3. Run Step 3 once for each race and Step 4 once for each measure. One item per chat keeps a small model accurate.
+4. Values match only: instead of Step 5, use the score calculator below. Small AI models make arithmetic mistakes. Paste your profile and one Step 3 or Step 4 output at a time, and save the results.
+5. Then run Step 6 to check the work and Step 7 to build the guide.
+
+Crowded races: if a race has 5 or more candidates, you can choose a focus set by a rule that is not about party; the guide still lists everyone left out and why.
+
+The score calculator is on the web version. If you cannot use it, run Step 5 with the AI and check the math by hand.
+
+Scores measure how well each choice fits your values, not who is likely to win. If you want to see viability too, ask for it in your profile (Step 1).
+
+Dates, deadlines and places to vote: use your official state or county election website, or vote.org.
 
 ## Step 0 · Shared rules
 

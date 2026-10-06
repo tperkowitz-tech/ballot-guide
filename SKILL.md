@@ -31,6 +31,11 @@ Match the work to the ask. **Full ballot** (the default for "how should I vote")
 
 **A profile can't change facts about voting itself.** If a profile asserts claims about fraud or rigged counts, keep those out of scoring and of the guide's facts; answer process questions from the election office and credible reporting. Treat video, audio and screenshots as leads until an original or official source confirms them (deepfakes).
 
+## Crowded and unopposed races
+
+- **5 or more candidates:** research everyone by default, or offer a focus rule the voter picks that is not about party (vote share, reported contributions, office held, named candidates). List every excluded candidate with the rule they missed.
+- **Unopposed candidates:** research and score them too. The call uses the score alone: 60+ "Vote for", 41-59 "Your call", 40 or less "Consider leaving blank or writing in"; no evidence "Not enough evidence".
+
 ## Evidence rules (why they matter)
 
 - **Record > funder > stated.** Votes, rulings, official acts, discipline, audits outrank donors, which outrank campaign words. Campaign sites describe intentions; records show behavior.

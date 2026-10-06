@@ -65,6 +65,13 @@ def score(data):
             out.append({"race": race["race"], "call": "Not enough evidence",
                         "options": [{"name": n, "score": s, "confidence": c} for n, s, c in opts]})
             continue
+        if len(opts) == 1:  # unopposed: vote or leave blank, judged on its own score
+            n, s, c = opts[0]
+            call = ("Not enough evidence" if s is None else f"Vote for {n}" if s >= 60
+                    else "Your call" if s >= 41 else "Consider leaving blank or writing in")
+            out.append({"race": race["race"], "call": call,
+                        "options": [{"name": n, "score": s, "confidence": c}]})
+            continue
         opts.sort(key=lambda o: o[1], reverse=True)
         gap = opts[0][1] - opts[1][1] if len(opts) > 1 else 100
         top = opts[0][0]
@@ -94,6 +101,13 @@ def demo():
         {"name": "Q", "evidence": []}]}]}
     r = score(flood)[0]
     assert r["options"][0]["score"] == 60 and r["call"] == "Not enough evidence", r
+    # Unopposed candidates get an absolute call.
+    solo = lambda ev: score({"axes": {"A": 1}, "races": [{"race": "U", "options": [
+        {"name": "Z", "evidence": ev}]}]})[0]["call"]
+    assert solo([{"axis": "A", "sign": "+", "kind": "record"}]) == "Vote for Z"
+    assert solo([{"axis": "A", "sign": "0", "kind": "record"}]) == "Your call"
+    assert solo([{"axis": "A", "sign": "-", "kind": "record"}]) == "Consider leaving blank or writing in"
+    assert solo([]) == "Not enough evidence"
     print(json.dumps(result, indent=2))
     print("self-check OK")
 

@@ -8,7 +8,7 @@ The skill has no politics of its own. You supply the values; it supplies evidenc
 
 1. **Values profile:** 3 to 6 policy values with weights, topics where you are mixed, optional red lines.
 2. **Find the ballot:** districts, the official candidate list, uncontested races, and what is *not* on your ballot.
-3. **Research each race:** records first, then funders (FEC, state disclosure data), then statements. Every candidate, not only front-runners.
+3. **Research each race:** records first, then funders (FEC, state disclosure data), then statements. Every candidate by default, not only front-runners; for races with 5+ candidates you can pick a focus rule that is not about party, and excluded candidates are still listed.
 4. **Fact-check each measure:** legal text, official fiscal note, what YES does and what NO means, strongest arguments on each side, funders.
 5. **Score** with `scripts/score.py` (formula below).
 6. **Verify:** re-check primary sources, especially for close calls.
@@ -29,7 +29,7 @@ No evidence gives "Not enough evidence", not a free 50. A documented red-line vi
 - **Codex:** use the separate version in [`codex/ballot-guide/`](codex/ballot-guide/). It researches the exact ballot, compares every candidate using sourced records, funding and statements, and explains measures neutrally. It does **not** collect political values profiles, calculate personal match scores, rank choices, or recommend votes. Install it with the commands below, then invoke `$ballot-guide`. See the [official Codex skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery and installation details.
 - **Claude Code:** copy this folder to `~/.claude/skills/ballot-guide/`.
 - **Claude apps:** download `ballot-guide.skill` from the latest release and upload it in the Skills section of Claude's settings.
-- **Any AI model:** `references/prompts.md` holds eight self-contained step prompts. Paste Step 0 (rules) and your profile above each step. They are written for low-cost models.
+- **Any AI chat (Gemini, Copilot, Perplexity, ChatGPT, local models):** use the web kit at https://tperkowitz-tech.github.io/ballot-guide/ (profile form, copy-for-chat buttons, score calculator) or `PROMPT-KIT.md`. `references/prompts.md` holds the eight self-contained step prompts. Paste Step 0 (rules) and your profile above each step. They are written for low-cost models.
 
 The scoring workflow and formula above describe the original Claude skill. The Codex version is self-contained and does not use `scripts/score.py` or `references/prompts.md`.
 
