@@ -4,6 +4,8 @@
 
 ### [→ Start in your browser](https://tperkowitz-tech.github.io/ballot-guide/) (no install, no account)
 
+[See sample guides](https://tperkowitz-tech.github.io/ballot-guide/sample.html) researched with this tool on real ballots.
+
 [![The Ballot Guide web kit](docs/img/web-kit.jpg)](https://tperkowitz-tech.github.io/ballot-guide/)
 
 ## How it works

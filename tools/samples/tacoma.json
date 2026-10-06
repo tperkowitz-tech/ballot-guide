@@ -1,0 +1,501 @@
+{
+  "place": "Tacoma, Washington (Pierce County)",
+  "test_address_label": "Tacoma Municipal Building (public building)",
+  "election": "2026-11-03 General",
+  "researched": "2026-10-06",
+  "official_office": {
+    "name": "Pierce County Auditor Elections",
+    "url": "https://www.piercecountywa.gov/8887/Elections"
+  },
+  "ballot": {
+    "races": [
+      {
+        "office": "U.S. Representative",
+        "position": "District 6",
+        "candidates": "Emily Randall (Prefers Democratic Party) | Teresa Fox (Prefers Republican Party)",
+        "status": "CONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "State Representative",
+        "position": "Legislative District 27, Position 1",
+        "candidates": "Laurie Jinkins (Prefers Democratic Party) | Carole Sue Braaten (Prefers Republican Party)",
+        "status": "CONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "State Representative",
+        "position": "Legislative District 27, Position 2",
+        "candidates": "Jake Fey",
+        "status": "UNCONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "Supreme Court Justice",
+        "position": "Position 1 (unexpired term)",
+        "candidates": "Colleen Melody | Scott Edwards",
+        "status": "CONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "Supreme Court Justice",
+        "position": "Position 3",
+        "candidates": "David Stevens | Jaime Michelle Hawk",
+        "status": "CONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "Supreme Court Justice",
+        "position": "Position 4",
+        "candidates": "Ian Birk | Sean O'Donnell",
+        "status": "CONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "Supreme Court Justice",
+        "position": "Position 5 (unexpired term)",
+        "candidates": "Theo Angelis | Dave Larson",
+        "status": "CONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "Supreme Court Justice",
+        "position": "Position 7",
+        "candidates": "Debra L. Stephens | Todd A. Bloom",
+        "status": "CONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "Court of Appeals Judge",
+        "position": "Division 2, District 1, Position 2",
+        "candidates": "Meng Li Che",
+        "status": "UNCONTESTED",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "office": "Pierce County Prosecuting Attorney",
+        "position": "countywide",
+        "candidates": "Coreen E. Schnepf | Bryan Chushcoff",
+        "status": "CONTESTED",
+        "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3391098"
+      },
+      {
+        "office": "Pierce County Auditor",
+        "position": "countywide",
+        "candidates": "Linda Farmer | Damon Townsend",
+        "status": "CONTESTED",
+        "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/689027"
+      },
+      {
+        "office": "Tacoma Municipal Court Judge",
+        "position": "Positions 1, 2, 3",
+        "candidates": "Dee A. Sonntag (Pos 1) | Sergio C. Flores (Pos 2) | Steven J. Krupa (Pos 3)",
+        "status": "UNVERIFIED",
+        "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3390953"
+      }
+    ],
+    "measures": [
+      {
+        "name": "Initiative Measure IP26-645",
+        "summary": "Official ballot title: Initiative Measure No. IP26-645 concerns state and local taxes. This measure would repeal a 9.9% tax on annual individual income over $1,000,000; prohibit taxes measured by individual income and taxes on individual income or the receipt of individual income; and define “income.” This measure would decrease funding for public K-12 education, higher education (including universities and community colleges), and human services (primarily healthcare). Should this measure be enacted into law?",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "name": "Initiative Measure IL26-001",
+        "summary": "Repeals amendments to the statute listing rights of parents and guardians of public-school children and re-enacts the law as originally enacted by Initiative to the Legislature 2081 (per the pamphlet summary page).",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      {
+        "name": "Initiative Measure IL26-638",
+        "summary": "Statewide initiative on the November 2026 ballot (sex verification requirements for female school sports per SOS listing); official summary page not read in detail.",
+        "source": "https://www.sos.wa.gov/node/12667"
+      }
+    ],
+    "unverified": [
+      "Pierce County Council district for the test address (Tacoma is split across districts) and whether that district is up in 2026; the county council seats on the 2026 ballot are Districts 1, 5 and 7 per an aggregator (The Ballot Brief), not confirmed from the county.",
+      "Pierce County Superior Court judge races, Pierce County District Court positions (an aggregator and PDC data disagree on Position 5 candidates), and Tacoma Municipal Court contests: PDC lists three Tacoma Municipal Court candidates but contested status is unconfirmed.",
+      "Pierce County charter amendments (a Pierce County page reportedly lists seven on the Nov 3, 2026 ballot) and any City of Tacoma measures or other local districts (school, fire, port): the county Elections site and local voters' pamphlet returned 403 to automated access and could not be opened.",
+      "Congressional and legislative districts came from the U.S. Census Bureau geocoder (CD 6, LD 27 as of its current boundary layers), not the VoteWA address lookup.",
+      "Pierce County Auditor candidate list rests on PDC data and an aggregator; the official county sample ballot could not be opened.",
+      "Pierce County Prosecuting Attorney candidate list (Coreen E. Schnepf, Bryan Chushcoff): from PDC registrations only (both shown on the general ballot); not confirmed on the county sample ballot.",
+      "Pierce County Auditor: PDC also lists Mitchel (Mitch) Townsend as a 2026 County Auditor candidate shown on the general ballot; not reconciled with the two names listed here."
+    ]
+  },
+  "gray": [],
+  "races": [
+    {
+      "race": "U.S. Representative, District 6 (2-year term)",
+      "summary": "Incumbent Emily Randall (Prefers Democratic Party) and challenger Teresa Fox (Prefers Republican Party) are the two candidates on the general ballot.",
+      "turns_on": "Check how each candidate's stated priorities compare with the one incumbent record available (House votes since January 2025); the challenger has no legislative record.",
+      "options": [
+        {
+          "name": "Emily Randall (Prefers Democratic Party)",
+          "evidence": [
+            {
+              "axis": "Taxes and budget",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://clerk.house.gov/Votes/2025190",
+              "date": "2025-07-03",
+              "text": "H.R. 1 (the 2025 budget reconciliation act) final passage, roll call 190, July 3, 2025: passed 218-214. Randall voted No.",
+              "event": "HR1-final-2025",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Sports eligibility",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://clerk.house.gov/Votes/202512",
+              "date": "2025-01-14",
+              "text": "H.R. 28 (Protection of Women and Girls in Sports Act) passage, roll call 12, January 14, 2025: passed 218-206, 1 present. Randall voted No.",
+              "event": "HR28-passage-2025",
+              "lean": {
+                "P": "+"
+              }
+            },
+            {
+              "axis": "Health care",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she says she held town halls on proposed Medicaid cuts and opposes them.",
+              "event": "randall-medicaid",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Federal funding",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she reports securing nearly $18 million in federal funding for community projects across the district's six counties.",
+              "event": "randall-earmarks"
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.fec.gov/data/candidate/H4WA06117/?cycle=2026",
+              "date": "2026-07-15",
+              "text": "FEC 2026 cycle through 2026-07-15: $1,195,246.70 raised, of which $876,066.66 from individuals and $311,706.07 from other committees; $981,487.55 spent; $241,630.83 cash on hand.",
+              "event": "randall-fec-2026"
+            }
+          ]
+        },
+        {
+          "name": "Teresa Fox (Prefers Republican Party)",
+          "evidence": [
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she says she would support local law enforcement and first responders and address homelessness and drug crises.",
+              "event": "fox-public-safety",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Economy and natural resources",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she lists maritime industries, timber, naval strength and technology jobs as priorities and favors balanced budgets and 'science-based stewardship' of forests.",
+              "event": "fox-economy"
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.fec.gov/data/candidate/H6WA06286/",
+              "date": "2026-07-15",
+              "text": "FEC 2026 cycle through 2026-07-15: $27,615.02 raised; $24,778.90 spent; $2,836.12 cash on hand; $12,343.78 debts; includes $7,515.00 in candidate loans.",
+              "event": "fox-fec-2026"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "State Representative, Legislative District 27, Position 1 (2-year term)",
+      "summary": "Incumbent Laurie Jinkins (Prefers Democratic Party) and Carole Sue Braaten (Prefers Republican Party) are the two candidates on the general ballot.",
+      "turns_on": "Check how each candidate's pamphlet priorities compare with Jinkins' 2025 final-passage votes; Braaten has no legislative record.",
+      "options": [
+        {
+          "name": "Laurie Jinkins (Prefers Democratic Party)",
+          "evidence": [
+            {
+              "axis": "Housing",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://wslwebservices.leg.wa.gov/LegislationService.asmx/GetRollCalls?biennium=2025-26&billNumber=1217",
+              "date": "2025-04-27",
+              "text": "EHB 1217 (limits on rent and fee increases, notice rules, tenant protections) House final passage as recommended by the conference committee, April 27, 2025: 54-44. Jinkins voted Yea. (Earlier House passage, March 10, 2025: 53-42, Jinkins Yea.)",
+              "event": "EHB1217-final-2025",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://wslwebservices.leg.wa.gov/LegislationService.asmx/GetRollCalls?biennium=2025-26&billNumber=1163",
+              "date": "2025-04-22",
+              "text": "E2SHB 1163 (requirements for firearm purchase, transfer and possession) House final passage as amended by the Senate (concurrence), April 22, 2025: 57-39. Jinkins voted Yea. (Earlier House passage, March 8, 2025: 58-38, Jinkins Yea.)",
+              "event": "E2SHB1163-final-2025",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Taxes",
+              "sign": "0",
+              "kind": "record",
+              "source": "https://wslwebservices.leg.wa.gov/LegislationService.asmx/GetRollCalls?biennium=2025-26&billNumber=5813",
+              "date": "2025-04-23",
+              "text": "ESSB 5813 (new rate structure for the capital gains tax and estate tax) final passage as amended by the House, April 23, 2025: 53-45. Jinkins voted Yea.",
+              "event": "ESSB5813-final-2025",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Education and housing",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she lists K-12 and affordable housing investments, health care and behavioral health services, and tax-system changes as accomplishments.",
+              "event": "jinkins-pamphlet",
+              "lean": {
+                "E": "+"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3321392",
+              "date": "2026",
+              "text": "PDC 2026 campaign summary: $216,725.44 in contributions, $283,517.53 in expenditures, $134,265.11 carried forward.",
+              "event": "jinkins-pdc-2026"
+            }
+          ]
+        },
+        {
+          "name": "Carole Sue Braaten (Prefers Republican Party)",
+          "evidence": [
+            {
+              "axis": "Taxes",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she lists a balanced budget each year and no income tax among her priorities.",
+              "event": "braaten-taxes",
+              "lean": {
+                "E": "-"
+              }
+            },
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she lists prioritizing public safety, supporting law enforcement and stopping drug trafficking among her priorities.",
+              "event": "braaten-public-safety",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Elections",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "In her voters' pamphlet statement she lists voter identification and electing the county Sheriff among her priorities.",
+              "event": "braaten-elections",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3395034",
+              "date": "2026",
+              "text": "PDC lists her campaign under mini reporting, so no contribution or expenditure totals are shown; she is shown as qualified for the general election.",
+              "event": "braaten-pdc-2026"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "Pierce County Prosecuting Attorney (nonpartisan)",
+      "summary": "Coreen Schnepf, the office's Chief Criminal Deputy, and Bryan Chushcoff, a retired Pierce County Superior Court judge, are running for an open seat; the incumbent is not seeking re-election.",
+      "turns_on": "Check which background (prosecutor or judge) and which stated plan for office staffing and priorities better fits what you want from the office; neither candidate has held the office.",
+      "options": [
+        {
+          "name": "Coreen Schnepf",
+          "evidence": [
+            {
+              "axis": "Public safety",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.coreenforprosecutor.com/",
+              "date": "2026",
+              "text": "Her campaign site lists prosecuting violent crime, and a focus on stolen vehicles and organized retail theft, as priorities, with over 20 years of prosecuting experience.",
+              "event": "schnepf-priorities",
+              "lean": {
+                "P": "-"
+              }
+            },
+            {
+              "axis": "Office management",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.coreenforprosecutor.com/",
+              "date": "2026",
+              "text": "Her campaign site proposes a digital transformation of the office and lists current Prosecutor Mary Robnett among her supporters.",
+              "event": "schnepf-office"
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3391098",
+              "date": "2026",
+              "text": "PDC 2026 campaign summary: $95,488.60 in contributions and $31,251.39 in expenditures.",
+              "event": "schnepf-pdc-2026"
+            }
+          ]
+        },
+        {
+          "name": "Bryan Chushcoff",
+          "evidence": [
+            {
+              "axis": "Office staffing",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.bryanforjustice.com/",
+              "date": "2026",
+              "text": "His campaign site lists mentoring new attorneys, funding to retain experienced prosecutors, and reorganizing the office for accountability as priorities.",
+              "event": "chushcoff-staffing"
+            },
+            {
+              "axis": "Court administration",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.bryanforjustice.com/",
+              "date": "2026",
+              "text": "His campaign site cites 28 years as a Superior Court judge and describes court changes he supported, including translated forms and an electronic court order system.",
+              "event": "chushcoff-court-record"
+            },
+            {
+              "axis": "Campaign finance",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3391226",
+              "date": "2026",
+              "text": "PDC 2026 campaign summary: $25,706.75 in contributions and $7,767.57 in expenditures.",
+              "event": "chushcoff-pdc-2026"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "race": "Initiative Measure IP26-645 (taxes on individual income)",
+      "measure": true,
+      "summary": "IP26-645 would repeal the 9.9% tax on annual individual income over $1,000,000 enacted in 2026 and prohibit state and local taxes on individual income.",
+      "turns_on": "Whether the revenue the tax would raise is worth more to you than the measure's broader ban on income taxes, given the state's $11.4 billion revenue-loss estimate over fiscal years 2027-2031.",
+      "yes_means": "A yes vote repeals the 9.9% tax on individual income over $1,000,000 before it begins in 2028 and prohibits taxes measured by individual income (Attorney General explanatory statement, https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf).",
+      "no_means": "A no vote leaves the 2026 law (ESSB 6346) in place, so the 9.9% tax on individual income over $1,000,000 begins in calendar year 2028 (Attorney General explanatory statement, https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf).",
+      "fiscal": "The Office of Financial Management estimates a state revenue loss of $11,432,414,000 over fiscal years 2027-2031, mainly from the general fund, with no impact on local revenue (https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf).",
+      "for": {
+        "text": "Argument for, written by Chris Gildon and others: Washingtonians have rejected an income tax ten times, and the measure 'restores your right to decide'.",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      "against": {
+        "text": "Argument against, written by the Washington Education Association, Washington State Labor Council and others: the measure cuts billions for education and healthcare and benefits those earning over $1 million.",
+        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+      },
+      "options": [
+        {
+          "name": "YES on IP26-645",
+          "evidence": [
+            {
+              "axis": "Taxes",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "Official ballot title (voters' pamphlet): \"Initiative Measure No. IP26-645 concerns state and local taxes. This measure would repeal a 9.9% tax on annual individual income over $1,000,000; prohibit taxes measured by individual income and taxes on individual income or the receipt of individual income; and define “income.” This measure would decrease funding for public K-12 education, higher education (including universities and community colleges), and human services (primarily healthcare). Should this measure be enacted into law?\"",
+              "event": "IP645-yes",
+              "lean": {
+                "E": "-"
+              }
+            },
+            {
+              "axis": "State budget",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "Office of Financial Management fiscal impact statement: estimated state revenue loss of $11,432,414,000 over state fiscal years 2027-2031; $3.108 billion in FY2029, $4.432 billion in FY2030, $3.892 billion in FY2031.",
+              "event": "IP645-fiscal"
+            },
+            {
+              "axis": "Campaign finance (YES)",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/committees/co-2026-42237",
+              "date": "2026",
+              "text": "PDC: Vote Yes Repeal the Income Tax reports $1,586,970.00 in contributions and $269,085.14 in expenditures; Let's Go Washington (Sponsored by Brian Heywood), registered for IL26-001, IL26-638 and IL26-645, reports $3,876,110.50 in contributions and $3,613,312.13 in expenditures across all three measures.",
+              "event": "IP645-finance-yes"
+            },
+            {
+              "axis": "Campaign finance (NO)",
+              "sign": "0",
+              "kind": "funder",
+              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/committees/co-2026-42211",
+              "date": "2026",
+              "text": "PDC: No on 645 reports $11,522,533.97 in contributions and $429,686.81 in expenditures; Millionaire's Tax Washington (against) reports $243,799.00 in contributions and $219,039.23 in expenditures.",
+              "event": "IP645-finance-no"
+            },
+            {
+              "axis": "Arguments",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf",
+              "date": "2026",
+              "text": "The pamphlet printed an argument for (Gildon and others) and an argument against (Washington Education Association, Washington State Labor Council and others), each with a rebuttal; the argument against names one YES-side funder.",
+              "event": "IP645-arguments"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    "Local voters' pamphlet and sample ballot from piercecountywa.gov were blocked (HTTP 403 / Cloudflare check), so county and city items are incomplete; the state/federal list comes from the official Washington voters' pamphlet (Pierce edition).",
+    "No local measure was researched because none could be confirmed from an official source; only one measure (IP26-645) was researched, so 4 items instead of 5.",
+    "Prosecutor race: no voted or decided records found for either candidate from sources I could open; both candidates' items are campaign-site statements and PDC totals. No League of Women Voters or Vote411 questionnaire was found.",
+    "Teresa Fox and Carole Sue Braaten have no legislative record; Braaten has no PDC totals.",
+    "FEC figures run through 2026-07-15 (latest report in the FEC API when checked); PDC figures are the 2026 campaign summary dataset at the time checked.",
+    "Measure funding is committee-level; top donors were not listed."
+  ]
+}
