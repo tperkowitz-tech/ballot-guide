@@ -49,8 +49,19 @@ function parseWeights(text) {
 // Chats reformat the requested plain text: bold, bullets, numbered lists, headings, tables.
 // Strip that dressing so a line reads the same however the chat styled it. Copy buttons that
 // give Markdown source escape punctuation ("\[A\]", "\|") and end lines with "\"; undo that first.
+// ChatGPT renders a pasted "\[A\]" as math, and its Copy button then gives "$A$$+$$RECORD$";
+// those tags at a line start (after any bullet) read as "[A][+][RECORD]". kit.js runs cleanMd on
+// stored answers before copying them, so neither form is pasted back into a chat.
+function cleanMd(text) {
+  return String(text).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/[^\S\r\n]*\\+[^\S\r\n]*$/gm, "")
+    .replace(/^([^\S\r\n]*(?:(?:[-*•_]|\d+[.)])[^\S\r\n]*)*)((?:\$[^$\r\n]+\$){2,})/gm, (all, pre, run) => {
+      // Only tag-like runs: a letter or topic first ("$5$$10$ fee" stays), and a kind or a sign.
+      const t = run.slice(1, -1).split("$$");
+      return /^\s*[A-Za-z]/.test(t[0]) && t.some(x => kindOf(x) || validSign(normSign(x))) ? pre + t.map(x => `[${x}]`).join("") : all;
+    });
+}
 function normLine(raw) {
-  return String(raw).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/\s*\\+\s*$/, "")
+  return cleanMd(raw)
     .replace(/\*\*|__|`/g, "").trim()
     .replace(/^#+\s*/, "")
     .replace(/^(?:[-*•]\s*|\d+[.)]\s+)+/, "")
@@ -91,6 +102,9 @@ function sourceAndDate(rest) {
 // A line that looks like it meant to be evidence; used so nothing is dropped without a warning.
 const LOOKS_LIKE_EVIDENCE = /\b(RECORD|QUESTIONNAIRE|STATED|FUNDER|ENDORSEMENT)\b|\[\s*[A-Za-z]\s*\]/;
 const TABLE_RULE = /^\|[\s|:-]+\|?$/;
+// "[A][+][RECORD] 2024: UNVERIFIED ..." is a placeholder the prompt asks for, not a fact.
+const UNCONFIRMED = /^(?:\d{4}(?:-\d{2}-\d{2})?\s*:?\s*)?UNVERIFIED\b/i;
+const NEUTRAL_ANSWER = "This answer was written for a neutral comparison. Copy the question again (it now asks for your priorities' letters) and paste the new answer.";
 const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
@@ -100,6 +114,12 @@ const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRON
 function parseResearch(text, weights, neutral) {
   const form = neutral ? "[TOPIC][0][RECORD]" : "[A][+][RECORD]";
   const options = [], errors = [], warnings = [];
+  // Values mode: an answer whose every axis is a topic word ("Housing", not "AA", "Axis A" or
+  // "A1", which are mistyped letters) was written for neutral mode; one message replaces the
+  // per-line errors on its topic lines.
+  const axisErrs = new Set();
+  let otherAxes = 0, topicAxes = 0;
+  const isTopic = a => (a.match(/[A-Za-z]/g) || []).length >= 3 && !/\b[A-Za-z]\b|\d/.test(a);
   let kind = null, name = "", cur = null, section = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = normLine(raw);
@@ -159,9 +179,17 @@ function parseResearch(text, weights, neutral) {
     if (!ev || (isTable && !kindOf(ev.kind))) {
       // A table row with a one-letter axis or a readable sign was meant as evidence: warn, never drop silently.
       const meant = isTable && ev && (/^[A-Za-z]$/.test(ev.axis) || validSign(normSign(ev.sign)));
+      if (/^\[\s*[A-Za-z]\s*\]/.test(line)) otherAxes++; // a mistyped values line: not a neutral answer
       if (meant || LOOKS_LIKE_EVIDENCE.test(line) || (!isTable && line.startsWith("["))) {
         errors.push({line, msg: `Could not read this evidence line (expected the form ${form}); skipped.`});
       }
+      continue;
+    }
+    const topic = isTopic(ev.axis);
+    if (topic) topicAxes++; else otherAxes++;
+    if (UNCONFIRMED.test(ev.rest)) {
+      warnings.push(`Not confirmed by the chat; not counted: ${line}`);
+      if (cur) cur.lines--;
       continue;
     }
     const axis = ev.axis.toUpperCase(), sign = neutral ? "0" : normSign(ev.sign), k = kindOf(ev.kind);
@@ -170,7 +198,12 @@ function parseResearch(text, weights, neutral) {
     if (!validSign(sign)) bad.push(`sign "${ev.sign}" (use + 0 - gray)`);
     if (!k) bad.push(`kind "${ev.kind}" (use RECORD, QUESTIONNAIRE, STATED, FUNDER or ENDORSEMENT)`);
     if (!cur) bad.push("no CANDIDATE: or MEASURE: line above it");
-    if (bad.length) { errors.push({line, msg: "Skipped: " + bad.join("; ") + "."}); continue; }
+    if (bad.length) {
+      const e = {line, msg: "Skipped: " + bad.join("; ") + "."};
+      if (!neutral && topic) axisErrs.add(e);
+      errors.push(e);
+      continue;
+    }
     const row = {axis, sign, kind: k, ...sourceAndDate(ev.rest), text: ev.rest};
     if (ev.event) row.event = ev.event;
     // Chats often give a citation title instead of the link; the line still counts.
@@ -178,9 +211,14 @@ function parseResearch(text, weights, neutral) {
     if (!row.date) delete row.date;
     cur.evidence.push(row);
   }
+  const wasNeutral = !neutral && topicAxes > 0 && !otherAxes;
+  if (wasNeutral) {
+    errors.splice(0, errors.length, ...errors.filter(e => !axisErrs.has(e)));
+    errors.push({line: "", msg: NEUTRAL_ANSWER});
+  }
   // An option with text under it but no usable evidence is almost always a format problem.
   for (const o of options) {
-    if (o.lines && !o.evidence.length) {
+    if (o.lines && !o.evidence.length && !wasNeutral) {
       errors.push({line: "", msg: `No evidence lines recognized for ${kind === "measure" ? name || "the measure" : o.name}; check the format.`});
     }
     delete o.lines;
@@ -467,5 +505,5 @@ function calculate(weightsText, researchText) {
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, normLine, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
+  module.exports = {pyRound, cleanMd, normLine, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
 }

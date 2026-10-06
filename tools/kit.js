@@ -13,8 +13,9 @@ const WEB_GATE = "First: if you cannot open web pages in this chat, and no sourc
 const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
 const DOUBLE_CHECK_STEP = 8;
-// Browser: calc.js is inlined before this file and defines normLine. Node: load it.
-const lineNorm = typeof require === "function" ? require("./calc.js").normLine : normLine;
+// Browser: calc.js is inlined before this file and defines these. Node: load it.
+const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount} =
+  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence};
 
 function defaultState() {
   return {
@@ -135,7 +136,7 @@ function fillCheck(stepText, state, ex) {
     const q = fillStep(ex.checkStep, ex.question, state, ex);
     text = text.replace("{{the original step prompt}}", () => q);
   }
-  if (ex.answer != null) text = text.replace("{{the answer}}", () => String(ex.answer).trim());
+  if (ex.answer != null) text = text.replace("{{the answer}}", () => mdPlain(ex.answer).trim());
   return text;
 }
 
@@ -192,10 +193,12 @@ function extractCorrected(text) {
 }
 
 // Whether a corrected answer is in a format the page can use: candidate or measure blocks, or a
-// ballot list's RACES/MEASURES section. "No changes needed" and other prose is not.
-function usableCorrected(text) {
-  return String(text || "").split(/\r?\n/).map(lineNorm)
+// ballot list's RACES/MEASURES section. "No changes needed" and other prose is not, and neither
+// is one whose evidence lines no longer parse when the original's did (original: the answer checked).
+function usableCorrected(text, original) {
+  const shaped = String(text || "").split(/\r?\n/).map(lineNorm)
     .some(l => /^(CANDIDATE|MEASURE):/i.test(l) || /^(RACES|MEASURES)\s*:?\s*$/i.test(l));
+  return shaped && !(original && evidenceCount(original).recognized && !evidenceCount(text).recognized);
 }
 
 // Counts from the "CHECK SUMMARY:" line. Each label takes the number written right before it
@@ -253,9 +256,11 @@ function cells(line) {
 // Broad on purpose: a held-back line is shown to the user, never lost, while a missed address
 // would be saved. Ballot numbering ("District 4", "Position 12345", "Proposition 50") is not a
 // house number or ZIP; street words are never articles or prepositions (as in check_evidence.py).
-// ponytail: "for 3 Circuit Court" still matches; add words to BALLOT_NO if real ballots trip it.
+// "Court" after an office word that follows an ordinal ("10th District Court") is a court; house
+// numbers are cardinals, so "12 County Ct" stays an address.
+// ponytail: cardinal "for 3 Circuit Court" still matches; add words to BALLOT_NO if real ballots trip it.
 const BALLOT_NO = String.raw`(?<!\b(?:District|Dist|Position|Pos|Seat|Proposition|Prop|Measure|Question|Issue|Amendment|Initiative|Referendum|Ordinance|Resolution|Department|Dept|Division|Ward|Precinct|Circuit|Article|Section|Chapter|Bill|HB|SB|No|Number|Num)\.?\s+#?)`;
-const STREET = new RegExp(BALLOT_NO + String.raw`\b\d{1,6}(?:st|nd|rd|th)?\s+(?:(?!(?:the|a|an|to|of|in|on|at|for|and|by|from)\s)[\w.'-]+\s+){0,4}?(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|Ct|Court|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square|Route|Rte)\b`, "i");
+const STREET = new RegExp(BALLOT_NO + String.raw`\b\d{1,6}(?:st|nd|rd|th)?\s+(?:(?!(?:the|a|an|to|of|in|on|at|for|and|by|from)\s)[\w.'-]+\s+){0,4}?(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|(?<!\d(?:st|nd|rd|th)\s+(?:[A-Za-z.'-]+\s+){0,3}(?:District|Circuit|Superior|Supreme|Appeals|Appellate|Municipal|County|Common|Pleas|Probate|Juvenile|Domestic|Claims|Tax|Family|Court)\s+)(?:Ct|Court)|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square|Route|Rte)\b`, "i");
 const ZIP = new RegExp(BALLOT_NO + String.raw`\b\d{5}(?:-\d{4})?\b`);
 function mayHaveAddress(line, address) {
   const a = String(address || "").trim().toLowerCase().split(",")[0].trim();
@@ -274,11 +279,11 @@ function parseBallot(text, address = "") {
     if (h) { section = h[1].toUpperCase(); sawHeading = true; continue; }
     // A checker's corrected list may append these; their rows are not ballot items.
     if (/^(GAPS|REMOVED|PROBLEMS|CHECK SUMMARY)\b/i.test(line)) { section = null; continue; }
-    if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
+    if (!line || /^\|[\s|:-]+\|?$/.test(line) || !section || section === "DISTRICTS") continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
-    // "UNVERIFIED: could not open PDF | ..." is a failure note, not a race or measure.
-    if (/^UNVERIFIED\b/i.test(c ? c[0] : line)) {
+    // "UNVERIFIED: could not open PDF | ..." and the UNVERIFIED section are notes, not items.
+    if (section === "UNVERIFIED" || /^UNVERIFIED\b/i.test(c ? c[0] : line)) {
       (mayHaveAddress(line, address) ? addressLines : unverified).push(line);
       continue;
     }
@@ -289,15 +294,16 @@ function parseBallot(text, address = "") {
     }
     const srcI = c.findIndex(x => /https?:\/\/|^source\s*:/i.test(x));
     const source = srcI < 0 ? "" : c[srcI].replace(/^source\s*:\s*/i, "");
+    const stI = section === "RACES" ? c.findIndex(x => /^(UNCONTESTED|CONTESTED|CROWDED)\b/i.test(x)) : -1;
+    const rest = c.filter((_, i) => i !== srcI && i !== stI), three = section === "RACES" && rest.length >= 3;
+    // A row whose candidates (race) or name (measure) are only UNVERIFIED placeholders is a note.
+    const who = section === "RACES" ? rest.slice(three ? 2 : 1) : rest.slice(0, 1);
+    if (who.length && who.every(x => /^UNVERIFIED\b/i.test(x))) { unverified.push(line); continue; }
     if (!/https?:\/\//i.test(source)) noUrl.push(line);
     if (section === "RACES") {
-      const stI = c.findIndex(x => /^(UNCONTESTED|CONTESTED|CROWDED)\b/i.test(x));
-      const rest = c.filter((_, i) => i !== srcI && i !== stI);
-      const three = rest.length >= 3;
       races.push({office: rest[0], position: three ? rest[1] : "", candidates: rest.slice(three ? 2 : 1).join(" | "),
         status: stI < 0 ? "" : c[stI].toUpperCase(), source});
     } else {
-      const rest = c.filter((_, i) => i !== srcI);
       measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
     }
   }
@@ -327,7 +333,7 @@ function bundleAnswers(items) {
   const out = ["BALLOT LIST (from Step 2)", ...(list.length ? list : ["- (empty)"])];
   items.forEach((it, i) => {
     out.push("", `=== ${it.kind.toUpperCase()} ${i + 1} OF ${items.length}: ${it.text} ===`,
-      it.answer.trim() || "(no answer pasted yet)");
+      mdPlain(it.answer).trim() || "(no answer pasted yet)");
     if (it.calc) out.push("CALCULATOR: " + it.calc);
     if (it.check) out.push("DOUBLE-CHECK: " + it.check);
   });

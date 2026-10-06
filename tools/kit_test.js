@@ -133,6 +133,17 @@ assert.ok(!forChat(8, "R", step8, s, {checkStep: 4, question: step4, measure: "P
 const dc2 = forChat(8, "R", step8, s, {checkStep: 2, question: "Find the ballot.", answer: "RACES"});
 assert.ok(dc2.includes("Address: 77 Example Rd") && dc2.includes("(do not answer it) =====\nFind the ballot.\n===== END QUESTION"));
 assert.strictEqual(fillCheck(step8, s, {}), step8); // nothing to fill: placeholders stay for a manual paste
+// Stored answers lose Markdown escapes before any copy: ChatGPT renders "\[A\]" as math.
+assert.ok(fillCheck(step8, s, {answer: "CANDIDATE: Z\n- \\[A\\]\\[+\\]\\[RECORD\\] 2020: x \\| https://e.org\\"})
+  .includes("ANSWER TO CHECK =====\nCANDIDATE: Z\n- [A][+][RECORD] 2020: x | https://e.org\n====="));
+assert.ok(bundleAnswers([{kind: "race", text: "Mayor", answer: "- \\[A\\]\\[+\\] x"}]).endsWith("===\n- [A][+] x"));
+// A math-mangled answer (e.g. a used corrected answer) is copied back as bracket tags.
+{
+  const mangled = "CANDIDATE: Z\n- $A$$+$$RECORD$ 2020: x | https://e.org";
+  for (const out of [fillCheck(step8, s, {answer: mangled}), bundleAnswers([{kind: "race", text: "Mayor", answer: mangled}])]) {
+    assert.ok(!/\$[^$\n]+\$\$/.test(out) && out.includes("- [A][+][RECORD] 2020: x"), out);
+  }
+}
 assert.ok(!buildProfile(s).includes("77 Example Rd"));
 
 // Step 2 answer -> checklist rows, tolerant of markdown bullets, bold, tables and "source:".
@@ -173,13 +184,17 @@ assert.ok(!JSON.stringify(b).includes("District 9"), "DISTRICTS are not kept");
 // Address check: real ballot lines pass; streets, ZIPs, PO boxes and the entered address are held back.
 for (const ok of ["District 4 Court Judge: A", "Superior Court, Position 12345: X", "Proposition 50 Way Forward Act",
   "Appointed in 2019 to the Supreme Court", "Measure 12 | raises the levy", "Seat No. 12345 | A vs B",
-  "Mayor | A vs B | https://vote.example.gov/2026/12345-ballot.pdf"]) assert.ok(!mayHaveAddress(ok, "55 Elm, Faketown, ZZ"), ok);
+  "Mayor | A vs B | https://vote.example.gov/2026/12345-ballot.pdf", "Judge of the 10th District Court of Appeals",
+  "Judge, 2nd District Court of Appeals", "Court of Common Pleas, General Division", "5th Circuit Court Judge",
+  "Justice of the Supreme Court, term commencing 1-1-2027"]) assert.ok(!mayHaveAddress(ok, "55 Elm, Faketown, ZZ"), ok);
 for (const bad of ["987 Zebra Lane, Faketown, ZZ 99999", "Your polling place is 12 Oak St", "PO Box 12", "Races at 55 Elm, Faketown:",
   "Faketown, ZZ 99999", "77 Oak Ave Apt 4", "1600 Pennsylvania Avenue NW, Washington", "Vote at 12 Oak St.",
   "500 W 2nd St", "500 West 2nd Street, Austin", "1234 NE 5th Ave", "Ballot for 123 Main St Springfield", "Races for 12 Oak St:",
   "12 Oak St; precinct 4", "ballot at 12 Oak St (precinct 4)", "12 Main Street North", "11 Wall Street New York NY",
   "33 Maple Drive Anytown", "1 Infinite Loop Cupertino CA", "555 County Road 12", "100 Highway 1", "Springfield 62701",
-  "350 Fifth Avenue", "12 N Main St #4", "12 Oak St | Mayor", "Mayor | lives at 12 Oak St"]) assert.ok(mayHaveAddress(bad, "55 Elm, Faketown, ZZ"), bad);
+  "350 Fifth Avenue", "12 N Main St #4", "12 Oak St | Mayor", "Mayor | lives at 12 Oak St", "12 Oak Court",
+  "12 County Ct", "Vote at 12 County Ct", "123 Common Ct", "9 Family Ct", "4 Tax Court", "88 Claims Ct", "5 District Ct",
+  "77 Appeals Ct, Faketown", "45 Supreme Ct", "12 Pleas Ct"]) assert.ok(mayHaveAddress(bad, "55 Elm, Faketown, ZZ"), bad);
 // Markdown escapes from a Copy button ("\[", "\|", trailing "\") parse like the plain answer.
 {
   const esc = ballot.split("\n").map(l => l.replace(/[|*#.\-_[\]]/g, "\\$&") + "\\").join("\n");
@@ -193,6 +208,14 @@ for (const bad of ["987 Zebra Lane, Faketown, ZZ 99999", "Your polling place is 
   assert.deepStrictEqual([u.races.length, u.measures.length], [1, 0]);
   assert.deepStrictEqual(u.unverified, ["UNVERIFIED: could not open PDF | https://e.org/a.pdf", "| Unverified | Sheriff | ? |", "UNVERIFIED | Measure 9 | https://e.org/m"]);
   assert.deepStrictEqual(u.addressLines, ["unverified could not confirm district for 12 Oak St"]);
+  // Placeholder rows and the UNVERIFIED section are notes too; court names are kept as races.
+  const ph = parseBallot("RACES\n- State Senator | district UNVERIFIED | UNVERIFIED | UNVERIFIED | source: https://e.org/s\n"
+    + "- Judge of the 10th District Court of Appeals | Pat Q | UNCONTESTED | source: https://e.org/j\nMEASURES\n- UNVERIFIED | https://e.org/m2\n"
+    + "UNVERIFIED\n- Sheriff race not found\n- precinct for 12 Oak St\n- None", "");
+  assert.deepStrictEqual(ph.races.map(r => r.office), ["Judge of the 10th District Court of Appeals"]);
+  assert.deepStrictEqual(ph.unverified, ["State Senator | district UNVERIFIED | UNVERIFIED | UNVERIFIED | source: https://e.org/s",
+    "UNVERIFIED | https://e.org/m2", "Sheriff race not found"]);
+  assert.deepStrictEqual([ph.addressLines, ph.noUrl, ph.measures], [["precinct for 12 Oak St"], [], []]);
   // Table rows with an address are held back too, not saved as items.
   const t = parseBallot("RACES\n- Mayor | lives at 12 Oak St | https://a.gov/1\n- Council | A vs B | https://a.gov/2");
   assert.deepStrictEqual([t.races.length, t.addressLines.length], [1, 1]);
@@ -261,6 +284,13 @@ const noChange = extractCorrected("CORRECTED ANSWER: No changes needed");
 assert.strictEqual(noChange, "No changes needed");
 assert.strictEqual(usableCorrected(noChange), false);
 assert.strictEqual(usableCorrected(null), false);
+// A corrected answer with no readable evidence never replaces one that had some.
+{
+  const orig = "CANDIDATE: Z\n- [A][+][RECORD] 2020: x | https://e.org";
+  assert.strictEqual(usableCorrected("CANDIDATE: Z\n- A plus RECORD 2020: x", orig), false);
+  assert.strictEqual(usableCorrected("CANDIDATE: Z\n- $A$$+$$RECORD$ 2020: x | https://e.org", orig), true);
+  assert.strictEqual(usableCorrected("CANDIDATE: Z\n- prose", "CANDIDATE: Z\n- prose"), true);
+}
 for (const ok of ["CANDIDATE: Q", "**MEASURE:** P", "## RACES\n- Mayor | Z", "MEASURES:\n- M | x"]) assert.ok(usableCorrected(ok), ok);
 // Whole reply in one fence (heading inside the open fence): body runs to the closing fence.
 const fenced = "CHECK SUMMARY: 5 CONFIRMED, 0 WRONG\nCORRECTED ANSWER:\nCANDIDATE: A | x | y\n- [A][+][RECORD] 2020: f | https://e.org\nRED LINE CROSSED: no\nGAPS: none\nREMOVED: none\n```";
