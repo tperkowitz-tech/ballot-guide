@@ -11,7 +11,7 @@ Scores are optional. The default is a neutral, side-by-side comparison with no s
 | Statement | 1 | Campaign site, interviews, debates |
 | Donors and endorsements | All together count no more than one statement per priority | Official filings (FEC, state disclosure agencies), issue-group endorsements |
 
-- **Party is never used.** Party labels, party platforms, party endorsements and one-number left–right scores are not evidence.
+- **Your priorities only.** One-number left–right scores are not evidence; party counts only if you list it as a priority.
 - Lines about the same event count once. Topics you say you are torn on are left out of the score and listed separately.
 
 ## How a score is built

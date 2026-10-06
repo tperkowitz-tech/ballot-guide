@@ -18,15 +18,19 @@ SIGNS = ("+", "-", "0", "gray")
 FIELDS = ("event", "axis", "sign", "kind", "source", "date", "text")
 DATE = re.compile(r"^\d{4}(-\d{2}-\d{2})?$")
 # Two tiers: a street plus a ZIP, unit or "City, ST 12345" is almost surely an address
-# (ERROR); a bare "123 Main St" may be one, or a bill or project name (WARN).
-STREET = (r"\b\d{1,6}\s+(?:(?:N|S|E|W|NE|NW|SE|SW)\.?\s+)?(?:[A-Za-z][\w.'-]*\s+){1,4}?"
+# (ERROR); a bare "123 Main St" may be one, or a bill or project name (WARN). Street-name
+# words never include an article or preposition, so "in 2019 to the Supreme Court" is no address.
+DIRECTION = r"(?:N|S|E|W|NE|NW|SE|SW)\.?"
+STREET = (r"\b\d{1,6}\s+(?:" + DIRECTION + r"\s+)?(?:(?!(?:the|a|an|to|of|in|on|at|for|and|by|from)\s)[A-Za-z][\w.'-]*\s+){1,4}?"
           r"(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Blvd|Boulevard|Way|Ln|Lane|Ct|Court|Pl|Place"
           r"|Ter|Terrace|Pkwy|Hwy)\b\.?")
-STRONG_ADDRESS = re.compile(STREET + r"(?:,?\s*(?:(?:Apt|Unit|Suite|Ste)\b\.?\s*|#\s*)\w+"
-                            r"|,?\s+\d{5}(?:-\d{4})?\b|,\s*[A-Za-z .'-]+,\s*[A-Za-z]{2}\.?\s+\d{5}(?:-\d{4})?\b)", re.I)
+STRONG_ADDRESS = re.compile(STREET + r"(?:\s+" + DIRECTION + r"\b)?"
+                            r"(?:,?\s*(?:(?:Apt|Unit|Suite|Ste)\b\.?\s*|#\s*)\w+"
+                            r"|,?\s+\d{5}(?:-\d{4})?\b|,\s*[A-Za-z .'-]+,\s*[A-Za-z]{2}\.?\s+\d{5}(?:-\d{4})?\b)"
+                            r"|\bP\.?\s?O\.?\s+Box\s+\d+,?\s+[A-Za-z .'-]+?,?\s+[A-Za-z]{2}\.?\s+\d{5}(?:-\d{4})?\b", re.I)
 WEAK_ADDRESS = re.compile(STREET + r"(?!\s+(?:Act|Project|Bill|Program|Plan|Corridor|repaving|levy)\b)", re.I)
-# Party evidence is banned from scoring, but a regex cannot tell a ban-worthy item from a
-# record that merely mentions a party, so these are WARNs for the coordinator to judge.
+# Party evidence is allowed only under a party priority the voter chose; a regex cannot tell
+# that, or a record that merely mentions a party, so these are WARNs for the coordinator.
 PARTY = re.compile(r"\b(Democratic Party|Republican Party|Libertarian Party|Green Party|GOP|DNC|RNC|"
                    r"State Democrats|State Republicans|LD Democrats|LD Republicans|Democratic Committee|"
                    r"Republican Committee|Democratic-Farmer-Labor|(?:Democratic|Republican|party|State) Central Committee|"
@@ -128,7 +132,7 @@ def check_option(opt, axes, where):
             warnings.append(f"{at}: questionnaire on what looks like a party site; keep only the candidate's own answers")
         text = ev.get("text") or ""
         if PARTY.search(text) or PARTY.search(src):
-            warnings.append(f"{at}: mentions a party organization; party evidence is never scored, review it")
+            warnings.append(f"{at}: party evidence: allowed only under a party priority the voter chose; review")
         if len(text.split()) > 40:
             warnings.append(f"{at}: text is {len(text.split())} words; keep it to 40 or fewer")
         if not DATE.match(ev.get("date") or ""):
@@ -199,14 +203,18 @@ def demo():
     for s in ("123 N Main St", "456 Elm Boulevard", "12 Martin Luther King Jr Way"):
         (e, w), _ = flags(s)
         assert e == [] and len(w) == 1 and "address" in w[0], (s, e, w)
-    for s in ("123 Main St, Springfield, IL 62701", "77 Oak Ave Apt 4"):
+    for s in ("Appointed in 2019 to the Supreme Court", "Elected in 2020 to the County Court"):
+        assert flags(s)[0] == ([], []), flags(s)
+    for s in ("123 Main St, Springfield, IL 62701", "77 Oak Ave Apt 4", "PO Box 1234, Springfield IL 62701",
+              "P.O. Box 9, Salem, OR 97301", "1600 Pennsylvania Avenue NW, Washington, DC 20500"):
         (e, _), _ = flags(s)
         assert len(e) == 1 and "street address" in e[0], (s, e)
     _, w = check(base([{**ok, "event": None}]))
     assert w == ["R / X / #0: no event id"], w
     warn = lambda **kw: check(base([{**ok, **kw}]))[1]
     assert "wiki" in warn(source="https://en.wikipedia.org/wiki/X")[0]
-    assert "party" in warn(text="Endorsed by the County Republican Party.")[0]
+    assert warn(text="Endorsed by the County Republican Party.") == [
+        "R / X / v1: party evidence: allowed only under a party priority the voter chose; review"]
     for s in ("Backed by the State Democrats", "DNC ad buy", "RNC mailer", "County Republican Committee",
               "Democratic Committee slate", "Minnesota Democratic-Farmer-Labor Party", "State Central Committee"):
         assert any("party" in m for m in warn(text=s)), s

@@ -49,7 +49,8 @@ do not do it; report it under BLOCKERS.
    `scripts/score.py`): `races[].race`, `measure`, `options[].name`, `red_line`, and
    `evidence[]` items with `axis`, `sign`, `kind`, `event`, `source`, `date`, `text`.
    A measure has one option, the YES side. In neutral mode, use a short topic name
-   as the axis and sign "0" on every row (no directions); nothing is scored.
+   as the axis and sign "0" on every row (no directions); nothing is scored. Bullets
+   then read `[TOPIC][0][KIND]`, for example `[Housing][0][RECORD]`.
 2. **Bullets**, one per JSON item, in the Step 3 / Step 4 evidence-line format.
 3. **UNVERIFIED**: facts you could not confirm. Keep them out of the JSON.
 4. **GAPS**: what is missing, per candidate or measure.
@@ -67,6 +68,7 @@ python3 scripts/check_evidence.py work/legislature/evidence.json
 
 Fix or drop every item it reports as ERROR. Review every WARN (party mentions, wiki
 sources, missing dates) and decide; do not ignore them. Re-run until it exits 0.
+After merging and adding axes, run the checker once more on the merged file.
 
 ## Escalate
 

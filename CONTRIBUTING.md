@@ -42,7 +42,8 @@ Test reports arrive as issues labeled `tested` (form: `.github/ISSUE_TEMPLATE/te
 To add one to `TESTED.md`, copy only the coarse fields (date, state, area if given or
 "(withheld)", election, tool, mode, result, a short note, version). Never copy names,
 addresses, political views, votes or other personal details; drop the area if it is
-smaller than a city. The kit version lives in `VERSION`; `tools/build_kit.py` puts it in
+smaller than a city. Then run `python3 tools/tested_summary.py` to refresh the "Areas tested"
+table (`tools/check.py` fails if it is stale). The kit version lives in `VERSION`; `tools/build_kit.py` puts it in
 the web kit's test-report link, so bump it with each release and rebuild.
 
 Before committing, check `git var GIT_AUTHOR_IDENT` and

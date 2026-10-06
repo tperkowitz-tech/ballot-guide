@@ -29,6 +29,7 @@ def main():
     run("python3", "tools/evidence_fuzz.py")
     run("node", "tools/calc_test.js")
     run("node", "tools/kit_test.js")
+    run("python3", "tools/tested_summary.py", "--check")
     patterns = [r"Perkowitz", r"Tacoma", r"Pierce County", r"1411", r"Nordic",
                 r"fentanyl", r"rental property", r"perks\.media"]
     found = []
