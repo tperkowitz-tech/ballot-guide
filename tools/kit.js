@@ -256,7 +256,26 @@ function bundleAnswers(items) {
   return out.join("\n");
 }
 
+// Test report: these option lists must match .github/ISSUE_TEMPLATE/test-report.yml exactly
+// (kit_test.js checks), or GitHub silently ignores the prefilled value.
+const REPORT_STATES = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
+  "District of Columbia", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana",
+  "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah",
+  "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming", "Other/territory"];
+const REPORT_OVERALL = ["Worked well", "Worked with fixes", "Did not work"];
+const REPORT_KEYS = ["state", "area", "election", "election_date", "used_in", "model", "mode", "steps", "overall", "problems", "version"];
+const REPORT_BASE = "https://github.com/tperkowitz-tech/ballot-guide/issues/new?template=test-report.yml";
+
+// Allow-list, not block-list: anything else handed in (an address, values, answers) never reaches the URL.
+function testReportUrl(fields) {
+  const q = REPORT_KEYS.map(k => [k, String((fields || {})[k] ?? "").trim()]).filter(([, v]) => v);
+  return REPORT_BASE + q.map(([k, v]) => "&" + k + "=" + encodeURIComponent(v)).join("");
+}
+
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat,
-    parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine};
+    parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
+    REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl};
 }

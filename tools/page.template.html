@@ -53,6 +53,7 @@ button.copy{font:600 .78rem var(--mono);padding:6px 12px;min-height:44px;border:
 button.copy:hover{background:var(--pen-soft)}
 button.copy:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
 button.copy.primary{background:var(--pen);color:var(--sheet)}
+a.copy{display:inline-flex;align-items:center;font:600 .78rem var(--mono);padding:6px 12px;min-height:44px;border-radius:4px;background:var(--pen);color:var(--sheet);text-decoration:none}
 button.copy.primary:hover{opacity:.88}
 button.copy:disabled{opacity:.45;cursor:default}
 /* Profile form: stacked fields so it reads the same at phone width. */
@@ -63,7 +64,7 @@ button.copy:disabled{opacity:.45;cursor:default}
 .fields .opt{display:flex;gap:8px;align-items:flex-start;font-weight:400}
 .fields .opt input{margin-top:4px}
 .hint{font-size:.84rem;color:var(--muted)}
-input[type=text],input[type=date],input[type=number],select{width:100%;max-width:100%;padding:8px 10px;background:var(--code);color:var(--ink);border:1px solid var(--rule);border-radius:4px;font:inherit}
+input[type=text],input[type=date],input[type=number],select{width:100%;max-width:100%;min-height:44px;padding:8px 10px;background:var(--code);color:var(--ink);border:1px solid var(--rule);border-radius:4px;font:inherit}
 .axis-row button{align-self:flex-start}
 .btn-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .profile-out{border-top:1px solid var(--rule);padding:14px;display:flex;flex-direction:column;gap:8px}
@@ -139,6 +140,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 <div class="how" role="region" aria-labelledby="start-h">
   <h2 id="start-h">Before you start</h2>
   <p>You will need: an AI chat that can search the web (for example Gemini, Copilot, Perplexity, ChatGPT or Claude), and about 10 to 20 minutes for a short ballot. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. The page keeps your progress in this browser only.</p>
+  <p><strong>When to use it:</strong> once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when the candidate list is final and most candidate questionnaires and donor reports are out. In the last week, do a quick re-check of close races and the candidate list, since candidates can withdraw and late donor reports and news appear. Your progress stays in this browser, so you can come back.</p>
   <p><strong>How it works</strong></p>
   <ol>
     <li>Tell the page about you.</li>
@@ -314,6 +316,20 @@ MEASURES
   <p class="hint" id="build-hint">Asks the AI to write your finished guide. Save the answer as a document or print it.</p>
   <div class="btn-row"><button type="button" class="copy primary" id="build-copy" aria-describedby="build-hint">Copy for chat (Step 7)</button></div>
   <div id="bundle-warn" class="warn" hidden></div>
+  <h3>Share how it went (optional)</h3>
+  <p class="hint">Did it work for your ballot? A short report helps others know where this works. These boxes are not saved.</p>
+  <label for="share-state">State</label>
+  <select id="share-state" autocomplete="off"><option value="">Choose a state</option></select>
+  <label for="share-area">County or city</label>
+  <input type="text" id="share-area" placeholder="optional" autocomplete="off">
+  <label for="share-overall">How did it go?</label>
+  <select id="share-overall" autocomplete="off"><option value="">Choose one</option></select>
+  <label for="share-problems">Problems or tips</label>
+  <input type="text" id="share-problems" placeholder="optional" autocomplete="off">
+  <p id="share-preview-h"><strong>These fields will be filled in:</strong></p>
+  <ul id="share-preview" aria-labelledby="share-preview-h"></ul>
+  <p class="hint">Only these fields are filled in. Nothing is sent until you submit the form on GitHub. Never add your address or how you voted.</p>
+  <div class="btn-row"><a class="copy primary" id="share-link" target="_blank" rel="noopener noreferrer" href="https://github.com/tperkowitz-tech/ballot-guide/issues/new?template=test-report.yml">Open the pre-filled form on GitHub</a></div>
 </div>
 </details>
 
@@ -367,6 +383,7 @@ GAPS: no funder data found</textarea>
     <li><strong>What is never saved:</strong> your address, the AI's answer that lists your ballot, and that answer's double-check reply (both may repeat your address).</li>
     <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there. Links you open take you to other websites.</li>
     <li><strong>Hosting:</strong> GitHub Pages serves this page. Like any website host, GitHub receives standard information such as your IP address when the page loads. The page loads nothing from any other site: no fonts, ads or scripts. Your browser enforces this with a security policy built into the page.</li>
+    <li><strong>Test report:</strong> the optional "Share how it went" panel only opens a GitHub form with the fields shown in its preview. Nothing is sent unless you submit that form on GitHub.</li>
     <li><strong>Clipboard:</strong> the page writes to your clipboard only when you press a copy button. It never reads your clipboard.</li>
   </ul>
   <p>Questions or a privacy problem? See the project's <a href="https://github.com/tperkowitz-tech/ballot-guide/blob/main/SECURITY.md">security and privacy policy</a>.</p>
@@ -375,7 +392,7 @@ GAPS: no funder data found</textarea>
 <footer>
   <p>Lessons in this kit come from building and reviewing a real 2026 guide. Typical errors were: an amendment vote read as a final vote, candidates matched to the wrong seat in pamphlet text, and an uncontested race shown as contested. A review then found ways to game the score (many weak items, empty records) and web pages that try to give the AI instructions. Steps 0, 5, and 6 now guard against each of these.</p>
   <p>Dates, deadlines and places to vote: use your official state or county election website, or <a href="https://www.vote.org/">vote.org</a>.</p>
-  <p>Source and issues: <a href="https://github.com/tperkowitz-tech/ballot-guide">github.com/tperkowitz-tech/ballot-guide</a>. MIT license.</p>
+  <p>Source and issues: <a href="https://github.com/tperkowitz-tech/ballot-guide">github.com/tperkowitz-tech/ballot-guide</a>. MIT license. <a href="https://github.com/tperkowitz-tech/ballot-guide/blob/main/CREDITS.md" target="_blank" rel="noopener noreferrer">Credits</a>.</p>
 </footer>
 </div>
 
@@ -410,6 +427,8 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null;
+const KIT_VERSION="__KIT_VERSION__";
+const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
 // checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
 // the address); only the parsed list and whether it was double-checked are.
@@ -821,6 +840,7 @@ function refreshStages(){
   $("s4-status").textContent=items.length&&done===items.length?"Ready":"Finish Step 3 first, or go ahead with what you have";
   const len=Math.max(finalChat(6).length,finalChat(7).length), w=$("bundle-warn");
   w.hidden=len<=30000;
+  refreshShare();
   w.textContent=w.hidden?"":`This text is long (${len.toLocaleString("en-US")} characters). Some chats cut off long pastes. If the answer skips items, paste it in two parts: first everything up to a "===" header near the middle, with the line "Part 1 of 2. Wait for part 2.", then the rest.`;
 }
 
@@ -832,8 +852,34 @@ $("ballot-copy").addEventListener("click",ev=>copyText(forChat(2,STEPS[0].text,S
 $("race-add").addEventListener("click",()=>addItem("race"));
 $("measure-add").addEventListener("click",()=>addItem("measure"));
 $("spot-pick").addEventListener("click",pickSpots);
-$("check-copy").addEventListener("click",ev=>copyText(finalChat(6),ev.currentTarget));
-$("build-copy").addEventListener("click",ev=>copyText(finalChat(7),ev.currentTarget));
+$("check-copy").addEventListener("click",ev=>{copied[6]=true;copyText(finalChat(6),ev.currentTarget);refreshShare()});
+$("build-copy").addEventListener("click",ev=>{copied[7]=true;copyText(finalChat(7),ev.currentTarget);refreshShare()});
+
+// Test report panel. Its inputs stay out of readState() and storage; the URL carries only
+// the fields listed in the preview (testReportUrl drops everything else).
+REPORT_STATES.forEach(s=>$("share-state").append(el("option",s)));
+REPORT_OVERALL.forEach(s=>$("share-overall").append(el("option",s)));
+function reportFields(){
+  const st=readState(), races=items.filter(i=>i.kind==="race"), measures=items.filter(i=>i.kind==="measure");
+  const steps=[];
+  if(items.length)steps.push(`Ballot found (${races.length} races, ${measures.length} measures)`);
+  if(races.length)steps.push(`${races.filter(isDone).length} of ${races.length} races researched`);
+  if(measures.length)steps.push(`${measures.filter(isDone).length} of ${measures.length} measures fact-checked`);
+  if(items.length)steps.push(`Double-checks used: ${items.filter(i=>i.checked).length} of ${items.length}`+(ballotChecked?", plus the ballot list":""));
+  const scored=items.filter(i=>i.status==="scored").length;
+  if(scored)steps.push(`Scores computed for ${scored} items`);
+  if(copied[6])steps.push("Step 6 (check) copied");
+  if(copied[7])steps.push("Step 7 (guide) copied");
+  return {state:$("share-state").value, area:$("share-area").value, election_date:st.date, used_in:"Web kit",
+    mode:st.mode==="values"?"Values match":"Neutral comparison", steps:steps.map(s=>"- "+s).join("\n"),
+    overall:$("share-overall").value, problems:$("share-problems").value, version:KIT_VERSION};
+}
+function refreshShare(){
+  const f=reportFields(), labels={state:"State",area:"County or city",election_date:"Election date",used_in:"Where used",mode:"Mode",steps:"Steps",overall:"Overall",problems:"Problems or tips",version:"Version"};
+  $("share-preview").replaceChildren(...Object.keys(labels).filter(k=>String(f[k]).trim()).map(k=>el("li",labels[k]+": "+String(f[k]).trim().replace(/\n- /g,"; ").replace(/^- /,""))));
+  $("share-link").href=testReportUrl(f);
+}
+["share-state","share-area","share-overall","share-problems"].forEach(id=>$(id).addEventListener("input",refreshShare));
 
 // Stage 2 double-check. Its texts live only in memory, like the Step 2 answer itself.
 const ballotDc=checkPanel({

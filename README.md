@@ -15,6 +15,8 @@
 
 A short ballot takes about 10 to 20 minutes.
 
+**When to use it:** once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when candidate lists are final and most questionnaires and donor reports are out. In the final week, re-check close races and the candidate list for withdrawals, late donor reports and news. Avoid waiting until Election Day: there is no time left to check sources.
+
 ## Is it partisan?
 
 No. Party labels, party platforms and party endorsements are never used as evidence. By default you get a **neutral side-by-side comparison** with no scores. If you choose **values match**, choices are scored only against the priorities *you* enter, and every piece of evidence is shown so you can disagree with it. See [how the scores work](SCORING.md).
@@ -27,6 +29,7 @@ The web page keeps your progress only in your own browser, on your own device. Y
 
 - It supports your own research; it does not replace it. AI can be wrong, so open the sources, especially for close calls.
 - Dates, deadlines and places to vote come only from your official election office ([vote.org](https://www.vote.org) can point you there).
+- Tried it? [Tell us where it worked](TESTED.md).
 - Found a wrong fact or a broken source? [Report it](https://github.com/tperkowitz-tech/ballot-guide/issues/new/choose).
 
 ## Use it inside an AI app
@@ -40,6 +43,6 @@ The web page keeps your progress only in your own browser, on your own device. Y
 
 ## For contributors
 
-The skill lives in [`ballot-guide/`](ballot-guide/); the web kit is generated from its prompts. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to edit, test (`python3 tools/check.py`) and release.
+The skill lives in [`ballot-guide/`](ballot-guide/); the web kit is generated from its prompts, and [`delegation.md`](ballot-guide/references/delegation.md) covers optional sub-agent research. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to edit, test (`python3 tools/check.py`) and release.
 
-MIT licensed. See [LICENSE](LICENSE).
+This tool builds on other people's work; see [CREDITS.md](CREDITS.md). MIT licensed. See [LICENSE](LICENSE).

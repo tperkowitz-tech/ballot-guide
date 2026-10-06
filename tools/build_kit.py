@@ -95,7 +95,9 @@ def build_html(steps, intro=""):
         for _, title, when, text in steps)
     calc = read("tools/calc.js").rstrip("\n")
     kit = read("tools/kit.js").rstrip("\n")
-    for marker, value in (("<!--HOW-->", how), ("/*STEPS*/", js_steps), ("/*CALC*/", calc), ("/*KIT*/", kit)):
+    version = read("VERSION").strip()  # the single source for the kit version shown in test reports
+    for marker, value in (("<!--HOW-->", how), ("/*STEPS*/", js_steps), ("/*CALC*/", calc), ("/*KIT*/", kit),
+                          ("__KIT_VERSION__", version)):
         if page.count(marker) != 1:
             sys.exit(f"Template marker {marker} must appear exactly once")
         page = page.replace(marker, value)

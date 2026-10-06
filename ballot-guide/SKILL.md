@@ -48,15 +48,19 @@ campaign promises. The voter makes the choice. Read `references/rules.md` and
    Optionally run Step 8 on each research answer with a different model or a fresh chat; recommended for close calls.
 6. Build the local guide (Step 7), with source links, research dates, uncertainty,
    open items and "where to look yourself". Sharing needs explicit authorization.
+   Afterwards you may offer the optional test report in Step 7; the user decides whether to submit it.
 7. Recheck disputed facts; in values mode, re-run the existing calculator after
    user changes to signs or weights and explain which scores moved.
 
 Use available web, browser, PDF and script tools without assuming a vendor or
 connector. Delegate only when authorized, using bounded public-source tasks and
 excluding addresses and personal stakes. See the rules for verification coverage.
+For sub-agents, follow references/delegation.md; validate every evidence file with scripts/check_evidence.py before scoring.
 
 ## Files
 
 - `references/rules.md` — shared research rules and the original values workflow.
 - `references/prompts.md` — step prompts, with the neutral routing note.
+- `references/delegation.md` — optional tiered research with sub-agents.
 - `scripts/score.py` — calculator; `python3 scripts/score.py --demo`.
+- `scripts/check_evidence.py` — checks evidence JSON before scoring; `python3 scripts/check_evidence.py --demo`.
