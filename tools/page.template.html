@@ -36,6 +36,14 @@ a:focus-visible,textarea:focus-visible,summary:focus-visible,input:focus-visible
 header{display:flex;flex-direction:column;gap:10px}
 .how{background:var(--pen-soft);border-left:3px solid var(--pen);padding:12px 16px;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
 .how ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.how h2{font-size:1.1rem}
+.how details summary{cursor:pointer;color:var(--pen);font-weight:600;min-height:44px;display:flex;align-items:center}
+.how details>div{display:flex;flex-direction:column;gap:6px;padding-bottom:6px}
+.how dl{margin:0;display:flex;flex-direction:column;gap:4px}
+.how dt{font-weight:700}
+.how dd{margin:0 0 4px}
+.stage-why{margin:0 0 .5rem;padding:0 14px;font-size:.86rem;color:var(--muted)}
+.mini{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 #steps{display:flex;flex-direction:column;gap:28px}
 .step,.calc,.profile{background:var(--sheet);border:1px solid var(--rule);display:flex;flex-direction:column}
 .step-head{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -124,72 +132,103 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <p class="lede">Build a sourced guide to your ballot. Neutral comparison by default; optional scores against your own values.</p>
 </header>
 
-<div class="how">
+<div class="how" role="region" aria-labelledby="start-h">
+  <h2 id="start-h">Before you start</h2>
+  <p>You will need: an AI chat that can search the web (for example Gemini, Copilot, Perplexity, ChatGPT or Claude), and about 10 to 20 minutes for a short ballot. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. The page keeps your progress in this browser only.</p>
+  <p><strong>How it works</strong></p>
+  <ol>
+    <li>Tell the page about you.</li>
+    <li>Ask the AI to list your ballot.</li>
+    <li>Ask the AI about each race and measure.</li>
+    <li>Check a few sources and build your guide.</li>
+  </ol>
+  <details>
+    <summary>Words used here</summary>
+    <dl>
+      <dt>Record</dt><dd>Something a candidate actually did (a vote, a ruling, an official act).</dd>
+      <dt>Funder</dt><dd>Who gave money to the campaign.</dd>
+      <dt>Statement</dt><dd>What a candidate says, such as a website or interview.</dd>
+      <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
+      <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
+      <dt>Score</dt><dd>A summary of the evidence found and how each piece was marked as for or against your priorities. It is not a prediction of who will win.</dd>
+    </dl>
+  </details>
+  <details>
+    <summary>More detail</summary>
+    <div>
 <!--HOW-->
+    </div>
+  </details>
 </div>
 
 <div id="guided">
 <details class="stage" id="stage-1" open>
 <summary><span class="num" aria-hidden="true">1</span><h2 id="profile-h">Your profile</h2><span class="stage-status" id="s1-status"></span></summary>
+<p class="stage-why">Why: the AI needs to know which ballot is yours, and (if you want scores) what matters to you.</p>
 <section class="profile" id="profile" aria-labelledby="profile-h">
   <form class="fields" id="profile-form" novalidate>
-    <fieldset>
-      <legend>Mode</legend>
-      <label class="opt"><input type="radio" name="mode" value="neutral" checked> Neutral comparison (no scores)</label>
-      <label class="opt"><input type="radio" name="mode" value="values"> Values match (scores against your values)</label>
+    <fieldset aria-describedby="mode-hint">
+      <legend>What kind of guide do you want?</legend>
+      <label class="opt"><input type="radio" name="mode" value="neutral" checked> Neutral comparison: facts side by side, no scores (recommended if you are not sure)</label>
+      <label class="opt"><input type="radio" name="mode" value="values"> Values match: the guide also scores each choice against priorities you choose</label>
+      <p class="hint" id="mode-hint">You can switch later. Neutral mode never suggests a choice. Values match suggests a choice based only on the priorities you enter; the decision is always yours.</p>
     </fieldset>
     <div class="field">
-      <label for="f-address">Address (optional)</label>
-      <input type="text" id="f-address" autocomplete="off" aria-describedby="f-address-hint">
-      <p class="hint" id="f-address-hint">Used only to find your exact ballot: it goes only into the Step 2 chat text. Every other chat gets "Address: withheld". It is never saved on this device.</p>
+      <label for="f-address">Your voting address (optional)</label>
+      <input type="text" id="f-address" autocomplete="off" placeholder="123 Main St, Springfield, IL 62701" aria-describedby="f-address-hint">
+      <p class="hint" id="f-address-hint">Districts can split a street, so a full address finds your exact ballot. If you prefer, enter only your city, county and state; the guide may then include races that are not on your ballot. Your address goes only into the Step 2 question, which you paste into an AI chat (that chat service may keep it). This page never saves it on this device.</p>
     </div>
     <div class="field">
       <label for="f-date">Election date</label>
-      <input type="date" id="f-date">
+      <input type="date" id="f-date" aria-describedby="f-date-hint">
+      <p class="hint" id="f-date-hint">The date on your ballot or your election office website. US general elections are on the first Tuesday after the first Monday in November.</p>
     </div>
     <div id="values-only" class="fields" style="padding:0" hidden>
-      <fieldset>
-        <legend>Value axes</legend>
-        <p class="hint" id="axes-hint">Write policy values, not parties or candidates. Example ideas: public services, tax level, personal freedom, public safety, clean government.</p>
+      <fieldset aria-describedby="axes-hint axes-ideas">
+        <legend>Your priorities (values match only)</legend>
+        <p class="hint" id="axes-hint">List 3 to 6 things you want your government to do or not do. Write them as policies, not parties or people. Each one gets a letter (A, B, C...) so the AI can tag evidence to it.</p>
+        <p class="hint" id="axes-ideas">Ideas: tax level · public services · public safety · personal freedom · environment · housing · schools · clean government</p>
         <div id="axes" class="fields" style="padding:0"></div>
-        <div class="btn-row"><button type="button" class="copy" id="axis-add">Add value</button></div>
+        <div class="btn-row"><button type="button" class="copy" id="axis-add">Add priority</button></div>
       </fieldset>
       <div class="field">
-        <label for="f-gray">Gray areas (one per line)</label>
-        <textarea id="f-gray" rows="3" aria-describedby="f-gray-hint"></textarea>
-        <p class="hint" id="f-gray-hint">Topics where you are mixed. Evidence on these counts as neutral.</p>
+        <label for="f-gray">Topics where you are torn (optional)</label>
+        <textarea id="f-gray" rows="3" placeholder="e.g. drug policy" aria-describedby="f-gray-hint"></textarea>
+        <p class="hint" id="f-gray-hint">If you go back and forth on an issue, list it. Evidence about it will count as neutral instead of for or against. One per line.</p>
       </div>
       <div class="field">
-        <label for="f-red">Red lines (optional, one per line)</label>
-        <textarea id="f-red" rows="3" aria-describedby="f-red-hint"></textarea>
-        <p class="hint" id="f-red-hint">Specific conduct, e.g. 'convicted of misusing public funds'. Allegations do not count.</p>
+        <label for="f-red">Deal-breakers (optional)</label>
+        <textarea id="f-red" rows="3" placeholder="e.g. convicted of misusing public funds" aria-describedby="f-red-hint"></textarea>
+        <p class="hint" id="f-red-hint">Specific actions that would make you not want to support someone, no matter what else they do. Only proven actions count, not accusations. A deal-breaker caps that person's score at 20. One per line.</p>
       </div>
       <div class="field">
-        <label for="f-stakes">Personal stakes (optional, one per line)</label>
-        <textarea id="f-stakes" rows="2"></textarea>
+        <label for="f-stakes">Things that affect you personally (optional)</label>
+        <textarea id="f-stakes" rows="2" placeholder="e.g. I work for the school district" aria-describedby="f-stakes-hint"></textarea>
+        <p class="hint" id="f-stakes-hint">For example your job or property. The guide notes them so you can see your own interests clearly; they do not change any score. One per line.</p>
       </div>
       <div class="field">
-        <label class="opt"><input type="checkbox" id="f-viability" aria-describedby="f-viability-hint"> Show viability (who is likely to win) next to scores</label>
-        <p class="hint" id="f-viability-hint">Scores measure your values either way.</p>
+        <label class="opt"><input type="checkbox" id="f-viability" aria-describedby="f-viability-hint"> Also show who is likely to win</label>
+        <p class="hint" id="f-viability-hint">Scores only measure how well a choice fits your priorities. Turn this on if you also want to see polling or primary results next to each race. It never changes a score.</p>
       </div>
     </div>
     <fieldset>
-      <legend>Crowded races (5+ candidates)</legend>
-      <label class="opt"><input type="radio" name="crowded" value="all" checked> Research every candidate</label>
-      <label class="opt"><input type="radio" name="crowded" value="focus"> Focus on a shorter list</label>
-      <p class="hint">Pick a rule that is not about party. Excluded candidates are still listed.</p>
+      <legend>Races with many candidates (5 or more)</legend>
+      <label class="opt"><input type="radio" name="crowded" value="all" checked> Research every candidate (slower, most complete)</label>
+      <label class="opt"><input type="radio" name="crowded" value="focus" aria-describedby="focus-hint"> Focus on a shorter list</label>
+      <p class="hint" id="focus-hint">Choose a fair rule that is not about party. Everyone left out is still listed with the reason, and you can add them back. Common choices: at least 5% in the primary, or at least $10,000 raised.</p>
       <div id="focus-fields" class="fields" style="padding:0" hidden>
-        <div class="field"><label for="f-share">Minimum vote share in a certified primary or polling average (%)</label><input type="number" id="f-share" min="0" max="100" step="any"></div>
-        <div class="field"><label for="f-money">Minimum reported contributions ($)</label><input type="number" id="f-money" min="0" step="any"></div>
+        <div class="field"><label for="f-share">Minimum vote share in a certified primary or polling average (%)</label><input type="number" id="f-share" min="0" max="100" step="any" placeholder="e.g. 5"></div>
+        <div class="field"><label for="f-money">Minimum reported contributions ($)</label><input type="number" id="f-money" min="0" step="any" placeholder="e.g. 10000"></div>
         <label class="opt"><input type="checkbox" id="f-office"> Include anyone who holds or held elected office</label>
-        <div class="field"><label for="f-always">Always include these candidates</label><input type="text" id="f-always"></div>
+        <div class="field"><label for="f-always">Always include these candidates</label><input type="text" id="f-always" placeholder="e.g. Jane Doe, Sam Lee"></div>
       </div>
     </fieldset>
     <div class="btn-row"><button type="button" class="copy" id="profile-clear">Clear form</button></div>
   </form>
   <div class="profile-out">
     <div class="btn-row"><span class="out-label" id="profile-out-label">Your profile (address withheld)</span><button type="button" class="copy primary" id="profile-copy">Copy</button></div>
-    <pre id="profile-out" aria-labelledby="profile-out-label"></pre>
+    <pre id="profile-out" aria-labelledby="profile-out-label" aria-describedby="profile-out-hint"></pre>
+    <p class="hint" id="profile-out-hint">This is what the AI will see. You do not need to copy it; the "Copy for chat" buttons in Steps 2 to 4 include it.</p>
     <div class="btn-row"><button type="button" class="copy primary" id="s1-next">Continue to Step 2</button></div>
   </div>
 </section>
@@ -197,9 +236,15 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 
 <details class="stage" id="stage-2">
 <summary><span class="num" aria-hidden="true">2</span><h2>Find your ballot</h2><span class="stage-status" id="s2-status"></span></summary>
+<p class="stage-why">Why: ballots are different for every address. This finds the exact races and measures you will vote on.</p>
 <div class="stage-body">
-  <p>Click "Copy for chat". Paste it into a new chat that has web search turned on. Then copy the AI's whole answer and paste it below.</p>
   <div class="btn-row"><button type="button" class="copy primary" id="ballot-copy">Copy for chat</button></div>
+  <ol class="mini">
+    <li>Click Copy for chat.</li>
+    <li>Open your AI chat, start a new conversation, paste, and send.</li>
+    <li>Wait for the full answer (it may take a minute while it searches).</li>
+    <li>Copy the whole answer and paste it in the box below.</li>
+  </ol>
   <p class="hint" id="ballot-noaddr">No address entered in Step 1. The chat will need your city, county and state; you can add them in the chat.</p>
   <label for="ballot-answer">Paste the AI's answer here</label>
   <p class="hint">Example of the format (made-up data):</p>
@@ -207,7 +252,8 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 - City Council | Position 2 | Candidate X vs Candidate Y | CONTESTED | source: https://example.org/pamphlet
 MEASURES
 - Measure 1 | YES raises the library levy | source: https://example.org/pamphlet</pre>
-  <textarea id="ballot-answer" rows="8" autocomplete="off" aria-describedby="ballot-answer-hint"></textarea>
+  <textarea id="ballot-answer" rows="8" autocomplete="off" aria-describedby="ballot-answer-help ballot-answer-hint"></textarea>
+  <p class="hint" id="ballot-answer-help">If the AI says NO WEB ACCESS, turn on web search in that chat or use a different AI, then try again. If it lists something wrong or misses something, fix the list below with Add or Delete.</p>
   <p class="hint" id="ballot-answer-hint">This box is not saved, because the answer may repeat your address. Only the list of races and measures is saved.</p>
   <div class="btn-row"><button type="button" class="copy" id="ballot-read">Read the answer</button></div>
   <p id="ballot-found" aria-live="polite"></p>
@@ -224,8 +270,9 @@ MEASURES
 
 <details class="stage" id="stage-3">
 <summary><span class="num" aria-hidden="true">3</span><h2>Research each item</h2><span class="stage-status" id="s3-status"></span></summary>
+<p class="stage-why">Why: each item gets its own short chat, so the AI stays focused and makes fewer mistakes.</p>
 <div class="stage-body">
-  <p>For each race and measure: click "Copy for chat", paste it into a NEW chat with web search turned on, then paste the AI's whole answer into that item's box. One item per chat keeps the AI accurate.</p>
+  <p>For each item: click Copy for chat, paste into a NEW chat, then paste the answer back into that item's box. A check mark (✓) means the page could read the answer. If you see a warning, ask the AI to "use the exact format from the question" and paste again.</p>
   <p class="hint" id="s3-empty">Your list is empty. Add races and measures in Step 2.</p>
   <div id="items"></div>
   <div class="btn-row"><button type="button" class="copy primary" id="s3-next">Continue to Step 4</button></div>
@@ -234,18 +281,21 @@ MEASURES
 
 <details class="stage" id="stage-4">
 <summary><span class="num" aria-hidden="true">4</span><h2>Check and build</h2><span class="stage-status" id="s4-status"></span></summary>
+<p class="stage-why">Why: AI can be wrong. Opening a few sources yourself is the best check.</p>
 <div class="stage-body">
   <h3>Spot-check 3 sources</h3>
-  <p>Open each link. Does the page say what the answer claims?</p>
+  <p id="spot-hint">Open each link and check that the page really says what the AI claimed. If one is wrong, tell the AI in the item's chat and paste the corrected answer.</p>
   <p class="hint" id="spot-empty">No links yet. Paste answers in Step 3 first.</p>
-  <ul class="spot" id="spot-list"></ul>
+  <ul class="spot" id="spot-list" aria-describedby="spot-hint"></ul>
   <div class="btn-row"><button type="button" class="copy" id="spot-pick">Pick 3 others</button></div>
   <h3>Check the work</h3>
   <p>Paste this into a new chat. It has the rules, your profile, and every answer from Step 3.</p>
-  <div class="btn-row"><button type="button" class="copy primary" id="check-copy">Copy for chat (Step 6)</button></div>
+  <p class="hint" id="check-hint">Asks a fresh AI chat to look for mistakes in everything collected so far.</p>
+  <div class="btn-row"><button type="button" class="copy primary" id="check-copy" aria-describedby="check-hint">Copy for chat (Step 6)</button></div>
   <h3>Build the guide</h3>
   <p>Fix anything the check found, then paste this into a new chat to write your guide.</p>
-  <div class="btn-row"><button type="button" class="copy primary" id="build-copy">Copy for chat (Step 7)</button></div>
+  <p class="hint" id="build-hint">Asks the AI to write your finished guide. Save the answer as a document or print it.</p>
+  <div class="btn-row"><button type="button" class="copy primary" id="build-copy" aria-describedby="build-hint">Copy for chat (Step 7)</button></div>
   <div id="bundle-warn" class="warn" hidden></div>
 </div>
 </details>
@@ -374,6 +424,7 @@ STEPS.forEach((s,i)=>{
   host.appendChild(card);
 });
 
+const AXIS_EXAMPLES=[["Public schools","More funding for public schools"],["Property taxes","Lower property taxes"],["Personal freedom","Government stays out of private choices"],["Public safety","More police and faster emergency response"],["Environment","Cleaner air and water"],["Clean government","Open records and ethics rules"]];
 // Value axes rows: lettered by position, so letters close up after a remove.
 function addAxis(a){
   const row=document.createElement("fieldset"); row.className="axis-row";
@@ -383,9 +434,9 @@ function addAxis(a){
   const name=mk("Name",Object.assign(document.createElement("input"),{type:"text",value:a.name}));
   const mean=mk("What it means",Object.assign(document.createElement("input"),{type:"text",value:a.meaning}));
   const w=document.createElement("select");
-  [["1","1 some"],["2","2 important"],["3","3 very important"]].forEach(([v,t])=>w.append(new Option(t,v)));
+  [["1","1 – some"],["2","2 – important"],["3","3 – very important"]].forEach(([v,t])=>w.append(new Option(t,v)));
   w.value=String(a.weight);
-  mk("Weight",w);
+  mk("How much it matters",w);
   const rm=document.createElement("button"); rm.type="button"; rm.className="copy"; rm.textContent="Remove";
   rm.addEventListener("click",()=>{row.remove();render()});
   row.append(rm);
@@ -425,7 +476,11 @@ function render(){
   $("values-only").hidden=neutral;
   $("focus-fields").hidden=st.crowded!=="focus";
   const rows=[...$("axes").children], ls=letters(rows.length);
-  rows.forEach((r,i)=>{r.querySelector("legend").textContent="Value "+ls[i];const rm=r.querySelector("button");rm.disabled=rows.length<=1;rm.setAttribute("aria-label","Remove value "+ls[i])});
+  rows.forEach((r,i)=>{
+    r.querySelector("legend").textContent="Priority "+ls[i];const rm=r.querySelector("button");rm.disabled=rows.length<=1;rm.setAttribute("aria-label","Remove priority "+ls[i]);
+    // Placeholders follow position, so they stay paired after a row is removed.
+    const [n,m]=r.querySelectorAll("input"), ex=AXIS_EXAMPLES[i%AXIS_EXAMPLES.length];n.placeholder="e.g. "+ex[0];m.placeholder="e.g. "+ex[1];
+  });
   $("axis-add").disabled=rows.length>=6;
   $("profile-out").textContent=buildProfile(st);
   cards.forEach((c,i)=>{
@@ -553,7 +608,7 @@ function refreshItem(it){
   u.input.setAttribute("aria-label",kindName(it)+" "+(items.indexOf(it)+1));
   u.del.setAttribute("aria-label","Delete "+kindName(it).toLowerCase()+" "+(items.indexOf(it)+1));
   u.title.textContent=kindName(it)+": "+(it.text.trim()||"(not entered)");
-  u.status.textContent=it.status;
+  u.status.textContent=(isDone(it)?"✓ ":"")+it.status;
   u.status.className="st"+(isDone(it)?" done":it.status==="problem"?" problem":"");
   u.score.textContent=it.status==="scored"?it.call:"";
   u.copy.disabled=empty; u.need.hidden=!empty;
@@ -578,7 +633,7 @@ function buildItem(it){
   copy.type="button";
   const need=el("span",it.kind==="race"?"Enter the race first":"Enter the measure first","hint");
   row.append(copy,need);
-  const ta=el("textarea"), lab=el("label","Paste answer"), out=el("div",null,"item-out");
+  const ta=el("textarea"), lab=el("label","Paste the AI's answer for this item"), out=el("div",null,"item-out");
   ta.id="answer-"+(++uid); ta.rows=6; ta.value=it.answer; lab.htmlFor=ta.id; out.setAttribute("aria-live","polite");
   body.append(row,lab,el("p","Example of the format (made-up data):","hint"),el("pre",EXAMPLE[it.kind],"example"),ta,out);
   d.append(sum,body);
