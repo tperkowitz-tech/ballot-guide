@@ -1,61 +1,41 @@
 # ballot-guide
 
-A Claude skill that builds a personal voter guide for one US address, plus a [neutral Codex version](codex/ballot-guide/SKILL.md). The original Claude skill scores every race and ballot measure against **your own stated values**, using voting records, rulings, official acts and campaign funders, not campaign promises. Every claim links a source. Scores come from a fixed formula, so you can disagree with a specific line instead of the whole result.
+Build a sourced guide to any US ballot with an AI assistant. It finds the exact ballot for an address, checks candidates' records and funders instead of campaign promises, fact-checks ballot measures, and links every claim to a source. It has no politics of its own. It gives a **neutral comparison** of every choice, or, if you want, **scores each choice against values you supply**.
 
-The skill has no politics of its own. You supply the values; it supplies evidence and arithmetic.
+## Choose your version
+
+| You use | How |
+|---|---|
+| **Any AI chat** (Gemini, Copilot, Perplexity, ChatGPT, Claude, local models) | Open the web kit: https://tperkowitz-tech.github.io/ballot-guide/. A guided flow builds your profile, gives you each prompt to paste, reads the AI's answers back, scores them, and picks sources for you to spot-check. Plain-text version: [`PROMPT-KIT.md`](PROMPT-KIT.md). |
+| **Claude apps** | Download `ballot-guide.skill` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest) and upload it in the Skills section of Claude's settings. |
+| **Claude Code** | Unzip the release `.skill` into `~/.claude/skills/`, or from a clone: `mkdir -p ~/.claude/skills/ballot-guide && cp -R SKILL.md references scripts ~/.claude/skills/ballot-guide/` |
+| **Codex** | From a clone: `mkdir -p ~/.agents/skills && cp -R codex/ballot-guide ~/.agents/skills/`, restart Codex, then ask `Use $ballot-guide to research my ballot.` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)) |
+
+The web kit starts in neutral mode; the Claude skill offers values matching for full guides and a neutral explainer otherwise. The Codex version is neutral-only: it compares choices with sources but does not collect values or produce scores.
 
 ## What it does
 
-1. **Values profile:** 3 to 6 policy values with weights, topics where you are mixed, optional red lines.
-2. **Find the ballot:** districts, the official candidate list, uncontested races, and what is *not* on your ballot.
-3. **Research each race:** records first, then funders (FEC, state disclosure data), then statements. Every candidate by default, not only front-runners; for races with 5+ candidates you can pick a focus rule that is not about party, and excluded candidates are still listed.
-4. **Fact-check each measure:** legal text, official fiscal note, what YES does and what NO means, strongest arguments on each side, funders.
-5. **Score** with `scripts/score.py` (formula below).
-6. **Verify:** re-check primary sources, especially for close calls.
-7. **Build the guide:** summary table, sourced evidence per race, open items, official election links.
+1. **Find the ballot:** districts, the official candidate list, uncontested races, and offices *not* on your ballot. The web kit sends your address only to this step.
+2. **Research each race:** records first, then funders (FEC and state disclosure data), then statements. Every candidate, including unopposed ones. For races with 5+ candidates you may choose a focus rule that is not about party; excluded candidates are still listed.
+3. **Fact-check each measure:** legal text, official fiscal note, what YES does and what NO means, the strongest argument on each side, funders.
+4. **Verify:** re-open primary sources, especially for close calls.
+5. **Build the guide:** summary, sourced evidence for each race, open items, and links to your official election office.
 
-## Scoring
+**Values match (optional):** you list 3 to 6 policy values with weights, topics you are mixed on, and optional red lines. Each choice then gets a fit score and a call. Unopposed candidates get "Vote for", "Your call" or "Consider leaving blank". Scores measure fit with your values, not who is likely to win; viability is shown separately only if you ask.
 
-Each evidence item is `+`, `0` (mixed or a gray area) or `-` on one of your values. Items are averaged within each kind (record, funder, statement), then the kinds are weighted 3 / 2 / 1:
+## About the scores
 
-```
-score = 50 + 50 × Σ(kind weight × kind average) / Σ(kind weights present)
-```
-
-No evidence gives "Not enough evidence", not a free 50. A documented red-line violation caps a score at 20. Run `python3 scripts/score.py --demo` to see the input format and a self-check.
-
-## Install
-
-- **Codex:** use the separate version in [`codex/ballot-guide/`](codex/ballot-guide/). It researches the exact ballot, compares every candidate using sourced records, funding and statements, and explains measures neutrally. It does **not** collect political values profiles, calculate personal match scores, rank choices, or recommend votes. Install it with the commands below, then invoke `$ballot-guide`. See the [official Codex skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery and installation details.
-- **Claude Code:** copy this folder to `~/.claude/skills/ballot-guide/`.
-- **Claude apps:** download `ballot-guide.skill` from the latest release and upload it in the Skills section of Claude's settings.
-- **Any AI chat (Gemini, Copilot, Perplexity, ChatGPT, local models):** use the web kit at https://tperkowitz-tech.github.io/ballot-guide/ (profile form, copy-for-chat buttons, score calculator) or `PROMPT-KIT.md`. `references/prompts.md` holds the eight self-contained step prompts. Paste Step 0 (rules) and your profile above each step. They are written for low-cost models.
-
-The scoring workflow and formula above describe the original Claude skill. The Codex version is self-contained and does not use `scripts/score.py` or `references/prompts.md`.
-
-### Codex installation
-
-From a local clone of this repository:
-
-```bash
-mkdir -p "$HOME/.agents/skills"
-if [ -e "$HOME/.agents/skills/ballot-guide" ]; then
-  echo "ballot-guide already exists; review it before replacing it."
-else
-  cp -R codex/ballot-guide "$HOME/.agents/skills/ballot-guide"
-fi
-```
-
-Example: `Use $ballot-guide to build a neutral, sourced guide to my ballot.`
-If the new skill does not appear, restart Codex. Guides stay local by default; publication requires explicit authorization.
+The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Thin evidence can produce extreme scores; check the confidence label.
 
 ## Limits
 
-- It supports your own research; it does not replace it. Each guide ends with "where to look yourself".
-- Deciding whether an item is `+` or `-` is still a judgment. The guide shows every one so you can challenge it.
+- It supports your own research; it does not replace it.
 - Funders are a weak signal. Many groups give to every likely winner.
-- Scores measure fit with your values, not who is likely to win. You can ask for viability to be shown beside each score; it never changes the score.
 - Dates, deadlines and places to vote come only from your official election office.
+
+## Maintainers
+
+`references/prompts.md` is the source for the step prompts. After editing it, `tools/page.template.html`, `tools/kit.js` or `tools/calc.js`, run `python3 tools/build_kit.py` to regenerate `docs/index.html` and `PROMPT-KIT.md`, then `node tools/calc_test.js`, `node tools/kit_test.js` and `python3 scripts/score.py --demo`. Keep `scripts/score.py` and `tools/calc.js` in step.
 
 ## License
 
