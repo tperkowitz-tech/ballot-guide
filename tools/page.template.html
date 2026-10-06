@@ -151,12 +151,16 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
     <dl>
       <dt>Record</dt><dd>Something a candidate actually did (a vote, a ruling, an official act).</dd>
       <dt>Funder</dt><dd>Who gave money to the campaign.</dd>
+      <dt>Questionnaire</dt><dd>A candidate's written answer to a published survey, such as Vote411 or Vote Smart. Counts more than a statement, less than a record.</dd>
       <dt>Statement</dt><dd>What a candidate says, such as a website or interview.</dd>
+      <dt>Endorsement</dt><dd>Support from an issue group that publishes its criteria. All endorsements and donors on one priority count as one weak item. Party endorsements are not used.</dd>
       <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
       <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
       <dt>Double-check</dt><dd>A second AI chat checks the first answer against its sources.</dd>
       <dt>Score</dt><dd>A summary of the evidence found and how each piece was marked as for or against your priorities. It is not a prediction of who will win.</dd>
-      <dt>Coverage</dt><dd>How many of your priorities have any evidence.</dd>
+      <dt>Range</dt><dd>How far unknown priorities could move the score, shown as "could be low–high". A wide range means much is unknown.</dd>
+      <dt>Coverage</dt><dd>How many of your priorities have a record, questionnaire answer or statement.</dd>
+      <dt>Uneven evidence</dt><dd>One choice has much more evidence than the other, so the call is at most a lean.</dd>
       <dt>Evidence level</dt><dd>Strong, moderate or thin, based on how much independent evidence there is.</dd>
     </dl>
   </details>
@@ -201,7 +205,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <div class="field">
         <label for="f-gray">Topics where you are torn (optional)</label>
         <textarea id="f-gray" rows="3" placeholder="e.g. drug policy" aria-describedby="f-gray-hint"></textarea>
-        <p class="hint" id="f-gray-hint">If you go back and forth on an issue, list it. Evidence about it will count as neutral instead of for or against. One per line.</p>
+        <p class="hint" id="f-gray-hint">If you go back and forth on an issue, list it. Evidence about it is left out of the score and listed separately. One per line.</p>
       </div>
       <div class="field">
         <label for="f-red">Deal-breakers (optional)</label>
@@ -336,14 +340,14 @@ MEASURES
 B | Budget care | Public money is spent carefully | weight 2</textarea>
     <label for="calc-research">Research output for ONE race or measure</label>
     <p class="hint" id="calc-research-hint">Paste one Step 3 output (a race) or one Step 4 output (a measure). Run the calculator once for each.</p>
-    <textarea id="calc-research" rows="14" aria-describedby="calc-research-hint">CANDIDATE: Candidate X | nonpartisan | council member
+    <textarea id="calc-research" rows="14" aria-describedby="calc-research-hint">CANDIDATE: Candidate X | council member
 - [A][+][RECORD] 2025-03-10: Voted yes on an open public records bill, final passage 7-2. | https://example.org/source
 - [B][+][RECORD] 2025-06-02: Voted yes on a state budget bill, final passage 6-3. | https://example.org/source
 - [B][-][FUNDER] 2026: Top donor group wants a large new spending program. | https://example.org/source
 RED LINE CROSSED: no
 GAPS: none
 
-CANDIDATE: Candidate Y | nonpartisan | business owner
+CANDIDATE: Candidate Y | business owner
 - [A][-][RECORD] 2024-11-05: Voted against an audit of a public agency, final passage 5-4. | https://example.org/source
 - [B][0][STATED] 2026: Campaign website mentions budget care without details. | https://example.org/source
 RED LINE CROSSED: no
@@ -403,7 +407,7 @@ const str=v=>typeof v==="string"?v:"";
 const checkFields=x=>({checkAnswer:str(x.checkAnswer),original:str(x.original),checked:!!x.checked,checkSkipped:!!x.checkSkipped});
 let ballotChecked=false, ballotCheckText="", ballotOriginal="", ballotSkipped=false;
 const EXAMPLE={
-  race:"CANDIDATE: Candidate X | nonpartisan | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no",
+  race:"CANDIDATE: Candidate X | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no",
   measure:"MEASURE: Measure 1\nEVIDENCE:\n- [A][+][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
 };
 
@@ -561,7 +565,7 @@ function noteBox(notes){
   box.append(ul); return box;
 }
 const LEVEL={strong:"strong evidence",moderate:"moderate evidence",thin:"thin evidence",none:"no evidence"};
-const scoreText=row=>row.score===null?"no score":String(row.score);
+const scoreText=row=>row.score===null?"no score":row.low===row.high?String(row.score):row.score+" (could be "+row.low+"–"+row.high+")";
 // "score · evidence level · covers N% of your priorities"; shared by the page and the Step 6/7 bundle.
 const optionLine=(row,measure)=>(measure?"Fit of a YES vote: ":row.name+": ")+scoreText(row)+" · "+LEVEL[row.evidence]+" · covers "+Math.round(row.coverage*100)+"% of your priorities";
 // turns_on is set only for a toss-up that one item can flip; the call string then repeats the label.
@@ -598,14 +602,14 @@ function renderCalc(out,r){
   });
   const det=el("details",null,"math"); det.append(el("summary","Show the math"));
   det.append(el("p","Weights: "+Object.entries(r.weights).map(([k,v])=>k+"="+v).join(", ")+"."));
-  det.append(el("p","Each priority gets a position from its evidence: records count 3, statements 1, and all donors on a priority together count as one statement (their average direction), plus a neutral starting weight of 3. Lines with the same source count once unless they have different event ids. Priorities without evidence count as unknown. Score = 50 + 50 × weighted average of positions (num / den below)."));
+  det.append(el("p","Each priority gets a position from its evidence: records count 3, statements 1, all questionnaire answers on a priority together count 2 (one answer) or 3 (two or more, never more than one record), and all donors and endorsements on a priority together count as one statement (their average direction), plus a neutral starting weight of 3. Lines with the same source count once unless they have different event ids. Party is never used. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
   res.rows.forEach(row=>{
     det.append(el("p",row.name+":"));
     const ul=el("ul");
     if(row.uncapped===null)ul.append(el("li","No evidence: no score."));
-    else ul.append(el("li",`Score = round(50 + 50 × ${row.num.toFixed(3)} / ${row.den}) = ${row.uncapped}`));
+    else ul.append(el("li",`Score = round(50 + 50 × ${row.num.toFixed(3)} / ${row.den}) = ${row.uncapped}; could be ${row.low}–${row.high}`));
     if(row.excluded)ul.append(el("li","Crossed a deal-breaker: left out of the call"));
-    ul.append(el("li",`Items counted: ${row.events} (records: ${row.records}) → ${LEVEL[row.evidence]}`));
+    ul.append(el("li",`Items counted: ${row.events} (records: ${row.records}, questionnaires: ${row.questionnaires}) → ${LEVEL[row.evidence]}`));
     det.append(ul);
   });
   out.append(det);

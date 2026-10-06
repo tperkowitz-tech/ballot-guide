@@ -11,8 +11,9 @@ its sources. It is recommended, not required.
 
 The Python calculator is `ballot-guide/scripts/score.py`; the browser calculator
 is `tools/calc.js`. Keep their behavior in lockstep and run both calculator tests.
-`node tools/calc_test.js` includes a parity fuzz that runs 2000 random races through
-both calculators and fails on any mismatch.
+`node tools/calc_test.js` includes a parity fuzz that runs 2000 random races (all five
+evidence kinds, ranges and calls, including uneven evidence) through both calculators
+and fails on any mismatch.
 
 Regenerate and check the web/chat kit before opening a pull request:
 

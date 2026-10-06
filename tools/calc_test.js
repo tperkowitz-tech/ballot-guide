@@ -8,7 +8,7 @@ const {pyRound, parseWeights, parseResearch, calculate, scoreRace} = require("./
 const rows = r => r.result.rows.map(o => [o.name, o.score, o.evidence]);
 
 // X: A record + (p=3/6) and B funder - (p=-1/4): 50 + 50*(3*0.5 - 2*0.25)/5 = 60, thin.
-// Y crosses a red line: keeps its 65 but is excluded, so X is called alone (thin -> "Your call").
+// Y crosses a red line: keeps its 75 (A only; B has no evidence, so it is left out) but is excluded, so X is called alone (thin -> "Your call").
 // Also exercises unicode minus, lowercase kind, and spaces inside brackets.
 let r = calculate("A | One | m | weight 3\nB | Two | m | weight 2", [
   "CANDIDATE: X | nonpartisan | none",
@@ -20,7 +20,7 @@ let r = calculate("A | One | m | weight 3\nB | Two | m | weight 2", [
   "RED LINE CROSSED: Yes: convicted | https://example.org/source",
 ].join("\n"));
 assert.deepStrictEqual(r.errors, []);
-assert.deepStrictEqual(rows(r), [["X", 60, "thin"], ["Y", 65, "thin"]]);
+assert.deepStrictEqual(rows(r), [["X", 60, "thin"], ["Y", 75, "thin"]]);
 assert.strictEqual(r.result.rows[1].excluded, "red line: convicted | https://example.org/source");
 assert.strictEqual(r.result.call, "Your call");
 
@@ -64,7 +64,7 @@ const variants = {
 for (const [label, lines] of Object.entries(variants)) {
   r = calculate(W2, lines.join("\n"));
   assert.deepStrictEqual(r.errors, [], label);
-  assert.deepStrictEqual(rows(r), [["X", 60, "thin"], ["Y", 65, "thin"]], label);
+  assert.deepStrictEqual(rows(r), [["X", 60, "thin"], ["Y", 75, "thin"]], label);
   assert.strictEqual(r.result.call, "Your call", label);
 }
 // Sign words for mixed: neutral, mixed and 0 all count as 0.
@@ -153,9 +153,9 @@ console.log("calc_test: all checks passed");
   const single = calculate(eq4, ["CANDIDATE: X", fact].join("\n"));
   assert.deepStrictEqual(four.result.rows.map(o => [o.score, o.events]), single.result.rows.map(o => [o.score, o.events]));
   assert.deepStrictEqual(four.result.rows[0].gray, []);
-  // One statement on 1 of 4 equal axes -> 53, thin.
+  // One statement on 1 of 4 equal axes -> 62 (known axis only), range 16-91, thin.
   let r = calculate(eq4, "CANDIDATE: X\n- [A][+][STATED] 2025: said so | https://example.org/s");
-  assert.deepStrictEqual([r.result.rows[0].score, r.result.rows[0].evidence, r.result.rows[0].coverage], [53, "thin", 0.25]);
+  assert.deepStrictEqual(["score", "low", "high", "evidence", "coverage"].map(f => r.result.rows[0][f]), [62, 16, 91, "thin", 0.25]);
   // Opposing record + favorable funder: the funder moves the score <= 12.5 (25 -> 36).
   assert.strictEqual(one({A: 3}, [{name: "X", evidence: [ev("A", "-", "record")]}]).rows[0].score, 25);
   assert.strictEqual(one({A: 3}, [{name: "X", evidence: [ev("A", "-", "record"), ev("A", "+", "funder")]}]).rows[0].score, 36);
@@ -217,6 +217,76 @@ console.log("calc_test: all checks passed");
   const solo = evs => one({A: 3}, [{name: "X", evidence: evs}]).rows[0].score;
   assert.deepStrictEqual([solo(fund(8)), solo(fund(1))], [62, 62]);
   assert.strictEqual(solo([ev("A", "-", "record")].concat(fund(8))), 36);
+  // v2.1: one record on 1 of 4 equal axes -> 75, range 19-94; no events -> no score, never 50.
+  r = one({A: 2, B: 2, C: 2, D: 2}, [{name: "X", evidence: [ev("A", "+", "record")]}]).rows[0];
+  assert.deepStrictEqual([r.score, r.low, r.high], [75, 19, 94]);
+  r = one({A: 2, B: 2, C: 2, D: 2}, [{name: "X", evidence: []}]);
+  assert.deepStrictEqual([r.call, r.rows[0].score, r.rows[0].low, r.rows[0].high], ["Not enough evidence", null, null, null]);
+  // A questionnaire answer counts 2 (p = 2/5 -> 70); answers on one axis pool to one entry
+  // (k = 3 for two or more: 3/6 -> 75) and one item for the level.
+  const w4 = {A: 2, B: 2, C: 2, D: 2};
+  const q = (axis, i) => ev(axis, "+", "questionnaire", {event: `q${axis}${i}`});
+  const range = n => [...Array(n).keys()];
+  r = one({A: 1}, [{name: "X", evidence: [q("A", 0)]}]).rows[0];
+  assert.deepStrictEqual([r.score, r.questionnaires], [70, 1]);
+  r = one({A: 1}, [{name: "X", evidence: range(5).map(i => q("A", i))}]).rows[0];
+  assert.deepStrictEqual([r.score, r.questionnaires, r.evidence], [75, 1, "thin"]);
+  assert.strictEqual(one({A: 1, B: 1}, [{name: "X", evidence: [q("A", 0), q("A", 1), q("B", 0)]}]).rows[0].evidence, "moderate");
+  assert.strictEqual(one({A: 1, B: 1}, [{name: "X", evidence: [q("A", 0), q("A", 1), ev("B", "+", "record")]}]).rows[0].evidence, "moderate");
+  // No record -> no firm call: questionnaire-only unopposed is "Your call"; such a measure is Lean.
+  r = one({A: 2, B: 2}, [{name: "Z", evidence: [q("A", 0), q("B", 0)]}]);
+  assert.deepStrictEqual([r.call, r.rows[0].score, r.rows[0].evidence], ["Your call", 70, "moderate"]);
+  r = one({A: 2, B: 2}, [{name: "YES", evidence: [q("A", 0), q("B", 0)]}], true);
+  assert.deepStrictEqual([r.call, r.rows[0].evidence], ["Lean YES", "moderate"]);
+  const st = ["A", "B"].flatMap(a => range(3).map(i => ev(a, "-", "stated", {event: `s${a}${i}`})));
+  assert.strictEqual(one({A: 1, B: 1}, [{name: "YES", evidence: st}], true).call, "Lean NO");
+  // Ten favorable answers per axis vs three opposing votes per axis weigh no more than one record; never "Vote for".
+  const opp = ["A", "B", "C", "D"].flatMap(a => range(3).map(i => ev(a, "-", "record", {event: `v${a}${i}`})));
+  r = one(w4, [{name: "X", evidence: opp.concat(["A", "B", "C", "D"].flatMap(a => range(10).map(i => q(a, i))))}]);
+  const rec1 = one(w4, [{name: "X", evidence: opp.concat(["A", "B", "C", "D"].map(a => ev(a, "+", "record", {event: "r" + a})))}]);
+  assert.ok(r.rows[0].score <= rec1.rows[0].score && !r.call.startsWith("Vote for"), r.call);
+  // Range: an endorsement-only axis moves the score but stays unknown for the range.
+  r = one(w4, [{name: "X", evidence: [ev("A", "+", "record")].concat(["B", "C", "D"].map(a => ev(a, "+", "endorsement")))}]).rows[0];
+  assert.ok(r.low < r.score && r.score < r.high);
+  assert.deepStrictEqual([r.low, r.high], [19, 94]);
+  // An endorsement-only axis is known (scored) but not covered.
+  r = one({A: 2, B: 2, C: 2, D: 2}, [{name: "X", evidence: [ev("A", "+", "record"), ev("B", "+", "endorsement")]}]).rows[0];
+  assert.deepStrictEqual([r.coverage, r.score], [0.25, 69]);
+  // Eight endorsements plus eight funders on one axis are one pooled entry.
+  const endorse = (n, sign) => [...Array(n).keys()].map(i => ev("A", sign, "endorsement", {source: `https://example.org/e${i}`}));
+  const fundS = (n, sign) => [...Array(n).keys()].map(i => ev("A", sign, "funder", {source: `https://example.org/f${i}`}));
+  assert.deepStrictEqual([solo(endorse(8, "+").concat(fundS(8, "+"))), solo(fundS(1, "+"))], [62, 62]);
+  assert.strictEqual(solo([ev("A", "-", "record")].concat(endorse(8, "+"), fundS(8, "-"))), 29);
+  // Uneven evidence caps a robust, non-thin lead at Lean.
+  const full = x.concat(["C", "D"].map(a => ev(a, "+", "stated", {event: a + "s"})));
+  r = one({A: 1, B: 1, C: 1, D: 1}, [{name: "X", evidence: full}, {name: "Y", evidence: y}]);
+  assert.deepStrictEqual([r.call, r.rows[0].evidence, r.rows[1].coverage], ["Lean X (uneven evidence)", "strong", 0.5]);
+  // Mixed full incumbent vs newcomer with one statement: toss-up; with three: uneven. Never a firm newcomer win.
+  const inc = ["A", "B", "C", "D"].flatMap(a => ["+", "-", "0"].map(sg => ev(a, sg, "record", {event: a + sg})));
+  const jx = n => [{name: "Inc", evidence: inc}, {name: "New", evidence: [...Array(n).keys()].map(i => ev("A", "+", "stated", {event: "n" + i}))}];
+  r = one({A: 2, B: 2, C: 2, D: 2}, jx(1));
+  assert.deepStrictEqual([r.call, r.rows[0].score, r.rows[0].evidence, r.rows[1].score], ["Toss-up (turns on: n0)", 50, "strong", 62]);
+  assert.strictEqual(one({A: 2, B: 2, C: 2, D: 2}, jx(3)).call, "Lean New (uneven evidence)");
+  // Answers only on all four axes: at most moderate, no firm call over the mixed incumbent.
+  r = one(w4, [{name: "Inc", evidence: inc}, {name: "Q", evidence: ["A", "B", "C", "D"].flatMap(a => range(3).map(i => q(a, i)))}]);
+  assert.deepStrictEqual([r.rows[1].evidence, r.call], ["moderate", "Lean Q"]);
+  // A runner-up left with no evidence by one removal cannot overtake; a leader can.
+  const jy = recSign => [{name: "Inc", evidence: ["A", "B", "C", "D"].flatMap(a => range(4).map(i => ev(a, recSign, "record", {event: a + i})))},
+    {name: "New", evidence: [ev("A", "-", "stated", {event: "n0"})]}];
+  assert.strictEqual(one(w4, jy("+")).call, "Lean Inc (uneven evidence)");
+  assert.strictEqual(one(w4, jy("-")).call, "Toss-up (turns on: n0)");
+  // A pooled step is removed whole and named by axis.
+  r = one({A: 1}, [{name: "X", evidence: [q("A", 0), q("A", 1)]}, {name: "Y", evidence: [ev("A", "0", "record")]}]);
+  assert.strictEqual(r.turns_on, "questionnaire answers on A");
+  r = one({A: 1}, [{name: "X", evidence: [ev("A", "+", "funder", {event: "f"}), ev("A", "+", "endorsement", {event: "e"})]},
+    {name: "Y", evidence: [ev("A", "0", "record")]}]);
+  assert.strictEqual(r.turns_on, "donors and endorsements on A");
+  // Parser: QUESTIONNAIRE/Q and ENDORSEMENT/E in brackets and tables.
+  const pk = parseResearch("CANDIDATE: X\n- [A][+][QUESTIONNAIRE][q1] 2026: answered yes | https://example.org/q\n- [A][+][Q][q2] b\n"
+    + "- [B][-][ENDORSEMENT] c | https://example.org/e\n- [B][-][e] d\n| A | + | questionnaire | e | u |\n| B | + | E | f | u |", {A: 1, B: 1});
+  assert.deepStrictEqual(pk.errors, []);
+  assert.deepStrictEqual(pk.options[0].evidence.map(e => e.kind),
+    ["questionnaire", "questionnaire", "endorsement", "endorsement", "questionnaire", "endorsement"]);
   // Statements only: robust gap, full coverage, thin evidence -> lean (race and measure).
   const sx = [0, 1, 2].map(i => ev("A", "+", "stated", {event: "s" + i}));
   const sy = [0, 1, 2].map(i => ev("A", "-", "stated", {event: "s" + i}));
@@ -233,7 +303,7 @@ console.log("calc_test: all checks passed");
   assert.strictEqual(red("RED LINE CROSSED: yes | https://example.org/c"), "red line: https://example.org/c");
   assert.strictEqual(red("RED LINE CROSSED: Yes"), "red line");
   assert.strictEqual(red("RED LINE CROSSED: no"), null);
-  console.log("calc_test: v2 model checks passed");
+  console.log("calc_test: v2.1 model checks passed");
 }
 
 // Parity fuzz: the same random races through score.py (JSON round trip) and calc.js.
@@ -243,21 +313,25 @@ console.log("calc_test: all checks passed");
   const pick = a => a[Math.floor(rnd() * a.length)];
   const maybe = (p, v) => rnd() < p ? v : undefined;
   const cases = [];
-  for (let n = 0; n < 2000; n++) {
+  // The second half stresses pooling and leave-one-out: more lines, more questionnaire and
+  // donor/endorsement lines, and more contested races.
+  for (let n = 0; n < 4000; n++) {
+    const heavy = n >= 2000;
     const letters = ["A", "B", "C", "D", "E"].slice(0, 1 + Math.floor(rnd() * 4));
     const axes = {};
     for (const a of letters) axes[a] = rnd() < 0.02 ? pick([0, 4, 9]) : 1 + Math.floor(rnd() * 3);
     const measure = rnd() < 0.25;
-    const nOpts = rnd() < 0.02 ? 0 : measure && rnd() < 0.95 ? 1 : 1 + Math.floor(rnd() * 3);
+    const nOpts = rnd() < 0.02 ? 0 : measure && rnd() < 0.95 ? 1 : (heavy ? 2 : 1) + Math.floor(rnd() * 3);
     const options = [];
     for (let o = 0; o < nOpts; o++) {
       const evidence = [];
-      const nEv = Math.floor(rnd() * 8);
+      const nEv = Math.floor(rnd() * (heavy ? 16 : 8));
       for (let e = 0; e < nEv; e++) {
         evidence.push({
           axis: rnd() < 0.01 ? "Z" : pick(letters),
           sign: rnd() < 0.01 ? "?" : pick(["+", "+", "-", "-", "0", "gray"]),
-          kind: rnd() < 0.01 ? "rumor" : pick(["record", "record", "stated", "funder"]),
+          kind: rnd() < 0.01 ? "rumor" : pick(heavy ? ["record", "questionnaire", "questionnaire", "questionnaire", "stated", "funder", "endorsement"]
+            : ["record", "record", "questionnaire", "stated", "funder", "endorsement"]),
           event: maybe(0.4, pick(["e1", "e2", "e3"])),
           source: maybe(0.4, pick(["https://a.example", "https://b.example", "HTTPS://A.Example/", "https://a.example?q=1#f", ""])),
           date: maybe(0.5, pick(["2024", "2025-01-02"])),
@@ -283,7 +357,7 @@ for c in json.load(sys.stdin):
 print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")], {input: JSON.stringify(cases), encoding: "utf8", maxBuffer: 1 << 28});
   assert.strictEqual(py.status, 0, py.stderr);
   const want = JSON.parse(py.stdout);
-  const FIELDS = ["name", "score", "evidence", "confidence", "coverage", "events", "records", "gray", "excluded"];
+  const FIELDS = ["name", "score", "low", "high", "evidence", "confidence", "coverage", "events", "records", "questionnaires", "gray", "excluded"];
   let mismatches = 0, kinds = new Set();
   cases.forEach((c, i) => {
     const r = scoreRace(c.race.options, c.axes, c.race.measure);
@@ -291,6 +365,8 @@ print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")],
       : JSON.parse(JSON.stringify({call: r.call, turns_on: r.turns_on, warnings: r.warnings,
           options: r.rows.map(o => Object.fromEntries(FIELDS.map(f => [f, o[f]])))}));
     kinds.add(got.error ? "error" : got.call.replace(/ .*/, ""));
+    if (!got.error && got.call.includes("(uneven evidence)")) kinds.add("uneven");
+    if (!got.error && / on [A-Z]$/.test(got.turns_on || "")) kinds.add("pooled-turn");
     try { assert.deepStrictEqual(got, want[i]); } catch (e) {
       if (++mismatches <= 3) console.error("parity mismatch", JSON.stringify(c), JSON.stringify(got), JSON.stringify(want[i]));
     }
