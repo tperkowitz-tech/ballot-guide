@@ -3,6 +3,12 @@
 // into docs/index.html, next to calc.js.
 const NEUTRAL_LINE = "Neutral mode: do not collect values, score, rank, or recommend.";
 const NEUTRAL_STEP7 = "Neutral mode: no scores, best matches or calls; use | Race | Choices | Key sourced differences |.";
+// Small or offline chats answer from memory when they cannot browse; make them say so instead.
+const WEB_GATE = "First: if you cannot open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
+const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
+const BALLOT_STEP = 2; // the only step that needs the street address
+// Browser: calc.js is inlined before this file and defines normLine. Node: load it.
+const lineNorm = typeof require === "function" ? require("./calc.js").normLine : normLine;
 
 function defaultState() {
   return {
@@ -41,10 +47,11 @@ function focusRuleSentence(state) {
   return parts.join(", and ");
 }
 
-function buildProfile(state) {
+// The address identifies a person, so it is included only when asked for (the ballot lookup).
+function buildProfile(state, withAddress) {
   const values = state.mode === "values";
   const out = ["VALUES PROFILE",
-    `Address: ${state.address.trim() || "not given"}`,
+    withAddress ? `Address: ${state.address.trim() || "not given"}` : ADDRESS_WITHHELD,
     `Election date: ${state.date || "not given"}`,
     `Mode: ${values ? "Values match" : "Neutral comparison"}`];
   if (!values) out.push(NEUTRAL_LINE);
@@ -75,13 +82,78 @@ function fillStep(stepIndex, stepText, state, extras) {
   return text;
 }
 
-// "Copy for chat": rules, then profile, then the step, so a fresh chat has everything it needs.
+// "Copy for chat": web gate, rules, profile, step, then any attached answers (extras.attach),
+// so a fresh chat has everything it needs.
 function forChat(stepIndex, rulesText, stepText, state, extras) {
-  if (stepIndex === 0) return rulesText;
-  if (stepIndex === 1) return buildProfile(state);
-  return [rulesText, buildProfile(state), fillStep(stepIndex, stepText, state, extras)].join("\n\n");
+  const ex = extras || {};
+  let parts;
+  if (stepIndex === 0) parts = [rulesText];
+  else if (stepIndex === 1) parts = [buildProfile(state)];
+  else parts = [rulesText, buildProfile(state, stepIndex === BALLOT_STEP), fillStep(stepIndex, stepText, state, ex)];
+  if (ex.attach) parts.push(ex.attach);
+  return [WEB_GATE, ...parts].join("\n\n");
+}
+
+// Splits a markdown or plain row into cells; a row without "|" is not a row.
+function cells(line) {
+  if (!line.includes("|")) return null;
+  const c = line.split("|").map(s => s.trim());
+  if (c[0] === "") c.shift();
+  if (c.length && c[c.length - 1] === "") c.pop();
+  return c;
+}
+
+// Reads the Step 2 answer into checklist rows. Only RACES and MEASURES are kept; DISTRICTS is
+// dropped because it is tied to the address. Rows it cannot read are returned in `skipped`.
+function parseBallot(text) {
+  const races = [], measures = [], skipped = [];
+  let section = null, sawHeading = false;
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = lineNorm(raw);
+    const h = line.match(/^(DISTRICTS|RACES|MEASURES|UNVERIFIED)\s*:?\s*$/i);
+    if (h) { section = h[1].toUpperCase(); sawHeading = true; continue; }
+    if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
+    const c = cells(line);
+    if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
+    if (!c || c.length < 2) { skipped.push(line); continue; }
+    const srcI = c.findIndex(x => /https?:\/\/|^source\s*:/i.test(x));
+    const source = srcI < 0 ? "" : c[srcI].replace(/^source\s*:\s*/i, "");
+    if (section === "RACES") {
+      const stI = c.findIndex(x => /^(UNCONTESTED|CONTESTED|CROWDED)\b/i.test(x));
+      const rest = c.filter((_, i) => i !== srcI && i !== stI);
+      const three = rest.length >= 3;
+      races.push({office: rest[0], position: three ? rest[1] : "", candidates: rest.slice(three ? 2 : 1).join(" | "),
+        status: stI < 0 ? "" : c[stI].toUpperCase(), source});
+    } else {
+      const rest = c.filter((_, i) => i !== srcI);
+      measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
+    }
+  }
+  return {races, measures, skipped, sawHeading};
+}
+
+// The text that fills RACE: or MEASURE: in Steps 3 and 4.
+function raceText(r) {
+  return [r.office, r.position].filter(Boolean).join(", ") + (r.candidates ? ": " + r.candidates : "");
+}
+function measureText(m) {
+  return m.name + (m.summary ? " (" + m.summary + ")" : "");
+}
+
+// Steps 6 and 7 need the whole ballot list and every Step 3/4 answer in one paste, each under
+// its own header so the chat can tell them apart. items: {kind, text, note, answer, calc}.
+function bundleAnswers(items) {
+  const list = items.map(it => `- ${it.kind.toUpperCase()}: ${it.text}${it.note ? " | " + it.note : ""}`);
+  const out = ["BALLOT LIST (from Step 2)", ...(list.length ? list : ["- (empty)"])];
+  items.forEach((it, i) => {
+    out.push("", `=== ${it.kind.toUpperCase()} ${i + 1} OF ${items.length}: ${it.text} ===`,
+      it.answer.trim() || "(no answer pasted yet)");
+    if (it.calc) out.push("CALCULATOR: " + it.calc);
+  });
+  return out.join("\n");
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat};
+  module.exports = {WEB_GATE, ADDRESS_WITHHELD, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat,
+    parseBallot, raceText, measureText, bundleAnswers};
 }

@@ -44,6 +44,42 @@ const w = parseWeights("A | {{name}} | {{meaning}} | weight {{1-3}}\nA | Mine | 
 assert.deepStrictEqual(w.weights, {A: 2});
 assert.strictEqual(w.warnings.length, 1);
 
+// Markdown-dressed output must score exactly like the plain demo race (X 60, Y 20, call X).
+const W2 = "A | One | m | weight 3\nB | Two | m | weight 2";
+const variants = {
+  bold: ["**CANDIDATE: X | nonpartisan | none**", "- **[A][+][RECORD]** 2025: a | u", "* **[B][-][FUNDER]** b | u",
+    "**CANDIDATE: Y**", "• [A][+][RECORD] c | u", "**RED LINE CROSSED:** yes | u"],
+  numbered: ["### CANDIDATE: X", "1. [A][+][RECORD] a | u", "2) [B][-][FUNDER] b | u",
+    "## CANDIDATE: Y", "1. [A][+][RECORD] c | u", "RED LINE CROSSED: yes"],
+  words: ["CANDIDATE: X", "- [A][plus][record] a | u", "- [B][Opposes][Funder] b | u",
+    "CANDIDATE: Y", "- [A][positive][Record] c | u", "RED LINE CROSSED: yes"],
+  table: ["CANDIDATE: X", "| Axis | Sign | Kind | Fact | Source |", "|---|---|---|---|---|",
+    "| A | + | RECORD | a | u |", "| **B** | minus | funder | b | u |",
+    "CANDIDATE: Y", "| A | supports | Record | c | u |", "RED LINE CROSSED: yes"],
+};
+for (const [label, lines] of Object.entries(variants)) {
+  r = calculate(W2, lines.join("\n"));
+  assert.deepStrictEqual(r.errors, [], label);
+  assert.deepStrictEqual(rows(r), [["X", 60, "low"], ["Y", 20, "low"]], label);
+  assert.strictEqual(r.result.call, "X", label);
+}
+// Sign words for mixed: neutral, mixed and 0 all count as 0.
+r = calculate("A=3", "MEASURE: M\n- [A][neutral][STATED] a\n- [A][Mixed][STATED] b\n- [A][0][STATED] c");
+assert.deepStrictEqual(r.errors, []);
+assert.strictEqual(r.result.rows[0].score, 50);
+
+// Nothing is dropped silently: unreadable evidence-looking lines warn, and an option with
+// text but no parsed items warns by name.
+r = calculate("A=3", "CANDIDATE: X\n- A, +, RECORD: voted yes | u\n- (A)(+)(FUNDER) donor\n- [a] stray\nGAPS: none\nCANDIDATE: Y\nSome prose about Y.");
+assert.deepStrictEqual(r.errors.map(e => e.line), ["A, +, RECORD: voted yes | u", "(A)(+)(FUNDER) donor", "[a] stray", "", ""]);
+assert.ok(r.errors[3].msg.includes("No evidence lines recognized for X; check the format"));
+assert.ok(r.errors[4].msg.includes("No evidence lines recognized for Y; check the format"));
+r = calculate("A=3", "MEASURE: Prop 9\nWHAT YES DOES: things\nEVIDENCE:\n- A + RECORD funds schools");
+assert.ok(r.errors.some(e => e.msg.includes("No evidence lines recognized for Prop 9")));
+// A candidate with only RED LINE/GAPS lines has no text to misread, so no format warning.
+r = calculate("A=3", "CANDIDATE: P\n- [A][+][RECORD] r\nCANDIDATE: Q\nRED LINE CROSSED: no\nGAPS: no records found");
+assert.deepStrictEqual(r.errors, []);
+
 console.log("calc_test: all checks passed");
 
 // Unopposed candidates: absolute cutoffs, same as score.py.
@@ -53,4 +89,11 @@ console.log("calc_test: all checks passed");
   if (solo("+") !== "Vote for Z" || solo("0") !== "Your call" || solo("-") !== "Consider leaving blank or writing in" || solo(null) !== "Not enough evidence")
     { console.error("unopposed checks failed"); process.exit(1); }
   console.log("calc_test: unopposed checks passed");
+}
+
+// Table rows meant as evidence but with an unreadable kind must warn, not vanish.
+{
+  const r = calculate("A=3\nB=2", "CANDIDATE: X\n| A | + | RECORD | real | u |\n| B | - | Records | donor | u |\n| B | - | funding | donor | u |\n| B | - | Voting record | v | u |");
+  assert.strictEqual(r.errors.length, 3, "three unreadable table rows warn");
+  console.log("calc_test: table warning checks passed");
 }

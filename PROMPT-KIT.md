@@ -179,12 +179,13 @@ CLAIMS CHECKED:
 GAPS: {{what you could not find}}
 ```
 
-## Step 5 · Score (math, no opinion)
+## Step 5 · Score (optional; the calculator does this)
 
 _One chat. Paste the VALUES PROFILE and all outputs from Steps 3 and 4._
 
 ```text
 TASK: Calculate a score for each candidate and each measure. Use only this formula. Show your math.
+The arithmetic is fixed. Choosing and tagging evidence is a judgment; every tag is shown.
 
 FOR EACH OPTION (candidate, or YES for a measure):
   sign value s: + = 1, 0 = 0, - = -1

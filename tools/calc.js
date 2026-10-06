@@ -37,13 +37,45 @@ function parseWeights(text) {
   return {weights, warnings};
 }
 
+// Chats reformat the requested plain text: bold, bullets, numbered lists, headings, tables.
+// Strip that dressing so a line reads the same however the chat styled it.
+function normLine(raw) {
+  return String(raw).replace(/\*\*|__|`/g, "").trim()
+    .replace(/^#+\s*/, "")
+    .replace(/^(?:[-*•]\s*|\d+[.)]\s+)+/, "")
+    .trim();
+}
+
+// Sign words some chats write instead of symbols.
+const SIGN_WORD = {"+": "+", "plus": "+", "positive": "+", "supports": "+",
+  "-": "-", "−": "-", "–": "-", "minus": "-", "negative": "-", "opposes": "-",
+  "0": "0", "mixed": "0", "neutral": "0"};
+const normSign = s => { const t = s.trim().toLowerCase(); return has(SIGN_WORD, t) ? SIGN_WORD[t] : s.trim(); };
+
+// Pulls axis, sign and kind from "[A][+][RECORD] ..." or a table row "| A | + | RECORD | ... |".
+// Returns null when the line is not in either shape.
+function evidenceParts(line) {
+  if (line.startsWith("|")) {
+    const cells = line.split("|").slice(1).map(c => c.trim());
+    if (cells.length && cells[cells.length - 1] === "") cells.pop();
+    if (cells.length < 3) return null;
+    return {axis: cells[0].replace(/^\[|\]$/g, "").trim(), sign: cells[1].replace(/^\[|\]$/g, ""), kind: cells[2].replace(/^\[|\]$/g, "").trim()};
+  }
+  const m = line.match(/^\[\s*([^\]]*?)\s*\]\s*\[\s*([^\]]*?)\s*\]\s*\[\s*([^\]]*?)\s*\]/);
+  return m ? {axis: m[1], sign: m[2], kind: m[3]} : null;
+}
+
+// A line that looks like it meant to be evidence; used so nothing is dropped without a warning.
+const LOOKS_LIKE_EVIDENCE = /\b(RECORD|FUNDER|STATED)\b|\[\s*[A-Za-z]\s*\]/;
+const TABLE_RULE = /^\|[\s|:-]+\|?$/;
+
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
 // with their text and left out of the math instead of stopping the whole calculation.
 function parseResearch(text, weights) {
   const options = [], errors = [];
   let kind = null, name = "", cur = null;
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
+    const line = normLine(raw);
     let m;
     if ((m = line.match(/^CANDIDATE:\s*([^|]*)/i))) {
       if (kind === "measure") { errors.push({line, msg: "Paste one race or one measure at a time, not both."}); cur = null; continue; }
@@ -60,19 +92,46 @@ function parseResearch(text, weights) {
       continue;
     }
     if (/^RED LINE CROSSED:\s*yes/i.test(line)) { if (cur) cur.red_line = true; continue; }
-    if (!/^-?\s*\[/.test(line)) continue;
-    m = line.match(/^-?\s*\[\s*([^\]]*?)\s*\]\s*\[\s*([^\]]*?)\s*\]\s*\[\s*([^\]]*?)\s*\]/);
-    if (!m) { errors.push({line, msg: "Could not read this evidence line (expected the form [A][+][RECORD]); skipped."}); continue; }
-    const axis = m[1].toUpperCase(), sign = m[2] === "−" ? "-" : m[2], k = m[3].toLowerCase();
+    if (!line || TABLE_RULE.test(line) || /^(RED LINE CROSSED|GAPS):/i.test(line)) continue;
+    if (cur) cur.lines = (cur.lines || 0) + 1;
+    const ev = evidenceParts(line);
+    const isTable = line.startsWith("|");
+    // A table row whose kind cell is not a kind (a header row, or a claims table) is not evidence.
+    if (!ev || (isTable && !has(KIND, ev.kind.toLowerCase()))) {
+      // A table row with a one-letter axis or a readable sign was meant as evidence: warn, never drop silently.
+      const meant = isTable && ev && (/^[A-Za-z]$/.test(ev.axis) || has(SIGN, normSign(ev.sign)));
+      if (meant || LOOKS_LIKE_EVIDENCE.test(line) || (!isTable && line.startsWith("["))) {
+        errors.push({line, msg: "Could not read this evidence line (expected the form [A][+][RECORD]); skipped."});
+      }
+      continue;
+    }
+    const axis = ev.axis.toUpperCase(), sign = normSign(ev.sign), k = ev.kind.toLowerCase();
     const bad = [];
-    if (!has(weights, axis)) bad.push(`axis "${m[1]}" is not in your weights (${Object.keys(weights).sort().join(", ") || "none"})`);
-    if (!has(SIGN, sign)) bad.push(`sign "${m[2]}" (use + 0 -)`);
-    if (!has(KIND, k)) bad.push(`kind "${m[3]}" (use RECORD, FUNDER or STATED)`);
+    if (!has(weights, axis)) bad.push(`axis "${ev.axis}" is not in your weights (${Object.keys(weights).sort().join(", ") || "none"})`);
+    if (!has(SIGN, sign)) bad.push(`sign "${ev.sign}" (use + 0 -)`);
+    if (!has(KIND, k)) bad.push(`kind "${ev.kind}" (use RECORD, FUNDER or STATED)`);
     if (!cur) bad.push("no CANDIDATE: or MEASURE: line above it");
     if (bad.length) { errors.push({line, msg: "Skipped: " + bad.join("; ") + "."}); continue; }
     cur.evidence.push({axis, sign, kind: k});
   }
+  // An option with text under it but no usable evidence is almost always a format problem.
+  for (const o of options) {
+    if (o.lines && !o.evidence.length) {
+      errors.push({line: "", msg: `No evidence lines recognized for ${kind === "measure" ? name || "the measure" : o.name}; check the format.`});
+    }
+    delete o.lines;
+  }
   return {kind, name, options, errors};
+}
+
+// Neutral mode has no weights; count what parses with every letter allowed, so the page can
+// still say how many evidence lines were read and how many need a look.
+function countEvidence(text) {
+  const any = {};
+  for (let i = 0; i < 26; i++) any[String.fromCharCode(65 + i)] = 1;
+  const p = parseResearch(text, any);
+  if (!p.options.length) p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found."});
+  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors};
 }
 
 // Average within each kind first, so many weak items cannot outweigh a few records.
@@ -131,5 +190,5 @@ function calculate(weightsText, researchText) {
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, parseWeights, parseResearch, scoreOption, scoreRace, calculate};
+  module.exports = {pyRound, normLine, parseWeights, parseResearch, countEvidence, scoreOption, scoreRace, calculate};
 }
