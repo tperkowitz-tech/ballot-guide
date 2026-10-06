@@ -18,7 +18,7 @@ from score import score  # noqa: E402
 # nameless options, page-shared rows that would silently collapse, wrong types in fields
 # score.py never reads (or reads only when truthy), and an empty non-list "races" or
 # "evidence" ("" or {}) that score.py iterates as nothing.
-STRICTER = re.compile(r"\"races\" list|\"evidence\" must be a list|missing source|http\(s\) URL|street address|exactly one option|no name|"
+STRICTER = re.compile(r"\"races\" list|\"evidence\" must be a list|missing source|http\(s\) URL|street address|no name|"
                       r"would count once|(event|source|date|text) must be a string")
 JUNK = [None, 0, 1, 2.5, True, False, "", "x", [], [1], {}, {"a": 1}, "gray", "+", "A", "Z",
         "record", "poll", "https://a.example/p", "ftp://a.example/p", "77 Oak Ave Apt 4"]

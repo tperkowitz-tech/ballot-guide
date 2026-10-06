@@ -119,6 +119,19 @@ r = calculate("A=3", base + "\nGAPS:\ncould not find funders\n- [A][+][RECORD] y
 assert.deepStrictEqual(r.result, plain.result);
 assert.deepStrictEqual(r.warnings, ["Evidence line under GAPS ignored: [A][+][RECORD] y unconfirmed | https://y.org/2"]);
 assert.strictEqual(require("./calc.js").countEvidence(base + "\nGAPS:\n- [A][+][RECORD] y").errors.length, 1);
+// Neutral counting: any topic word is an axis and the sign may be missing; letters still work.
+{
+  const {countEvidence} = require("./calc.js");
+  const c = countEvidence("CANDIDATE: Jane Doe | x\n- [Housing][0][RECORD] 2025: a | https://a.gov/1\n- [Public safety][STATED] 2026: b | https://b.org/2\n"
+    + "- [A][+][QUESTIONNAIRE][q1] 2026: c | https://c.org/3\n- [Housing][0][POLL] 2026: d | https://d.org/4\n- [][0][RECORD] e | https://e.org/5\nGAPS: none");
+  assert.strictEqual(c.recognized, 3);
+  assert.strictEqual(c.errors.length, 2);
+  assert.ok(c.errors.some(e => /no topic/.test(e.msg)) && c.errors.some(e => /POLL/.test(e.msg)));
+  // Values mode still rejects topic words and a missing sign.
+  const v = calculate("A=3", "CANDIDATE: J\n- [Housing][0][RECORD] a | https://a.gov/1\n- [A][RECORD] b | https://b.org/2");
+  assert.strictEqual(v.result.rows[0].score, null);
+  assert.strictEqual(v.errors.filter(e => e.line).length, 2);
+}
 
 console.log("calc_test: all checks passed");
 

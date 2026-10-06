@@ -1,6 +1,6 @@
 # Ballot Guide
 
-**Build your own sourced guide to any US ballot, with the AI chat you already use.** It finds the exact races and measures on your ballot, first checks what candidates have *done*, then what they say, fact-checks ballot measures, and links every claim to a source you can open. Free, open source, and not affiliated with any party, campaign or election office.
+**Build your own sourced guide to any US ballot, with the AI chat you already use.** It finds the exact races and measures on your ballot, first checks what candidates have *done*, then what they say, fact-checks ballot measures, and links every claim to a source you can open. Free, open source, and not affiliated with any campaign or election office.
 
 ### [→ Start in your browser](https://tperkowitz-tech.github.io/ballot-guide/) (no install, no account)
 
@@ -13,13 +13,9 @@
 3. **Ask about each race and measure.** One short chat per item keeps the AI focused. An optional double-check has a second chat verify each answer against its sources.
 4. **Spot-check a few sources and build your guide.** The page picks links for you to open.
 
-A short ballot takes about 10 to 20 minutes.
+Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved.
 
 **When to use it:** once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when candidate lists are final and most questionnaires and donor reports are out. In the final week, re-check close races and the candidate list for withdrawals, late donor reports and news. Avoid waiting until Election Day: there is no time left to check sources.
-
-## Is it partisan?
-
-No. Party labels, party platforms and party endorsements are never used as evidence. By default you get a **neutral side-by-side comparison** with no scores. If you choose **values match**, choices are scored only against the priorities *you* enter, and every piece of evidence is shown so you can disagree with it. See [how the scores work](SCORING.md).
 
 ## Privacy
 
@@ -27,6 +23,7 @@ The web page keeps your progress only in your own browser, on your own device. Y
 
 ## Good to know
 
+- Neutral comparison by default; if you choose scores, they reflect only the priorities you enter, and every piece of evidence is shown ([how the scores work](SCORING.md)).
 - It supports your own research; it does not replace it. AI can be wrong, so open the sources, especially for close calls.
 - Dates, deadlines and places to vote come only from your official election office ([vote.org](https://www.vote.org) can point you there).
 - Tried it? [Tell us where it worked](TESTED.md).

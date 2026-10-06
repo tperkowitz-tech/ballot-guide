@@ -19,7 +19,7 @@ Ballot Guide was shaped by other people's work. None of the projects, writers or
 - Ansolabehere, S., J. M. Snyder Jr., and C. Stewart III (2001). "Candidate Positioning in U.S. House Elections." *AJPS* 45(1): uses a candidate questionnaire (NPAT) to measure candidates' positions.
 - Segal, J. A., and A. D. Cover (1989). "Ideological Values and the Votes of U.S. Supreme Court Justices." *American Political Science Review* 83(2).
 - Lupia, A. (1994). "Shortcuts versus Encyclopedias." *American Political Science Review* 88(1): endorsements as information shortcuts.
-- CQ Roll Call vote studies and [Voteview](https://voteview.com) on party-line voting. This tool deliberately does **not** use party as evidence, to encourage voting on issues.
+- CQ Roll Call vote studies and [Voteview](https://voteview.com) on roll-call voting.
 
 ## Public information sources the guide relies on
 

@@ -3,6 +3,11 @@
 // into docs/index.html, next to calc.js.
 const NEUTRAL_LINE = "Neutral mode: do not collect values, score, rank, or recommend.";
 const NEUTRAL_STEP7 = "Neutral mode: no scores, best matches or calls; use | Race | Choices | Key sourced differences |.";
+// Neutral Steps 3/4 replace the + / - / 0 / gray legend: judging a sign without values marked
+// good answers as problems. calc.js countEvidence reads this [TOPIC][0][KIND] form.
+const NEUTRAL_EVIDENCE = "Neutral mode: write every evidence line as [TOPIC][0][KIND] where TOPIC is one short word such as Housing. Do not judge + or −.";
+// Step 6 checks that only make sense with scores, gray areas, red lines or the calculator.
+const SCORED_CHECKS = /^(6|7|8|11|12|14|15|17|18)\. .*\n/gm;
 // Small or offline chats answer from memory when they cannot browse; make them say so instead.
 const WEB_GATE = "First: if you cannot open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
 const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
@@ -52,7 +57,8 @@ function focusRuleSentence(state) {
 // The address identifies a person, so it is included only when asked for (the ballot lookup).
 function buildProfile(state, withAddress) {
   const values = state.mode === "values";
-  const out = ["VALUES PROFILE",
+  // Neutral mode has no values; the steps still say "VALUES PROFILE", so the title names it.
+  const out = [values ? "VALUES PROFILE" : "YOUR ELECTION (the profile the steps call VALUES PROFILE)",
     withAddress ? `Address: ${state.address.trim() || "not given"}` : ADDRESS_WITHHELD,
     `Election date: ${state.date || "not given"}`,
     `Mode: ${values ? "Values match" : "Neutral comparison"}`];
@@ -74,14 +80,51 @@ function buildProfile(state, withAddress) {
 }
 
 // The step text as pasted: the race or measure filled into its {{...}} line, plus the neutral
-// output table for Step 7. Function replacements keep "$" in user text from acting as a pattern.
+// edits (Steps 3/4 evidence form, Step 6 checks, Step 7 table). Function replacements keep "$"
+// in user text from acting as a pattern. kit_test.js checks the edits against prompts.md.
 function fillStep(stepIndex, stepText, state, extras) {
-  const ex = extras || {};
+  const ex = extras || {}, neutral = state.mode !== "values";
   let text = stepText;
   if (stepIndex === 3 && ex.race && ex.race.trim()) text = text.replace(/^(RACE: )\{\{[^}]*\}\}/m, (_, p) => p + ex.race.trim());
   if (stepIndex === 4 && ex.measure && ex.measure.trim()) text = text.replace(/^(MEASURE: )\{\{[^}]*\}\}/m, (_, p) => p + ex.measure.trim());
-  if (stepIndex === 7 && state.mode !== "values") text += "\n\n" + NEUTRAL_STEP7;
+  if (neutral && (stepIndex === 3 || stepIndex === 4)) {
+    text = text.replace(/^For each item, choose the axis letter.*\n(?:(?:[-+0]|gray) = .*\n)+/m, NEUTRAL_EVIDENCE + "\n")
+      .replace(/^For each fact, give an axis letter.*\n/m, NEUTRAL_EVIDENCE + "\n")
+      .split("[{{axis}}][{{+ / - / 0 / gray}}]").join("[{{TOPIC}}][0]")
+      .replace(" Use gray for topics the profile lists as torn/gray areas.", "");
+  }
+  if (neutral && stepIndex === 6) {
+    text = text.replace(SCORED_CHECKS, "").replace(", and do they count as one item per value in the math?", "?")
+      .replace("fix the outputs, run Step 5 again, then", "fix the outputs, then");
+  }
+  if (stepIndex === 7 && neutral) text += "\n\n" + NEUTRAL_STEP7;
   return text;
+}
+
+// A short message for the same chat when its answer was not in the step's format: the step's
+// own OUTPUT FORMAT section (neutral edits applied), so it never drifts from prompts.md.
+function fixFormat(stepIndex, stepText, state) {
+  const fmt = fillStep(stepIndex, stepText, state).split(/^OUTPUT FORMAT[^\n]*\n/m)[1];
+  if (!fmt) throw new Error(`Step ${stepIndex} has no OUTPUT FORMAT section`);
+  return "Your last answer was not in the format I need. Rewrite it in exactly this format. Keep every fact and URL; add no other text.\n\n" + fmt.trim();
+}
+
+// Long Step 6/7 pastes get cut off by some chats. Split at "=== " item headers into parts of
+// about max characters; the chat answers OK until the last part. ponytail: one item longer
+// than max stays a single oversized part rather than being cut mid-answer.
+function splitForChat(text, max) {
+  const limit = max || 12000;
+  if (text.length <= limit) return [text];
+  const chunks = [];
+  for (const block of text.split(/\n(?==== )/)) {
+    if (chunks.length && chunks[chunks.length - 1].length + 1 + block.length <= limit) chunks[chunks.length - 1] += "\n" + block;
+    else chunks.push(block);
+  }
+  const n = chunks.length;
+  if (n === 1) return chunks;
+  return chunks.map((c, i) => i < n - 1
+    ? `Part ${i + 1} of ${n}. Reply only OK and wait for the rest.\n\n${c}`
+    : `Part ${n} of ${n}.\n\n${c}\n\nNow do the task above using all parts.`);
 }
 
 // Step 8 text with the checked question and answer filled in. extras: {checkStep, question (the
@@ -204,9 +247,17 @@ function cells(line) {
 }
 
 // Reads the Step 2 answer into checklist rows. Only RACES and MEASURES are kept; DISTRICTS is
-// dropped because it is tied to the address. Rows it cannot read are returned in `skipped`.
-function parseBallot(text) {
-  const races = [], measures = [], skipped = [];
+// dropped because it is tied to the address. Rows it cannot read are returned in `skipped` as
+// {line, kind}, so the page can offer them as editable rows instead of dropping them. Unreadable
+// lines that may hold an address go to `addressLines` instead: they are shown, never saved.
+const STREET = /\b\d{1,6}\s+(?:[NSEW]\.?\s+)?(?:[\w.'-]+\s+){0,4}(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|Ct|Court|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square)\b/i;
+function mayHaveAddress(line, address) {
+  const a = String(address || "").trim().toLowerCase().split(",")[0].trim();
+  return STREET.test(line) || /\b\d{5}(?:-\d{4})?\b/.test(line) || /\bP\.?\s*O\.?\s*Box\b/i.test(line)
+    || /polling place|your address/i.test(line) || (a.length > 3 && line.toLowerCase().includes(a));
+}
+function parseBallot(text, address = "") {
+  const races = [], measures = [], skipped = [], addressLines = [];
   let section = null, sawHeading = false;
   for (const raw of String(text).split(/\r?\n/)) {
     const line = lineNorm(raw);
@@ -217,7 +268,11 @@ function parseBallot(text) {
     if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
-    if (!c || c.length < 2) { skipped.push(line); continue; }
+    if (!c || c.length < 2) {
+      if (mayHaveAddress(line, address)) addressLines.push(line);
+      else skipped.push({line, kind: section === "RACES" ? "race" : "measure"});
+      continue;
+    }
     const srcI = c.findIndex(x => /https?:\/\/|^source\s*:/i.test(x));
     const source = srcI < 0 ? "" : c[srcI].replace(/^source\s*:\s*/i, "");
     if (section === "RACES") {
@@ -231,7 +286,7 @@ function parseBallot(text) {
       measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
     }
   }
-  return {races, measures, skipped, sawHeading};
+  return {races, measures, skipped, addressLines, sawHeading};
 }
 
 // The text that fills RACE: or MEASURE: in Steps 3 and 4.
@@ -275,7 +330,7 @@ function testReportUrl(fields) {
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, forChat,
+  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
     parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl};
 }

@@ -93,7 +93,10 @@ const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRON
 
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
 // with their text and left out of the math instead of stopping the whole calculation.
-function parseResearch(text, weights) {
+// neutral: nothing is scored, so any topic word is an axis and the sign may be left out
+// ("[Housing][0][RECORD]" or "[Housing][RECORD]"); values mode (the default) is unchanged.
+function parseResearch(text, weights, neutral) {
+  const form = neutral ? "[TOPIC][0][RECORD]" : "[A][+][RECORD]";
   const options = [], errors = [], warnings = [];
   let kind = null, name = "", cur = null, section = null;
   for (const raw of text.split(/\r?\n/)) {
@@ -139,20 +142,24 @@ function parseResearch(text, weights) {
     }
     if (!line || TABLE_RULE.test(line) || /^RED LINE CROSSED:/i.test(line)) continue;
     if (cur) cur.lines = (cur.lines || 0) + 1;
-    const ev = evidenceParts(line);
+    let ev = evidenceParts(line);
     const isTable = line.startsWith("|");
+    if (neutral && !isTable && (!ev || !kindOf(ev.kind))) {
+      const two = line.match(/^\[\s*([^\]]*?)\s*\]\s*\[\s*([^\]]*?)\s*\]/);
+      if (two && kindOf(two[2])) ev = {axis: two[1], sign: "0", kind: two[2], event: "", rest: line.slice(two[0].length).trim()};
+    }
     // A table row whose kind cell is not a kind (a header row, or a claims table) is not evidence.
     if (!ev || (isTable && !kindOf(ev.kind))) {
       // A table row with a one-letter axis or a readable sign was meant as evidence: warn, never drop silently.
       const meant = isTable && ev && (/^[A-Za-z]$/.test(ev.axis) || validSign(normSign(ev.sign)));
       if (meant || LOOKS_LIKE_EVIDENCE.test(line) || (!isTable && line.startsWith("["))) {
-        errors.push({line, msg: "Could not read this evidence line (expected the form [A][+][RECORD]); skipped."});
+        errors.push({line, msg: `Could not read this evidence line (expected the form ${form}); skipped.`});
       }
       continue;
     }
-    const axis = ev.axis.toUpperCase(), sign = normSign(ev.sign), k = kindOf(ev.kind);
+    const axis = ev.axis.toUpperCase(), sign = neutral ? "0" : normSign(ev.sign), k = kindOf(ev.kind);
     const bad = [];
-    if (!has(weights, axis)) bad.push(`axis "${ev.axis}" is not in your weights (${Object.keys(weights).sort().join(", ") || "none"})`);
+    if (neutral ? !axis : !has(weights, axis)) bad.push(neutral ? "no topic in the first [ ]" : `axis "${ev.axis}" is not in your weights (${Object.keys(weights).sort().join(", ") || "none"})`);
     if (!validSign(sign)) bad.push(`sign "${ev.sign}" (use + 0 - gray)`);
     if (!k) bad.push(`kind "${ev.kind}" (use RECORD, QUESTIONNAIRE, STATED, FUNDER or ENDORSEMENT)`);
     if (!cur) bad.push("no CANDIDATE: or MEASURE: line above it");
@@ -173,12 +180,10 @@ function parseResearch(text, weights) {
   return {kind, name, options, errors, warnings};
 }
 
-// Neutral mode has no weights; count what parses with every letter allowed, so the page can
+// Neutral mode has no weights; count what parses (any topic, no sign needed), so the page can
 // still say how many evidence lines were read and how many need a look.
 function countEvidence(text) {
-  const any = {};
-  for (let i = 0; i < 26; i++) any[String.fromCharCode(65 + i)] = 1;
-  const p = parseResearch(text, any);
+  const p = parseResearch(text, {}, true);
   if (!p.options.length) p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found."});
   // Neutral mode has no warnings list on the page, so ignored GAPS evidence shows as a problem.
   return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors.concat(p.warnings.map(msg => ({line: "", msg})))};

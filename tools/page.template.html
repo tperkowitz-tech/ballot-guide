@@ -12,14 +12,16 @@
 :root{
   --paper:#f5f7f6; --sheet:#ffffff; --ink:#18242f; --muted:#5a6872; --rule:#d5dde0;
   --pen:#1d55b3; --pen-soft:#e4ecf9; --code:#eef2f1; --warn:#8a4b00; --warn-soft:#fbf0e1;
+  /* --line: borders of form controls and cards, at least 3:1 against --sheet, --code and --paper. */
+  --line:#7d8a91;
   --display:system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
   --body:system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --paper:#11181e; --sheet:#18222a; --ink:#e3e9ec; --muted:#9aa8b1; --rule:#2c3a44; --pen:#7fa8ef; --pen-soft:#1d2c45; --code:#101820; --warn:#f0b766; --warn-soft:#2e2414; color-scheme:dark}}
+  --paper:#11181e; --sheet:#18222a; --ink:#e3e9ec; --muted:#9aa8b1; --rule:#2c3a44; --pen:#7fa8ef; --pen-soft:#1d2c45; --code:#101820; --warn:#f0b766; --warn-soft:#2e2414; --line:#64747f; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --paper:#11181e; --sheet:#18222a; --ink:#e3e9ec; --muted:#9aa8b1; --rule:#2c3a44; --pen:#7fa8ef; --pen-soft:#1d2c45; --code:#101820; --warn:#f0b766; --warn-soft:#2e2414; color-scheme:dark}
+  --paper:#11181e; --sheet:#18222a; --ink:#e3e9ec; --muted:#9aa8b1; --rule:#2c3a44; --pen:#7fa8ef; --pen-soft:#1d2c45; --code:#101820; --warn:#f0b766; --warn-soft:#2e2414; --line:#64747f; color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--body);padding-inline:16px;padding-block:24px 56px}
 .wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
@@ -64,7 +66,9 @@ button.copy:disabled{opacity:.45;cursor:default}
 .fields .opt{display:flex;gap:8px;align-items:flex-start;font-weight:400}
 .fields .opt input{margin-top:4px}
 .hint{font-size:.84rem;color:var(--muted)}
-input[type=text],input[type=date],input[type=number],select{width:100%;max-width:100%;min-height:44px;padding:8px 10px;background:var(--code);color:var(--ink);border:1px solid var(--rule);border-radius:4px;font:inherit}
+input[type=text],input[type=date],input[type=number],select{width:100%;max-width:100%;min-height:44px;padding:8px 10px;background:var(--code);color:var(--ink);border:1px solid var(--line);border-radius:4px;font:inherit}
+details.more summary{cursor:pointer;color:var(--pen);font-size:.84rem;min-height:44px;display:flex;align-items:center}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .axis-row button{align-self:flex-start}
 .btn-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .profile-out{border-top:1px solid var(--rule);padding:14px;display:flex;flex-direction:column;gap:8px}
@@ -75,7 +79,7 @@ pre{margin:0;padding:14px;background:var(--code);font:12.5px/1.5 var(--mono);whi
 .note{font-size:.84rem;color:var(--muted);padding:10px 14px;border-top:1px solid var(--rule)}
 .calc-body{padding:14px;display:flex;flex-direction:column;gap:10px}
 .calc label{font-weight:700}
-textarea{width:100%;padding:10px;background:var(--code);color:var(--ink);border:1px solid var(--rule);border-radius:4px;font:12.5px/1.5 var(--mono);resize:vertical}
+textarea{width:100%;padding:10px;background:var(--code);color:var(--ink);border:1px solid var(--line);border-radius:4px;font:12.5px/1.5 var(--mono);resize:vertical}
 #calc-out{display:flex;flex-direction:column;gap:10px}
 #calc-out .muted{color:var(--muted)}
 .call{font:700 1.05rem var(--display);font-stretch:85%}
@@ -88,7 +92,7 @@ th{font-weight:700}
 details.math{font-size:.86rem}
 details.math summary{cursor:pointer;color:var(--pen);font-weight:600}
 /* Guided flow: four stages as disclosure panels; finished stages and items fold away. */
-.stage,.advanced{background:var(--sheet);border:1px solid var(--rule)}
+.stage,.advanced{background:var(--sheet);border:1px solid var(--line)}
 .stage>summary,.advanced>summary,.item>summary{display:flex;align-items:center;gap:10px 12px;padding:12px 14px;cursor:pointer;flex-wrap:wrap;min-height:44px;list-style:none}
 .stage>summary::-webkit-details-marker,.advanced>summary::-webkit-details-marker,.item>summary::-webkit-details-marker{display:none}
 .stage>summary h2,.advanced>summary h2{flex:1;min-width:0}
@@ -106,14 +110,14 @@ pre.example{padding:8px 10px;font-size:11.5px;border-left:3px solid var(--rule)}
 .checklist li input{flex:1 1 220px;min-height:44px}
 .checklist li .hint{flex-basis:100%;overflow-wrap:anywhere}
 #items{display:flex;flex-direction:column;gap:10px}
-.item{border:1px solid var(--rule)}
+.item{border:1px solid var(--line)}
 .item>summary{padding:10px 12px;overflow-wrap:anywhere}
 .item-body{padding:12px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--rule);min-width:0}
 .st{font:600 .72rem var(--mono);padding:3px 8px;border:1px solid var(--muted);color:var(--muted);border-radius:4px;white-space:nowrap}
 .st.done{border-color:var(--pen);color:var(--pen);background:var(--pen-soft)}
 .st.problem{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
 /* Double-check panel: folds away once skipped or done, and reopens from its summary. */
-.dc{border:1px solid var(--rule);min-width:0}
+.dc{border:1px solid var(--line);min-width:0}
 .dc>summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:10px 12px;min-height:44px;cursor:pointer;font-weight:700}
 .spot{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .spot li{display:flex;gap:10px;align-items:flex-start}
@@ -130,17 +134,18 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 </head>
 <body>
 <div class="wrap">
+<div id="live" class="sr-only" role="status"></div>
 <header>
   <div class="eyebrow">Reusable · works with any AI that can search the web</div>
   <h1>Ballot Guide Prompt Kit</h1>
   <p class="lede">Build a sourced guide to your ballot. Neutral comparison by default; optional scores against your own values.</p>
   <p class="lede"><strong>Private by design:</strong> this page collects nothing about you, and the page itself sends nothing anywhere. <a href="#privacy">Read the privacy policy</a>.</p>
+  <div class="btn-row"><a class="copy" href="#stage-1" id="start-link">Start: Step 1, your profile</a></div>
 </header>
 
 <div class="how" role="region" aria-labelledby="start-h">
   <h2 id="start-h">Before you start</h2>
-  <p>You will need: an AI chat that can search the web (for example Gemini, Copilot, Perplexity, ChatGPT or Claude), and about 10 to 20 minutes for a short ballot. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. The page keeps your progress in this browser only.</p>
-  <p><strong>When to use it:</strong> once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when the candidate list is final and most candidate questionnaires and donor reports are out. In the last week, do a quick re-check of close races and the candidate list, since candidates can withdraw and late donor reports and news appear. Your progress stays in this browser, so you can come back.</p>
+  <p>You will need: an AI chat that can search the web (for example Gemini, Copilot, Perplexity, ChatGPT or Claude). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here.</p>
   <p><strong>How it works</strong></p>
   <ol>
     <li>Tell the page about you.</li>
@@ -155,7 +160,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <dt>Funder</dt><dd>Who gave money to the campaign.</dd>
       <dt>Questionnaire</dt><dd>A candidate's written answer to a published survey, such as Vote411 or Vote Smart. Counts more than a statement, less than a record.</dd>
       <dt>Statement</dt><dd>What a candidate says, such as a website or interview.</dd>
-      <dt>Endorsement</dt><dd>Support from an issue group that publishes its criteria. All endorsements and donors on one priority count as one weak item. Party endorsements are not used.</dd>
+      <dt>Endorsement</dt><dd>Support from an issue group that publishes its criteria. All endorsements and donors on one priority count as one weak item.</dd>
       <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
       <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
       <dt>Double-check</dt><dd>A second AI chat checks the first answer against its sources.</dd>
@@ -169,6 +174,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <details>
     <summary>More detail</summary>
     <div>
+<p><strong>When to use it:</strong> once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when the candidate list is final and most candidate questionnaires and donor reports are out. In the last week, do a quick re-check of close races and the candidate list, since candidates can withdraw and late donor reports and news appear. Your progress stays in this browser, so you can come back.</p>
 <!--HOW-->
     </div>
   </details>
@@ -189,18 +195,21 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
     <div class="field">
       <label for="f-address">Your voting address (optional)</label>
       <input type="text" id="f-address" autocomplete="off" placeholder="123 Main St, Springfield, IL 62701" aria-describedby="f-address-hint">
-      <p class="hint" id="f-address-hint">Districts can split a street, so a full address finds your exact ballot. If you prefer, enter only your city, county and state; the guide may then include races that are not on your ballot. Your address goes only into the Step 2 question and its optional double-check, which you paste into an AI chat (that chat service may keep it). This page never saves it on this device.</p>
+      <p class="hint" id="f-address-hint">Finds your exact ballot. Used only in the Step 2 question and its double-check; never saved on this device.</p>
+      <details class="more"><summary>More about the address</summary><p class="hint">Districts can split a street, so a full address finds your exact ballot. If you prefer, enter only your city, county and state; the guide may then include races that are not on your ballot. You paste the Step 2 question into an AI chat yourself, and that chat service may keep it.</p></details>
     </div>
     <div class="field">
       <label for="f-date">Election date</label>
       <input type="date" id="f-date" aria-describedby="f-date-hint">
-      <p class="hint" id="f-date-hint">The date on your ballot or your election office website. US general elections are on the first Tuesday after the first Monday in November.</p>
+      <p class="hint" id="f-date-hint">The date on your ballot or your election office website.</p>
+      <details class="more"><summary>Not sure of the date?</summary><p class="hint">US general elections are on the first Tuesday after the first Monday in November. Primaries and special elections vary; your election office website lists them.</p></details>
     </div>
     <div id="values-only" class="fields" style="padding:0" hidden>
-      <fieldset aria-describedby="axes-hint axes-ideas">
+      <fieldset aria-describedby="axes-hint axes-ideas axes-reflect">
         <legend>Your priorities (values match only)</legend>
-        <p class="hint" id="axes-hint">List 3 to 6 things you want your government to do or not do. Write them as policies, not parties or people. Each one gets a letter (A, B, C...) so the AI can tag evidence to it.</p>
+        <p class="hint" id="axes-hint">List 3 to 6 things you want your government to do or not do. Write them as policies, not people. Each one gets a letter (A, B, C...) so the AI can tag evidence to it.</p>
         <p class="hint" id="axes-ideas">Ideas: tax level · public services · public safety · personal freedom · environment · housing · schools · clean government</p>
+        <p class="hint" id="axes-reflect">Not sure what matters most to you? Try the <a href="https://moralfoundations.org/questionnaires/" target="_blank" rel="noopener noreferrer">Moral Foundations self-check</a> from university researchers. The self-scoring version is a document you fill out on your own device, so nothing is sent anywhere.</p>
         <div id="axes" class="fields" style="padding:0"></div>
         <div class="btn-row"><button type="button" class="copy" id="axis-add">Add priority</button></div>
       </fieldset>
@@ -228,7 +237,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <legend>Races with many candidates (5 or more)</legend>
       <label class="opt"><input type="radio" name="crowded" value="all" checked> Research every candidate (slower, most complete)</label>
       <label class="opt"><input type="radio" name="crowded" value="focus" aria-describedby="focus-hint"> Focus on a shorter list</label>
-      <p class="hint" id="focus-hint">Choose a fair rule that is not about party. Everyone left out is still listed with the reason, and you can add them back. Common choices: at least 5% in the primary, or at least $10,000 raised.</p>
+      <p class="hint" id="focus-hint">Pick a fair rule, for example a minimum vote share or amount raised. Everyone left out is still listed with the reason, and you can add them back. Common choices: at least 5% in the primary, or at least $10,000 raised.</p>
       <div id="focus-fields" class="fields" style="padding:0" hidden>
         <div class="field"><label for="f-share">Minimum vote share in a certified primary or polling average (%)</label><input type="number" id="f-share" min="0" max="100" step="any" placeholder="e.g. 5"></div>
         <div class="field"><label for="f-money">Minimum reported contributions ($)</label><input type="number" id="f-money" min="0" step="any" placeholder="e.g. 10000"></div>
@@ -240,13 +249,17 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <label class="opt"><input type="checkbox" id="f-dc" checked aria-describedby="f-dc-hint"> Double-check each AI answer (recommended)</label>
       <p class="hint" id="f-dc-hint">After each answer, you can ask a second AI chat to check it against its sources. It takes one more copy and paste per item and catches many mistakes. You can skip it any time.</p>
     </div>
-    <div class="btn-row"><button type="button" class="copy" id="profile-clear">Clear form</button></div>
   </form>
   <div class="profile-out">
-    <div class="btn-row"><span class="out-label" id="profile-out-label">Your profile (address withheld)</span><button type="button" class="copy primary" id="profile-copy">Copy</button></div>
+    <div class="btn-row"><span class="out-label" id="profile-out-label">Your profile (address withheld)</span><button type="button" class="copy" id="profile-copy" aria-label="Copy profile only">Copy</button></div>
     <pre id="profile-out" aria-labelledby="profile-out-label" aria-describedby="profile-out-hint"></pre>
     <p class="hint" id="profile-out-hint">This is what the AI will see. You do not need to copy it; the "Copy for chat" buttons in Steps 2 to 4 include it.</p>
     <div class="btn-row"><button type="button" class="copy primary" id="s1-next">Continue to Step 2</button></div>
+    <div class="btn-row"><button type="button" class="copy" id="profile-clear">Clear form</button></div>
+    <div id="clear-confirm" class="warn" hidden>
+      <p>This clears every field in Your profile. Your ballot list and answers stay.</p>
+      <div class="btn-row"><button type="button" class="copy primary" id="clear-yes">Yes, clear the form</button><button type="button" class="copy" id="clear-no">Cancel</button></div>
+    </div>
   </div>
 </section>
 </details>
@@ -257,7 +270,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 <div class="stage-body">
   <div class="btn-row"><button type="button" class="copy primary" id="ballot-copy">Copy for chat</button></div>
   <ol class="mini">
-    <li>Click Copy for chat.</li>
+    <li>Tap or click Copy for chat.</li>
     <li>Open your AI chat, start a new conversation, paste, and send.</li>
     <li>Wait for the full answer (it may take a minute while it searches).</li>
     <li>Copy the whole answer and paste it in the box below.</li>
@@ -270,10 +283,11 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 MEASURES
 - Measure 1 | YES raises the library levy | source: https://example.org/pamphlet</pre>
   <textarea id="ballot-answer" rows="8" autocomplete="off" aria-describedby="ballot-answer-help ballot-answer-hint"></textarea>
-  <p class="hint" id="ballot-answer-help">If the AI says NO WEB ACCESS, turn on web search in that chat or use a different AI, then try again. If it lists something wrong or misses something, fix the list below with Add or Delete.</p>
+  <p class="hint" id="ballot-answer-help">If the AI says NO WEB ACCESS, turn on web search in that chat or use a different AI, then try again. Try a free chat with web search, such as Copilot, Perplexity or ChatGPT with search turned on (as of October 2026). If it lists something wrong or misses something, fix the list below with Add or Delete.</p>
   <p class="hint" id="ballot-answer-hint">This box is not saved, because the answer may repeat your address. Only the list of races and measures is saved.</p>
   <div class="btn-row"><button type="button" class="copy" id="ballot-read">Read the answer</button></div>
   <p id="ballot-found" aria-live="polite"></p>
+  <div class="btn-row" id="ballot-fix-row" hidden><button type="button" class="copy" id="ballot-fix" aria-describedby="ballot-fix-hint">Copy a fix-the-format message</button><span class="hint" id="ballot-fix-hint">Paste it into the same chat, then paste the new answer above and read it again.</span></div>
   <div id="ballot-warn"></div>
   <div id="ballot-dc"></div>
   <h3 id="race-h">Races</h3>
@@ -290,8 +304,11 @@ MEASURES
 <summary><span class="num" aria-hidden="true">3</span><h2>Research each item</h2><span class="stage-status" id="s3-status"></span></summary>
 <p class="stage-why">Why: each item gets its own short chat, so the AI stays focused and makes fewer mistakes.</p>
 <div class="stage-body">
-  <p>For each item: click Copy for chat, paste into a NEW chat, then paste the answer back into that item's box. A check mark (✓) means the page could read the answer. If you see a warning, ask the AI to "use the exact format from the question" and paste again.</p>
+  <p>For each item: tap or click Copy for chat, paste into a NEW chat, then paste the answer back into that item's box. A check mark (✓) means the page could read the answer. If you see a warning, press "Copy a fix-the-format message", paste it into the same chat, and paste the new answer back.</p>
+  <p class="hint">Example of the answer format (made-up data):</p>
+  <pre class="example" id="s3-example"></pre>
   <p class="hint" id="s3-empty">Your list is empty. Add races and measures in Step 2.</p>
+  <p id="s3-next-item" hidden></p>
   <div id="items"></div>
   <div class="btn-row"><button type="button" class="copy primary" id="s3-next">Continue to Step 4</button></div>
 </div>
@@ -310,11 +327,11 @@ MEASURES
   <h3>Check the work</h3>
   <p>Paste this into a new chat. It has the rules, your profile, and every answer from Step 3.</p>
   <p class="hint" id="check-hint">Asks a fresh AI chat to look for mistakes in everything collected so far.</p>
-  <div class="btn-row"><button type="button" class="copy primary" id="check-copy" aria-describedby="check-hint">Copy for chat (Step 6)</button></div>
+  <div class="btn-row" id="check-parts"><button type="button" class="copy primary" id="check-copy" aria-describedby="check-hint">Copy: check everything</button></div>
   <h3>Build the guide</h3>
   <p>Fix anything the check found, then paste this into a new chat to write your guide.</p>
   <p class="hint" id="build-hint">Asks the AI to write your finished guide. Save the answer as a document or print it.</p>
-  <div class="btn-row"><button type="button" class="copy primary" id="build-copy" aria-describedby="build-hint">Copy for chat (Step 7)</button></div>
+  <div class="btn-row" id="build-parts"><button type="button" class="copy primary" id="build-copy" aria-describedby="build-hint">Copy: write my guide</button></div>
   <div id="bundle-warn" class="warn" hidden></div>
   <h3>Share how it went (optional)</h3>
   <p class="hint">Did it work for your ballot? A short report helps others know where this works. These boxes are not saved.</p>
@@ -407,10 +424,13 @@ const STEPS = [
 /*STEPS*/
 ];
 
+// Screen readers hear status changes ("Copied", the next item) through one hidden live region.
+// Cleared first so the same message twice is announced twice.
+function announce(msg){const r=document.getElementById("live");r.textContent="";setTimeout(()=>r.textContent=msg,50)}
 // Copy with a fallback for pages opened from disk or browsers without the async clipboard.
 function copyText(text,btn){
   const label=btn.textContent;
-  const done=msg=>{btn.textContent=msg;setTimeout(()=>btn.textContent=label,1600)};
+  const done=msg=>{btn.textContent=msg;announce(msg);setTimeout(()=>btn.textContent=label,1600)};
   const fallback=()=>{
     const t=document.createElement("textarea");t.value=text;t.setAttribute("readonly","");t.style.position="fixed";t.style.opacity="0";
     document.body.appendChild(t);t.select();
@@ -438,10 +458,12 @@ let items=[];
 const str=v=>typeof v==="string"?v:"";
 const checkFields=x=>({checkAnswer:str(x.checkAnswer),original:str(x.original),checked:!!x.checked,checkSkipped:!!x.checkSkipped});
 let ballotChecked=false, ballotCheckText="", ballotOriginal="", ballotSkipped=false;
+// Stage 3 format example, shown once; neutral answers use [TOPIC][0][KIND] (kit.js NEUTRAL_EVIDENCE).
 const EXAMPLE={
-  race:"CANDIDATE: Candidate X | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no",
-  measure:"MEASURE: Measure 1\nEVIDENCE:\n- [A][+][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
+  values:"CANDIDATE: Candidate X | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no\n\nMEASURE: Measure 1\nEVIDENCE:\n- [A][+][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
+  neutral:"CANDIDATE: Candidate X | council member\n- [Housing][0][RECORD] 2025-03-10: Voted yes on a zoning bill, final passage 7-2. | https://example.org/source\nGAPS: none\n\nMEASURE: Measure 1\nEVIDENCE:\n- [Libraries][0][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
 };
+const NO_WEB_TIP=" Try a free chat with web search, such as Copilot, Perplexity or ChatGPT with search turned on (as of October 2026).";
 
 const host=$("steps");
 STEPS.forEach((s,i)=>{
@@ -540,6 +562,7 @@ function render(){
   });
   $("axis-add").disabled=rows.length>=6;
   $("profile-out").textContent=buildProfile(st);
+  $("s3-example").textContent=EXAMPLE[neutral?"neutral":"values"];
   cards.forEach((c,i)=>{
     const skip=neutral&&(i===1||i===5);
     c.card.classList.toggle("skip",skip); c.badge.hidden=!skip;
@@ -571,21 +594,25 @@ function save(){
 
 function load(){
   const get=k=>{try{return JSON.parse(localStorage.getItem(k)||"null")}catch(_){return null/* blocked or corrupt storage: start fresh */}};
-  let s=get(STORE);
+  let s=get(STORE), migrated=false;
   // v1 stored the profile fields at the top level; carry them over once.
-  if(!s||typeof s!=="object"){const old=get(OLD_STORE);s=old&&typeof old==="object"?{profile:old}:{}}
+  if(!s||typeof s!=="object"){const old=get(OLD_STORE);migrated=!!old&&typeof old==="object";s=migrated?{profile:old}:{}}
   const prof=s.profile&&typeof s.profile==="object"?s.profile:{};
   const {address,...rest}=prof;
   writeState({...defaultState(),...rest});
   items=(Array.isArray(s.items)?s.items:[]).filter(x=>x&&(x.kind==="race"||x.kind==="measure"))
     .map(x=>({kind:x.kind,text:String(x.text||""),note:String(x.note||""),answer:String(x.answer||""),status:"to do",...checkFields(x)}));
   ballotChecked=s.ballotChecked===true;
+  // Drop the v1 key only once v2 is safely written, so a failed write never loses the profile.
+  if(migrated){save();try{if(localStorage.getItem(STORE))localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: v1 stays until Start over */}}
 }
 load();
 $("profile-form").addEventListener("input",render);
 $("profile-form").addEventListener("change",render);
 $("axis-add").addEventListener("click",()=>{addAxis({name:"",meaning:"",weight:2});render();$("axes").lastElementChild.querySelector("input").focus()});
-$("profile-clear").addEventListener("click",()=>{$("f-address").value=""; writeState(defaultState()); render()});
+$("profile-clear").addEventListener("click",()=>{$("clear-confirm").hidden=false;$("clear-yes").focus()});
+$("clear-no").addEventListener("click",()=>{$("clear-confirm").hidden=true;$("profile-clear").focus()});
+$("clear-yes").addEventListener("click",()=>{$("f-address").value=""; writeState(defaultState()); render(); $("clear-confirm").hidden=true; announce("Form cleared"); $("profile-clear").focus()});
 $("profile-copy").addEventListener("click",ev=>copyText($("profile-out").textContent,ev.currentTarget));
 $("calc-fill").addEventListener("click",()=>fillWeights(readState()));
 
@@ -634,7 +661,7 @@ function renderCalc(out,r){
   });
   const det=el("details",null,"math"); det.append(el("summary","Show the math"));
   det.append(el("p","Weights: "+Object.entries(r.weights).map(([k,v])=>k+"="+v).join(", ")+"."));
-  det.append(el("p","Each priority gets a position from its evidence: records count 3, statements 1, all questionnaire answers on a priority together count 2 (one answer) or 3 (two or more, never more than one record), and all donors and endorsements on a priority together count as one statement (their average direction), plus a neutral starting weight of 3. Lines with the same source count once unless they have different event ids. Party is never used. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
+  det.append(el("p","Each priority gets a position from its evidence: records count 3, statements 1, all questionnaire answers on a priority together count 2 (one answer) or 3 (two or more, never more than one record), and all donors and endorsements on a priority together count as one statement (their average direction), plus a neutral starting weight of 3. Lines with the same source count once unless they have different event ids. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
   res.rows.forEach(row=>{
     det.append(el("p",row.name+":"));
     const ul=el("ul");
@@ -660,7 +687,7 @@ function evalItem(it){
   if(!text.trim())it.status="to do";
   else if(/NO WEB ACCESS/.test(text)){
     it.status="problem";
-    out.append(noteBox([{msg:"The chat said it cannot open web pages. Use a chat with web search turned on and try again.",line:""}]));
+    out.append(noteBox([{msg:"The chat said it cannot open web pages. Use a chat with web search turned on and try again."+NO_WEB_TIP,line:""}]));
   }else if(st.mode==="values"){
     const r=calculate(axisLines(st).join("\n"),text);
     renderCalc(out,r);
@@ -682,10 +709,18 @@ function evalItem(it){
   refreshItem(it);
 }
 
+// Finished: read cleanly, and double-checked or skipped when the double-check is on. Only
+// unfinished items stay open, one at a time.
+const finished=it=>isDone(it)&&(!$("f-dc").checked||it.checked||it.checkSkipped);
+const itemName=it=>it.text.trim()||kindName(it)+" "+(items.indexOf(it)+1);
 // In-place updates, so typing in a row never rebuilds the list or loses focus.
 function refreshItem(it){
   const u=it.ui, empty=!it.text.trim();
   u.input.setAttribute("aria-label",kindName(it)+" "+(items.indexOf(it)+1));
+  u.copy.setAttribute("aria-label","Copy for chat: "+itemName(it));
+  u.fix.setAttribute("aria-label","Copy a fix-the-format message for "+itemName(it));
+  u.lab.textContent="Paste the AI's answer for "+itemName(it);
+  u.fix.hidden=it.status!=="problem";
   u.del.setAttribute("aria-label","Delete "+kindName(it).toLowerCase()+" "+(items.indexOf(it)+1));
   u.title.textContent=kindName(it)+": "+(it.text.trim()||"(not entered)");
   u.status.textContent=(isDone(it)?"✓ ":"")+it.status;
@@ -716,7 +751,7 @@ function checkPanel(h){
     const t=h.text(), cs=checkSummary(t), fixed=extractCorrected(t);
     if(ta.value!==t)ta.value=t;
     out.replaceChildren();
-    if(/NO WEB ACCESS/.test(t))out.append(el("p","The checker said it cannot open web pages. Use a chat with web search turned on and try again.","warn"));
+    if(/NO WEB ACCESS/.test(t))out.append(el("p","The checker said it cannot open web pages. Use a chat with web search turned on and try again."+NO_WEB_TIP,"warn"));
     else if(t.trim()){
       out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
       if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
@@ -758,28 +793,46 @@ function buildItem(it){
   const body=el("div",null,"item-body"), row=el("div",null,"btn-row"), copy=el("button","Copy for chat","copy primary");
   copy.type="button";
   const need=el("span",it.kind==="race"?"Enter the race first":"Enter the measure first","hint");
-  row.append(copy,need);
-  const ta=el("textarea"), lab=el("label","Paste the AI's answer for this item"), out=el("div",null,"item-out");
+  const fix=el("button","Copy a fix-the-format message","copy");
+  fix.type="button"; fix.hidden=true;
+  row.append(copy,need,fix);
+  const ta=el("textarea"), lab=el("label"), out=el("div",null,"item-out");
   ta.id="answer-"+(++uid); ta.rows=6; ta.value=it.answer; lab.htmlFor=ta.id; out.setAttribute("aria-live","polite");
   const step=it.kind==="race"?3:4;
-  const reEval=()=>{ta.value=it.answer;evalItem(it);refreshStages();save()};
+  const reEval=()=>{ta.value=it.answer;evalItem(it);refreshStages();save();advance(it)};
   const dc=checkPanel({
     chat:()=>checkChat(step,{[it.kind]:it.text,answer:it.answer}),
     text:()=>it.checkAnswer, setText:v=>{it.checkAnswer=v;refreshStages();save()},
     use:f=>{it.original=it.answer;it.answer=f;it.checked=true;reEval()},
     undo:()=>{it.answer=it.original;it.original="";it.checked=false;reEval()},
-    checked:()=>it.checked, canUndo:()=>!!it.original, skipped:()=>it.checkSkipped, skip:()=>{it.checkSkipped=true;save()},
+    checked:()=>it.checked, canUndo:()=>!!it.original, skipped:()=>it.checkSkipped, skip:()=>{it.checkSkipped=true;save();advance(it)},
   });
   dc.d.open=!it.checked&&!it.checkSkipped;
-  body.append(row,lab,el("p","Example of the format (made-up data):","hint"),el("pre",EXAMPLE[it.kind],"example"),ta,out,dc.d);
+  body.append(row,lab,ta,out,dc.d);
   d.append(sum,body);
   copy.addEventListener("click",()=>copyText(forChat(step,STEPS[0].text,STEPS[step].text,readState(),{[it.kind]:it.text}),copy));
+  fix.addEventListener("click",()=>copyText(fixFormat(step,STEPS[step].text,readState()),fix));
   // A new or edited answer has not been checked, so its earlier check no longer applies.
-  ta.addEventListener("input",()=>{it.answer=ta.value;Object.assign(it,checkFields({}));dc.refresh();evalItem(it);refreshStages();save()});
-  Object.assign(it.ui,{status:st,title,score,copy,need,out,dc,dcBadge});
+  // Move on only after a paste into an unfinished item: folding while someone types or fixes a typo steals focus.
+  ta.addEventListener("input",ev=>{const was=finished(it);it.answer=ta.value;Object.assign(it,checkFields({}));dc.refresh();evalItem(it);refreshStages();save();if(!was&&/^insertFrom(Paste|Drop)/.test(ev.inputType||""))advance(it)});
+  Object.assign(it.ui,{d,status:st,title,score,copy,need,fix,lab,out,dc,dcBadge});
   $("items").append(d);
   evalItem(it);
-  d.open=!isDone(it);
+}
+
+// When an open item becomes finished, fold it and open the next unfinished one, so a long
+// ballot shows one item at a time.
+function advance(it){
+  if(!it.ui.d.open||!finished(it))return;
+  it.ui.d.open=false;
+  const i=items.indexOf(it), next=[...items.slice(i+1),...items.slice(0,i)].find(x=>!finished(x));
+  const hint=$("s3-next-item");
+  if(!next){hint.hidden=false;hint.textContent="All items are done. Continue to Step 4.";announce(hint.textContent);$("s3-next").focus();return}
+  next.ui.d.open=true;
+  hint.hidden=false;
+  hint.textContent=`Next: ${kindName(next)}: ${itemName(next)} (${items.indexOf(next)+1} of ${items.length})`;
+  announce(hint.textContent);
+  next.ui.d.querySelector("summary").focus();
 }
 
 function buildLists(){
@@ -787,6 +840,8 @@ function buildLists(){
   // Races first, then measures, the same order as the ballot list.
   items.sort((a,b)=>(a.kind===b.kind?0:a.kind==="race"?-1:1));
   items.forEach(it=>{buildRow(it);buildItem(it)});
+  const first=items.find(x=>!finished(x));
+  if(first)first.ui.d.open=true;
   refreshStages();
 }
 
@@ -795,10 +850,27 @@ function addItem(kind){
   items.push(it); buildLists(); save(); it.ui.input.focus();
 }
 
+// Neutral counts ("3 evidence lines recognized") are page bookkeeping, not results: values only.
 function bundleText(){
-  return bundleAnswers(items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,calc:it.calc,check:checkNote(it)})));
+  const values=readState().mode==="values";
+  return bundleAnswers(items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,calc:values?it.calc:"",check:checkNote(it)})));
 }
 const finalChat=step=>forChat(step,STEPS[0].text,STEPS[step].text,readState(),{attach:bundleText()});
+// Step 6/7 copy buttons: one button, or "Copy part i of N" buttons when the text is long.
+// Parts are recomputed at click time, so the buttons only need rebuilding when N changes.
+const PART_BOX={6:"check-parts",7:"build-parts"}, PART_NAME={6:"check everything",7:"write my guide"};
+function partButtons(step,n){
+  const box=$(PART_BOX[step]), single=box.firstElementChild;
+  if(box.childElementCount-1===(n>1?n:0))return;
+  [...box.children].slice(1).forEach(b=>b.remove());
+  single.hidden=n>1;
+  for(let i=0;i<(n>1?n:0);i++){
+    const b=el("button",`Copy part ${i+1} of ${n}`,"copy"+(i===0?" primary":""));
+    b.type="button"; b.setAttribute("aria-label",`Copy part ${i+1} of ${n}: ${PART_NAME[step]}`);
+    b.addEventListener("click",()=>{copied[step]=true;copyText(splitForChat(finalChat(step))[i]||"",b);refreshShare()});
+    box.append(b);
+  }
+}
 
 // Spot check: 3 random source links from the pasted answers.
 let spotShown=[];
@@ -838,17 +910,21 @@ function refreshStages(){
   $("dc-count").hidden=!items.length;
   $("dc-count").textContent=`${checked} of ${items.length} items double-checked.`+(checked<items.length?" Double-checking is optional but recommended for close calls.":"");
   $("s4-status").textContent=items.length&&done===items.length?"Ready":"Finish Step 3 first, or go ahead with what you have";
-  const len=Math.max(finalChat(6).length,finalChat(7).length), w=$("bundle-warn");
-  w.hidden=len<=30000;
+  const n6=splitForChat(finalChat(6)).length, n7=splitForChat(finalChat(7)).length, w=$("bundle-warn");
+  partButtons(6,n6); partButtons(7,n7);
+  w.hidden=n6<2&&n7<2;
+  w.textContent=w.hidden?"":"This text is long, so it comes in parts; some chats cut off long pastes. Paste every part, in order, into the same new chat. The chat replies OK until the last part.";
   refreshShare();
-  w.textContent=w.hidden?"":`This text is long (${len.toLocaleString("en-US")} characters). Some chats cut off long pastes. If the answer skips items, paste it in two parts: first everything up to a "===" header near the middle, with the line "Part 1 of 2. Wait for part 2.", then the rest.`;
 }
 
-function go(from,to){$(from).open=false;$(to).open=true;$(to).scrollIntoView({block:"start"})}
+// Focus follows the move, so keyboard and screen-reader users land on the new stage.
+function go(from,to){$(from).open=false;$(to).open=true;$(to).scrollIntoView({block:"start"});$(to).querySelector("summary").focus({preventScroll:true})}
+$("start-link").addEventListener("click",()=>{$("stage-1").open=true});
 $("s1-next").addEventListener("click",()=>go("stage-1","stage-2"));
 $("s2-next").addEventListener("click",()=>go("stage-2","stage-3"));
 $("s3-next").addEventListener("click",()=>go("stage-3","stage-4"));
 $("ballot-copy").addEventListener("click",ev=>copyText(forChat(2,STEPS[0].text,STEPS[2].text,readState()),ev.currentTarget));
+$("ballot-fix").addEventListener("click",ev=>copyText(fixFormat(BALLOT_STEP,STEPS[BALLOT_STEP].text,readState()),ev.currentTarget));
 $("race-add").addEventListener("click",()=>addItem("race"));
 $("measure-add").addEventListener("click",()=>addItem("measure"));
 $("spot-pick").addEventListener("click",pickSpots);
@@ -900,11 +976,16 @@ $("ballot-answer").addEventListener("input",()=>{
 $("ballot-read").addEventListener("click",()=>readBallot());
 function readBallot(){
   const text=$("ballot-answer").value, warn=$("ballot-warn"), found=$("ballot-found");
-  warn.replaceChildren();
-  if(/NO WEB ACCESS/.test(text)){found.textContent="The chat said it cannot open web pages. Use a chat with web search turned on.";return}
-  const p=parseBallot(text);
-  const rows=[...p.races.map(r=>({kind:"race",text:raceText(r),note:[r.status,r.source&&"source: "+String(r.source).split(/[?#]/)[0]].filter(Boolean).join(" · ")})),
+  warn.replaceChildren(); $("ballot-fix-row").hidden=true;
+  if(/NO WEB ACCESS/.test(text)){found.textContent="The chat said it cannot open web pages. Use a chat with web search turned on."+NO_WEB_TIP;return}
+  const p=parseBallot(text,readState().address);
+  let rows=[...p.races.map(r=>({kind:"race",text:raceText(r),note:[r.status,r.source&&"source: "+String(r.source).split(/[?#]/)[0]].filter(Boolean).join(" · ")})),
     ...p.measures.map(m=>({kind:"measure",text:measureText(m),note:m.source?"source: "+String(m.source).split(/[?#]/)[0]:""}))];
+  // A prose answer under the headings: offer each line as an editable row rather than nothing.
+  const prose=!rows.length&&p.skipped.length>0;
+  if(prose)rows=p.skipped.map(x=>({kind:x.kind,text:x.line,note:""}));
+  if(p.skipped.length||!rows.length)$("ballot-fix-row").hidden=false;
+  if(p.addressLines.length)warn.append(noteBox(p.addressLines.map(line=>({msg:"Not kept, because it may include an address:",line}))));
   if(!rows.length){
     found.textContent=p.sawHeading?"No races or measures found under RACES or MEASURES. Check the lines use | between parts, like the example."
       :"No RACES or MEASURES heading found. Paste the AI's whole answer, or add items by hand below.";
@@ -915,8 +996,8 @@ function readBallot(){
   const next=rows.map(r=>{const o=old.get(r.kind+"\n"+r.text);if(o)old.delete(r.kind+"\n"+r.text);return {...r,answer:o?o.answer:"",status:"to do",...checkFields(o||{})}});
   const kept=[...old.values()].filter(it=>it.answer.trim());
   items=[...next,...kept.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:"to do",...checkFields(it)}))];
-  found.textContent=`Found ${p.races.length} races and ${p.measures.length} measures.`+(kept.length?` Kept ${kept.length} earlier items that already have answers.`:"");
-  if(p.skipped.length)warn.append(noteBox(p.skipped.map(line=>({msg:"Not read; add it by hand if it is a race or measure:",line}))));
+  found.textContent=(prose?"We couldn't read the format, so here is each line; edit or delete.":`Found ${p.races.length} races and ${p.measures.length} measures.`)+(kept.length?` Kept ${kept.length} earlier items that already have answers.`:"");
+  if(p.skipped.length&&!prose)warn.append(noteBox(p.skipped.map(x=>({msg:"Not read; add it by hand if it is a race or measure:",line:x.line}))));
   buildLists(); save();
 }
 
@@ -926,7 +1007,7 @@ $("reset-yes").addEventListener("click",()=>{
   try{localStorage.removeItem(STORE);localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: nothing saved to clear */}
   items=[]; spotShown=[];
   ballotChecked=false; ballotCheckText=""; ballotOriginal=""; ballotSkipped=false; ballotDc.refresh();
-  $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren();
+  $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren(); $("ballot-fix-row").hidden=true; $("s3-next-item").hidden=true;
   writeState(defaultState()); buildLists(); render();
   $("reset-confirm").hidden=true;
   ["stage-2","stage-3","stage-4"].forEach(id=>$(id).open=false);

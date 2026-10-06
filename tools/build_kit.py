@@ -28,7 +28,7 @@ HOW_MODES = [
 HOW_STEPS_WEB = [
     "Your profile: fill in the form. Neutral comparison needs only your election details; values match "
     "also asks for your values, in your own words. The kit works for any political view.",
-    "Find your ballot: click \"Copy for chat\", paste it into a new chat with web search turned on, and paste "
+    "Find your ballot: tap or click \"Copy for chat\", paste it into a new chat with web search turned on, and paste "
     "the AI's answer back. The page turns it into a list of races and measures.",
     "Research each item: one new chat per race or measure. Paste each answer back; in values mode the page "
     "does the scoring math for you.",
@@ -45,8 +45,8 @@ HOW_STEPS_MD = [
     "mistakes. Paste your profile and one Step 3 or Step 4 output at a time, and save the results.",
     "Then run Step 6 to check the work and Step 7 to build the guide.",
 ]
-HOW_CROWDED = ("Crowded races: if a race has 5 or more candidates, you can choose a focus set by a rule that "
-               "is not about party; the guide still lists everyone left out and why.")
+HOW_CROWDED = ("Crowded races: if a race has 5 or more candidates, you can pick a fair rule for a focus set, for example "
+               "a minimum vote share or amount raised; the guide still lists everyone left out and why.")
 HOW_DOUBLE_CHECK = ("Optional double-check: a second AI chat checks each answer against its sources (Step 8). "
                     "Recommended, not required.")
 HOW_NOTE = ("Scores measure how well each choice fits your values, not who is likely to win. "

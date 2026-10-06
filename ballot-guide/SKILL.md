@@ -28,7 +28,7 @@ campaign promises. The voter makes the choice. Read `references/rules.md` and
    primary rules and expected offices absent from this election.
 3. Research every candidate (Step 3) and every measure (Step 4), including minor and
    uncontested candidates. For 5+ candidates, research all by default; an optional
-   voter-selected non-party focus rule must list everyone excluded and why.
+   voter-selected fair focus rule (for example a minimum vote share) must list everyone excluded and why.
 4. Neutral mode skips Steps 1 and 5, and has no scores or calls in Step 7.
    Values mode uses the profile, scoring and call instructions in the rules: one
    position per value from distinct events (record 3, stated 1; questionnaire
@@ -37,7 +37,7 @@ campaign promises. The voter makes the choice. Read `references/rules.md` and
    without the candidate's own evidence, coverage and an evidence level beside every score,
    gray items left out, red-lined options excluded from the call, toss-ups that name
    the event they turn on, and "(uneven evidence)" when coverage differs by 0.4+.
-   Never use party label, platform or party endorsements as evidence or a baseline.
+   Party is evidence only for a party priority the voter listed.
    Unopposed: 60+ "Vote for" and 40 or less "Consider leaving blank or writing in"
    need coverage 0.5+, better than thin evidence and at least one record; otherwise
    "Your call"; no evidence "Not enough evidence". A clear contested winner or a

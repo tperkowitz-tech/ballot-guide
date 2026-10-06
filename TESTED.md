@@ -4,6 +4,16 @@ Where people have tried the ballot guide, from voluntary reports. Each row shows
 coarse location (state, and a county or city if the reporter chose to share it). No names,
 addresses, political views or votes are recorded.
 
+## Areas tested
+
+One row per state, generated from the report log below.
+
+<!-- summary:start -->
+| State | Reports | Used in | Last tested | Results |
+|---|---|---|---|---|
+| Washington | 1 | Claude Code | 2026-10-06 | 1 Worked with fixes |
+<!-- summary:end -->
+
 ## Add your report
 
 [Tell us how it went](https://github.com/tperkowitz-tech/ballot-guide/issues/new?template=test-report.yml).

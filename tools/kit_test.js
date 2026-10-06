@@ -1,9 +1,9 @@
 // Checks the profile and Copy-for-chat text built by tools/kit.js. Run: node tools/kit_test.js
 const assert = require("assert");
-const {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, defaultState, letters, focusRuleSentence, buildProfile, fillStep, forChat,
+const {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
   parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
   REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl} = require("./kit.js");
-const {parseWeights} = require("./calc.js");
+const {parseWeights, countEvidence} = require("./calc.js");
 
 assert.deepStrictEqual(letters(4), ["A", "B", "C", "D"]);
 
@@ -12,7 +12,7 @@ let s = defaultState();
 s.axes[0].name = "Hidden";
 s.gray = "something";
 let p = buildProfile(s);
-assert.ok(p.startsWith("VALUES PROFILE\nAddress: withheld (not needed for this step)\nElection date: not given\nMode: Neutral comparison\n"));
+assert.ok(p.startsWith("YOUR ELECTION (the profile the steps call VALUES PROFILE)\nAddress: withheld (not needed for this step)\nElection date: not given\nMode: Neutral comparison\n"));
 assert.ok(p.includes("Neutral mode: do not collect values, score, rank, or recommend."));
 assert.ok(!/Value axes|Hidden|Gray areas|Viability/.test(p));
 assert.ok(p.endsWith("Crowded races (5+ candidates): research every candidate"));
@@ -22,6 +22,7 @@ s = defaultState();
 Object.assign(s, {mode: "values", address: "1 Main St", date: "2026-11-03", gray: "\n  drug policy \n\n", viability: true});
 s.axes = [{name: "Public services", meaning: "Fund schools", weight: 3}, {name: "Tax level", meaning: "Lower taxes", weight: 1}];
 p = buildProfile(s, true);
+assert.ok(p.startsWith("VALUES PROFILE\n"));
 assert.ok(p.includes("Address: 1 Main St\nElection date: 2026-11-03\nMode: Values match\n"));
 assert.ok(p.includes("Value axes:\nA | Public services | Fund schools | weight 3\nB | Tax level | Lower taxes | weight 1\n"));
 assert.ok(p.includes("Gray areas:\n- drug policy\n"));
@@ -52,6 +53,52 @@ assert.strictEqual(fillStep(4, step4, s, {measure: "Prop 1"}), "MEASURE: Prop 1\
 // Step 7 gets the neutral table line only in neutral mode.
 assert.ok(fillStep(7, "build", defaultState()).endsWith("\n\nNeutral mode: no scores, best matches or calls; use | Race | Choices | Key sourced differences |."));
 assert.strictEqual(fillStep(7, "build", {...defaultState(), mode: "values"}), "build");
+
+// Neutral edits checked against the real prompts.md text, so a prompt edit cannot silently
+// bring back the sign legend or the scored checks.
+{
+  const md = require("fs").readFileSync(require("path").join(__dirname, "../ballot-guide/references/prompts.md"), "utf8");
+  const real = [...md.matchAll(/^## Step (\d)[^\n]*\n[\s\S]*?```text\n([\s\S]*?)\n```/gm)].map(m => m[2]);
+  const neutral = defaultState(), values = {...defaultState(), mode: "values"};
+  for (const i of [3, 4]) {
+    const t = fillStep(i, real[i], neutral);
+    assert.ok(t.includes(NEUTRAL_EVIDENCE), "neutral line in step " + i);
+    assert.ok(!/gray|\+ \/ -|agrees with|axis letter|does a YES vote agree/i.test(t), "no sign legend in neutral step " + i);
+    assert.ok(t.includes("- [{{TOPIC}}][0][RECORD / QUESTIONNAIRE"), "topic form in step " + i);
+    assert.strictEqual(fillStep(i, real[i], values), real[i], "values step " + i + " unchanged");
+    // The neutral example line from the prompt counts as evidence, and the fix-format message uses it.
+    assert.ok(fixFormat(i, real[i], neutral).includes("[{{TOPIC}}][0]"));
+    assert.ok(fixFormat(i, real[i], values).includes("[{{axis}}][{{+ / - / 0 / gray}}]"));
+  }
+  const c = countEvidence("CANDIDATE: Jane Doe | x\n- [Housing][0][RECORD] 2025: Voted yes. | https://a.gov/1\nGAPS: none");
+  assert.deepStrictEqual([c.recognized, c.errors.length], [1, 0]);
+  const s6 = fillStep(6, real[6], neutral);
+  assert.ok(!/GRAY|score math|red line|Step 5|turns on|in the math|Calibration|viability|highest weight/i.test(s6), s6);
+  assert.ok(s6.includes("10b. Is any candidate list") && s6.includes("20. Donors and endorsements: are FUNDER and ENDORSEMENT items grouped (one per group, donors by industry or interest)?"));
+  assert.ok(s6.includes("If RESULT is FAIL: fix the outputs, then run this step again."));
+  assert.strictEqual(fillStep(6, real[6], values), real[6]);
+  assert.ok(fixFormat(2, real[2], neutral).includes("RACES\n- {{office}} | {{position}}"));
+  assert.throws(() => fixFormat(3, "no format here", neutral));
+}
+
+// Long Step 6/7 text splits at "=== " headers; parts carry the wait and final task lines.
+{
+  const pre = "TASK: check.\n" + "r".repeat(50);
+  const blocks = [1, 2, 3, 4].map(i => `=== RACE ${i} OF 4: R${i} ===\n` + "x".repeat(60));
+  const text = [pre, ...blocks].join("\n");
+  assert.deepStrictEqual(splitForChat(text, 10000), [text]);
+  const parts = splitForChat(text, 150);
+  assert.strictEqual(parts.length, 4);
+  parts.slice(0, -1).forEach((t, i) => assert.ok(t.startsWith(`Part ${i + 1} of 4. Reply only OK and wait for the rest.\n\n`)));
+  assert.ok(parts[3].startsWith("Part 4 of 4.\n\n") && parts[3].endsWith("\n\nNow do the task above using all parts."));
+  assert.ok(parts[0].includes("TASK: check.") && parts[0].includes("=== RACE 1 OF 4"));
+  // Joined back without the added lines, nothing is lost or reordered.
+  const strip = t => t.replace(/^Part \d+ of \d+\.( Reply only OK and wait for the rest\.)?\n\n/, "").replace(/\n\nNow do the task above using all parts\.$/, "");
+  assert.strictEqual(parts.map(strip).join("\n"), text);
+  // No headers to split at: one part, even if long.
+  assert.deepStrictEqual(splitForChat("y".repeat(200), 150), ["y".repeat(200)]);
+  assert.ok(splitForChat(text).length === 1, "default limit is about 12k");
+}
 
 // Copy for chat: web gate, rules, profile, step; Step 0 = rules only; Step 1 = profile only.
 s = defaultState();
@@ -110,8 +157,17 @@ assert.deepStrictEqual(b.races, [
   {office: "School Board", position: "Seat 4", candidates: "A vs B vs C vs D vs E", status: "CROWDED", source: "https://example.org/c"},
 ]);
 assert.deepStrictEqual(b.measures, [{name: "Measure 1", summary: "Raises the library levy", source: "https://example.org/m"}]);
-assert.deepStrictEqual(b.skipped, ["Something without columns"]);
+assert.deepStrictEqual(b.skipped, [{line: "Something without columns", kind: "race"}]);
+// A prose answer under the headings: every line comes back with its section, for editable rows.
+assert.deepStrictEqual(parseBallot("**Races**\n1. **U.S. House**: A vs. B — Contested\n**Measures**\n- Library Levy: raises tax").skipped,
+  [{line: "U.S. House: A vs. B — Contested", kind: "race"}, {line: "Library Levy: raises tax", kind: "measure"}]);
 assert.ok(!JSON.stringify(b).includes("District 9"), "DISTRICTS are not kept");
+// Unreadable lines that may hold an address are never offered as saved rows.
+{
+  const a = parseBallot("RACES\nThese are the races for 987 Zebra Lane, Faketown, ZZ 99999:\nYour polling place is 12 Oak St.\nRaces at 55 Elm, Faketown:\n1. U.S. House: A vs. B\nMEASURES\n- Library Levy: raises tax", "55 Elm, Faketown, ZZ");
+  assert.deepStrictEqual(a.skipped.map(x => x.line), ["U.S. House: A vs. B", "Library Levy: raises tax"]);
+  assert.strictEqual(a.addressLines.length, 3);
+}
 assert.strictEqual(raceText(b.races[0]), "City Council, Position 2: Candidate X vs Candidate Y");
 assert.strictEqual(raceText(b.races[1]), "Mayor: Candidate Z");
 assert.strictEqual(measureText(b.measures[0]), "Measure 1 (Raises the library levy)");
