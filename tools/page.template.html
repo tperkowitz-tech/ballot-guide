@@ -112,6 +112,9 @@ pre.example{padding:8px 10px;font-size:11.5px;border-left:3px solid var(--rule)}
 .st{font:600 .72rem var(--mono);padding:3px 8px;border:1px solid var(--muted);color:var(--muted);border-radius:4px;white-space:nowrap}
 .st.done{border-color:var(--pen);color:var(--pen);background:var(--pen-soft)}
 .st.problem{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+/* Double-check panel: folds away once skipped or done, and reopens from its summary. */
+.dc{border:1px solid var(--rule);min-width:0}
+.dc>summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:10px 12px;min-height:44px;cursor:pointer;font-weight:700}
 .spot{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .spot li{display:flex;gap:10px;align-items:flex-start}
 .spot input{width:22px;height:22px;flex:none;margin-top:2px}
@@ -151,6 +154,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <dt>Statement</dt><dd>What a candidate says, such as a website or interview.</dd>
       <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
       <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
+      <dt>Double-check</dt><dd>A second AI chat checks the first answer against its sources.</dd>
       <dt>Score</dt><dd>A summary of the evidence found and how each piece was marked as for or against your priorities. It is not a prediction of who will win.</dd>
       <dt>Coverage</dt><dd>How many of your priorities have any evidence.</dd>
       <dt>Evidence level</dt><dd>Strong, moderate or thin, based on how much independent evidence there is.</dd>
@@ -226,6 +230,10 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
         <div class="field"><label for="f-always">Always include these candidates</label><input type="text" id="f-always" placeholder="e.g. Jane Doe, Sam Lee"></div>
       </div>
     </fieldset>
+    <div class="field">
+      <label class="opt"><input type="checkbox" id="f-dc" checked aria-describedby="f-dc-hint"> Double-check each AI answer (recommended)</label>
+      <p class="hint" id="f-dc-hint">After each answer, you can ask a second AI chat to check it against its sources. It takes one more copy and paste per item and catches many mistakes. You can skip it any time.</p>
+    </div>
     <div class="btn-row"><button type="button" class="copy" id="profile-clear">Clear form</button></div>
   </form>
   <div class="profile-out">
@@ -261,6 +269,7 @@ MEASURES
   <div class="btn-row"><button type="button" class="copy" id="ballot-read">Read the answer</button></div>
   <p id="ballot-found" aria-live="polite"></p>
   <div id="ballot-warn"></div>
+  <div id="ballot-dc"></div>
   <h3 id="race-h">Races</h3>
   <ul class="checklist" id="race-list" aria-labelledby="race-h"></ul>
   <div class="btn-row"><button type="button" class="copy" id="race-add">Add race</button></div>
@@ -286,6 +295,7 @@ MEASURES
 <summary><span class="num" aria-hidden="true">4</span><h2>Check and build</h2><span class="stage-status" id="s4-status"></span></summary>
 <p class="stage-why">Why: AI can be wrong. Opening a few sources yourself is the best check.</p>
 <div class="stage-body">
+  <p id="dc-count" hidden></p>
   <h3>Spot-check 3 sources</h3>
   <p id="spot-hint">Open each link and check that the page really says what the AI claimed. If one is wrong, tell the AI in the item's chat and paste the corrected answer.</p>
   <p class="hint" id="spot-empty">No links yet. Paste answers in Step 3 first.</p>
@@ -383,9 +393,15 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null;
-// Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui}. Only
-// kind/text/note/answer/status are saved; the raw Step 2 answer never is (it may echo the address).
+// Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
+// checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
+// the address); only the parsed list and whether it was double-checked are.
 let items=[];
+// Double-check state of one Step 3/4 answer; `original` is the answer before the correction, for Undo.
+// Saved data is untrusted: a non-string field loads as empty rather than as "[object Object]".
+const str=v=>typeof v==="string"?v:"";
+const checkFields=x=>({checkAnswer:str(x.checkAnswer),original:str(x.original),checked:!!x.checked,checkSkipped:!!x.checkSkipped});
+let ballotChecked=false, ballotCheckText="", ballotOriginal="", ballotSkipped=false;
 const EXAMPLE={
   race:"CANDIDATE: Candidate X | nonpartisan | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no",
   measure:"MEASURE: Measure 1\nEVIDENCE:\n- [A][+][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
@@ -455,6 +471,7 @@ function readState(){
   st.gray=$("f-gray").value; st.red=$("f-red").value; st.stakes=$("f-stakes").value;
   st.viability=$("f-viability").checked;
   st.minShare=$("f-share").value; st.minMoney=$("f-money").value; st.includeOffice=$("f-office").checked; st.always=$("f-always").value;
+  st.doubleCheck=$("f-dc").checked;
   return st;
 }
 
@@ -467,6 +484,7 @@ function writeState(st){
   $("f-gray").value=st.gray||""; $("f-red").value=st.red||""; $("f-stakes").value=st.stakes||"";
   $("f-viability").checked=!!st.viability;
   $("f-share").value=st.minShare||""; $("f-money").value=st.minMoney||""; $("f-office").checked=!!st.includeOffice; $("f-always").value=st.always||"";
+  $("f-dc").checked=st.doubleCheck!==false;
 }
 
 function fillWeights(st){
@@ -498,6 +516,8 @@ function render(){
   // Re-score pasted answers only when the mode or the weights change, not on every keystroke.
   const scoring=neutral?"neutral":axisLines(st).join("\n");
   if(scoring!==lastScoring){lastScoring=scoring;items.forEach(evalItem)}
+  else items.forEach(refreshItem); // the double-check option shows or hides each item's panel
+  showBallotCheck();
   // Refill only when the axes change, so edits typed into the calculator survive other keystrokes.
   const axes=axisLines(st).join("\n");
   if(!neutral&&axes!==lastAxes)fillWeights(st);
@@ -509,8 +529,8 @@ function render(){
 function save(){
   // The address is deliberately left out of storage: it is the one field that identifies a person.
   const {address,...profile}=readState();
-  const keep=items.map(({kind,text,note,answer,status})=>({kind,text,note,answer,status}));
-  try{localStorage.setItem(STORE,JSON.stringify({profile,items:keep}))}catch(_){/* storage blocked or full: the page still works, nothing is remembered */}
+  const keep=items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:it.status,...checkFields(it)}));
+  try{localStorage.setItem(STORE,JSON.stringify({profile,items:keep,ballotChecked}))}catch(_){/* storage blocked or full: the page still works, nothing is remembered */}
 }
 
 function load(){
@@ -522,7 +542,8 @@ function load(){
   const {address,...rest}=prof;
   writeState({...defaultState(),...rest});
   items=(Array.isArray(s.items)?s.items:[]).filter(x=>x&&(x.kind==="race"||x.kind==="measure"))
-    .map(x=>({kind:x.kind,text:String(x.text||""),note:String(x.note||""),answer:String(x.answer||""),status:"to do"}));
+    .map(x=>({kind:x.kind,text:String(x.text||""),note:String(x.note||""),answer:String(x.answer||""),status:"to do",...checkFields(x)}));
+  ballotChecked=s.ballotChecked===true;
 }
 load();
 $("profile-form").addEventListener("input",render);
@@ -635,7 +656,52 @@ function refreshItem(it){
   u.status.className="st"+(isDone(it)?" done":it.status==="problem"?" problem":"");
   u.score.textContent=it.status==="scored"?it.call:"";
   u.copy.disabled=empty; u.need.hidden=!empty;
+  u.dcBadge.hidden=!it.checked;
+  u.dc.d.hidden=!$("f-dc").checked||!it.answer.trim();
 }
+
+// ---- Double-check (Step 8) ----
+// One panel per answer, for Stage 2 and each Stage 3 item. h: {chat(), text(), setText(v),
+// use(corrected), undo(), checked(), canUndo(), skipped(), skip()}.
+function checkPanel(h){
+  const d=el("details",null,"dc"), sum=el("summary"), badge=el("span","","st");
+  sum.append(el("span","Double-check (recommended)"),badge);
+  const body=el("div",null,"item-body"), btns=el("div",null,"btn-row");
+  const copy=el("button","Copy double-check for chat","copy primary"), skip=el("button","Skip double-check","copy");
+  const use=el("button","Use the corrected answer","copy primary"), undo=el("button","Undo","copy");
+  [copy,skip,use,undo].forEach(b=>b.type="button");
+  const ta=el("textarea"), lab=el("label","Paste the checker's answer"), out=el("div");
+  ta.id="check-"+(++uid); ta.rows=5; ta.autocomplete="off"; lab.htmlFor=ta.id; out.setAttribute("aria-live","polite");
+  btns.append(copy,skip);
+  body.append(el("p","Best: use a different AI than the one that answered, or at least a new chat.","hint"),btns,lab,ta,out);
+  d.append(sum,body);
+  const row=b=>{const r=el("div",null,"btn-row");r.append(b);out.append(r)};
+  function refresh(){
+    const t=h.text(), cs=checkSummary(t), fixed=extractCorrected(t);
+    if(ta.value!==t)ta.value=t;
+    out.replaceChildren();
+    if(/NO WEB ACCESS/.test(t))out.append(el("p","The checker said it cannot open web pages. Use a chat with web search turned on and try again.","warn"));
+    else if(t.trim()){
+      out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
+      if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
+      else if(!usableCorrected(fixed))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
+      else if(!h.checked())row(use);
+    }
+    if(h.checked()){out.append(el("p","✓ The corrected answer is in use."));if(h.canUndo())row(undo)}
+    badge.textContent=h.checked()?"✓ double-checked":h.skipped()?"skipped":"";
+    badge.className="st"+(h.checked()?" done":""); badge.hidden=!badge.textContent;
+  }
+  ta.addEventListener("input",()=>{h.setText(ta.value);refresh()});
+  copy.addEventListener("click",()=>copyText(h.chat(),copy));
+  skip.addEventListener("click",()=>{h.skip();d.open=false;refresh()});
+  use.addEventListener("click",()=>{const f=extractCorrected(h.text());if(!usableCorrected(f))return;h.use(f);refresh();(undo.isConnected?undo:ta).focus()});
+  undo.addEventListener("click",()=>{h.undo();refresh();(use.isConnected?use:ta).focus()});
+  refresh();
+  return {d,refresh};
+}
+const checkChat=(step,extra)=>forChat(DOUBLE_CHECK_STEP,STEPS[0].text,STEPS[DOUBLE_CHECK_STEP].text,readState(),{checkStep:step,question:STEPS[step].text,...extra});
+// Summary for the Step 6/7 bundles; empty when no checker reply with counts was pasted.
+function checkNote(it){const cs=checkSummary(it.checkAnswer);return cs?checkLine(cs)+(it.checked?" (corrected answer used)":""):""}
 
 function buildRow(it){
   const li=el("li"), inp=el("input"), del=el("button","Delete","copy");
@@ -651,19 +717,30 @@ function buildRow(it){
 
 function buildItem(it){
   const d=el("details",null,"item"), sum=el("summary"), st=el("span","","st"), title=el("span"), score=el("span","","hint");
-  sum.append(st,title,score);
+  const dcBadge=el("span","✓ double-checked","st done");
+  sum.append(st,dcBadge,title,score);
   const body=el("div",null,"item-body"), row=el("div",null,"btn-row"), copy=el("button","Copy for chat","copy primary");
   copy.type="button";
   const need=el("span",it.kind==="race"?"Enter the race first":"Enter the measure first","hint");
   row.append(copy,need);
   const ta=el("textarea"), lab=el("label","Paste the AI's answer for this item"), out=el("div",null,"item-out");
   ta.id="answer-"+(++uid); ta.rows=6; ta.value=it.answer; lab.htmlFor=ta.id; out.setAttribute("aria-live","polite");
-  body.append(row,lab,el("p","Example of the format (made-up data):","hint"),el("pre",EXAMPLE[it.kind],"example"),ta,out);
-  d.append(sum,body);
   const step=it.kind==="race"?3:4;
+  const reEval=()=>{ta.value=it.answer;evalItem(it);refreshStages();save()};
+  const dc=checkPanel({
+    chat:()=>checkChat(step,{[it.kind]:it.text,answer:it.answer}),
+    text:()=>it.checkAnswer, setText:v=>{it.checkAnswer=v;refreshStages();save()},
+    use:f=>{it.original=it.answer;it.answer=f;it.checked=true;reEval()},
+    undo:()=>{it.answer=it.original;it.original="";it.checked=false;reEval()},
+    checked:()=>it.checked, canUndo:()=>!!it.original, skipped:()=>it.checkSkipped, skip:()=>{it.checkSkipped=true;save()},
+  });
+  dc.d.open=!it.checked&&!it.checkSkipped;
+  body.append(row,lab,el("p","Example of the format (made-up data):","hint"),el("pre",EXAMPLE[it.kind],"example"),ta,out,dc.d);
+  d.append(sum,body);
   copy.addEventListener("click",()=>copyText(forChat(step,STEPS[0].text,STEPS[step].text,readState(),{[it.kind]:it.text}),copy));
-  ta.addEventListener("input",()=>{it.answer=ta.value;evalItem(it);refreshStages();save()});
-  Object.assign(it.ui,{status:st,title,score,copy,need,out});
+  // A new or edited answer has not been checked, so its earlier check no longer applies.
+  ta.addEventListener("input",()=>{it.answer=ta.value;Object.assign(it,checkFields({}));dc.refresh();evalItem(it);refreshStages();save()});
+  Object.assign(it.ui,{status:st,title,score,copy,need,out,dc,dcBadge});
   $("items").append(d);
   evalItem(it);
   d.open=!isDone(it);
@@ -678,12 +755,12 @@ function buildLists(){
 }
 
 function addItem(kind){
-  const it={kind,text:"",note:"",answer:"",status:"to do"};
+  const it={kind,text:"",note:"",answer:"",status:"to do",...checkFields({})};
   items.push(it); buildLists(); save(); it.ui.input.focus();
 }
 
 function bundleText(){
-  return bundleAnswers(items.map(({kind,text,note,answer,calc})=>({kind,text,note,answer,calc})));
+  return bundleAnswers(items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,calc:it.calc,check:checkNote(it)})));
 }
 const finalChat=step=>forChat(step,STEPS[0].text,STEPS[step].text,readState(),{attach:bundleText()});
 
@@ -715,12 +792,15 @@ function pickSpots(){
 function refreshStages(){
   const races=items.filter(i=>i.kind==="race").length, measures=items.length-races;
   const done=items.filter(isDone).length, problems=items.filter(i=>i.status==="problem").length;
-  $("s2-status").textContent=items.length?`${races} races, ${measures} measures`:"Not started";
+  $("s2-status").textContent=items.length?`${races} races, ${measures} measures`+(ballotChecked?" · ✓ double-checked":""):"Not started";
   $("s3-status").textContent=items.length?`${done} of ${items.length} done`+(problems?`, ${problems} with problems`:""):"Waiting for your ballot list";
   $("s3-empty").hidden=items.length>0;
   const urls=allUrls().map(x=>x.url);
   if(spotShown.length<Math.min(3,urls.length)||spotShown.some(u=>!urls.includes(u)))pickSpots();
   else{$("spot-empty").hidden=urls.length>0;$("spot-pick").disabled=urls.length<=3}
+  const checked=items.filter(i=>i.checked).length;
+  $("dc-count").hidden=!items.length;
+  $("dc-count").textContent=`${checked} of ${items.length} items double-checked.`+(checked<items.length?" Double-checking is optional but recommended for close calls.":"");
   $("s4-status").textContent=items.length&&done===items.length?"Ready":"Finish Step 3 first, or go ahead with what you have";
   const len=Math.max(finalChat(6).length,finalChat(7).length), w=$("bundle-warn");
   w.hidden=len<=30000;
@@ -738,7 +818,24 @@ $("spot-pick").addEventListener("click",pickSpots);
 $("check-copy").addEventListener("click",ev=>copyText(finalChat(6),ev.currentTarget));
 $("build-copy").addEventListener("click",ev=>copyText(finalChat(7),ev.currentTarget));
 
-$("ballot-read").addEventListener("click",()=>{
+// Stage 2 double-check. Its texts live only in memory, like the Step 2 answer itself.
+const ballotDc=checkPanel({
+  chat:()=>checkChat(BALLOT_STEP,{answer:$("ballot-answer").value}),
+  text:()=>ballotCheckText, setText:v=>{ballotCheckText=v},
+  use:f=>{ballotOriginal=$("ballot-answer").value;$("ballot-answer").value=f;ballotChecked=true;readBallot()},
+  undo:()=>{$("ballot-answer").value=ballotOriginal;ballotOriginal="";ballotChecked=false;readBallot()},
+  checked:()=>ballotChecked, canUndo:()=>!!ballotOriginal, skipped:()=>ballotSkipped, skip:()=>{ballotSkipped=true},
+});
+ballotDc.d.open=true;
+$("ballot-dc").append(ballotDc.d);
+function showBallotCheck(){ballotDc.d.hidden=!$("f-dc").checked||!$("ballot-answer").value.trim()}
+$("ballot-answer").addEventListener("input",()=>{
+  ballotCheckText=""; ballotOriginal=""; ballotChecked=false;
+  ballotDc.refresh(); showBallotCheck(); refreshStages(); save();
+});
+
+$("ballot-read").addEventListener("click",()=>readBallot());
+function readBallot(){
   const text=$("ballot-answer").value, warn=$("ballot-warn"), found=$("ballot-found");
   warn.replaceChildren();
   if(/NO WEB ACCESS/.test(text)){found.textContent="The chat said it cannot open web pages. Use a chat with web search turned on.";return}
@@ -752,19 +849,20 @@ $("ballot-read").addEventListener("click",()=>{
   }
   // Keep pasted Step 3 answers: matching rows keep theirs, and rows with an answer stay on the list.
   const old=new Map(items.map(it=>[it.kind+"\n"+it.text,it]));
-  const next=rows.map(r=>{const o=old.get(r.kind+"\n"+r.text);if(o)old.delete(r.kind+"\n"+r.text);return {...r,answer:o?o.answer:"",status:"to do"}});
+  const next=rows.map(r=>{const o=old.get(r.kind+"\n"+r.text);if(o)old.delete(r.kind+"\n"+r.text);return {...r,answer:o?o.answer:"",status:"to do",...checkFields(o||{})}});
   const kept=[...old.values()].filter(it=>it.answer.trim());
-  items=[...next,...kept.map(({kind,text,note,answer})=>({kind,text,note,answer,status:"to do"}))];
+  items=[...next,...kept.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:"to do",...checkFields(it)}))];
   found.textContent=`Found ${p.races.length} races and ${p.measures.length} measures.`+(kept.length?` Kept ${kept.length} earlier items that already have answers.`:"");
   if(p.skipped.length)warn.append(noteBox(p.skipped.map(line=>({msg:"Not read; add it by hand if it is a race or measure:",line}))));
   buildLists(); save();
-});
+}
 
 $("reset").addEventListener("click",()=>{$("reset-confirm").hidden=false;$("reset-yes").focus()});
 $("reset-no").addEventListener("click",()=>{$("reset-confirm").hidden=true;$("reset").focus()});
 $("reset-yes").addEventListener("click",()=>{
   try{localStorage.removeItem(STORE);localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: nothing saved to clear */}
   items=[]; spotShown=[];
+  ballotChecked=false; ballotCheckText=""; ballotOriginal=""; ballotSkipped=false; ballotDc.refresh();
   $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren();
   writeState(defaultState()); buildLists(); render();
   $("reset-confirm").hidden=true;

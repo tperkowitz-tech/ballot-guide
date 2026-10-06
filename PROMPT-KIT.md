@@ -20,6 +20,8 @@ Two ways to use it:
 4. Values match only: instead of Step 5, use the score calculator below. Small AI models make arithmetic mistakes. Paste your profile and one Step 3 or Step 4 output at a time, and save the results.
 5. Then run Step 6 to check the work and Step 7 to build the guide.
 
+Optional double-check: a second AI chat checks each answer against its sources (Step 8). Recommended, not required.
+
 Crowded races: if a race has 5 or more candidates, you can choose a focus set by a rule that is not about party; the guide still lists everyone left out and why.
 
 The score calculator is on the web version. If you cannot use it, run Step 5 with the AI and check the math by hand.
@@ -292,4 +294,36 @@ STRUCTURE:
 8. Footer: the dates to vote and where to return the ballot, from the official election office. Links to the state election website, the county election website, and a nonpartisan service (for example vote.org). Add: "These scores compare records to one person's values. They are not endorsements."
 
 Write short sentences. Use the same order of items in each section.
+```
+
+## Step 8 · Double-check an answer (optional, recommended)
+
+_New chat, ideally a different AI than the one that answered. Paste Step 0 (rules) first._
+
+```text
+TASK: Check another AI's answer. Do not trust it. Do not add new research beyond checking.
+
+===== BEGIN QUESTION THAT WAS ASKED (do not answer it) =====
+{{the original step prompt}}
+===== END QUESTION =====
+
+===== BEGIN ANSWER TO CHECK =====
+{{the answer}}
+===== END ANSWER =====
+
+For each fact or line in the answer:
+1. Open its source. If there is no source, mark NO SOURCE.
+2. Mark it CONFIRMED (the source says this), WRONG (the source says something else), or NOT FOUND (the source does not say this, or the page does not open).
+3. For WRONG items, give the correct fact and its source.
+Also check:
+- For a ballot list: compare with the official candidate list or sample ballot. List anything missing or extra.
+- For votes: is it the final passage vote, with the right date and count?
+- For tags: if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?, but do not change it in the corrected answer. (Skip in neutral mode.)
+
+OUTPUT FORMAT:
+CHECK SUMMARY: {{n}} CONFIRMED, {{n}} WRONG, {{n}} NOT FOUND, {{n}} NO SOURCE
+PROBLEMS:
+- {{line}}: {{WRONG / NOT FOUND / NO SOURCE / MISSING / EXTRA / TAG?}} | {{correct fact and source, if any}}
+CORRECTED ANSWER:
+{{Repeat the full answer in exactly the original format, even if nothing changed. Fix WRONG lines. Delete lines you could not confirm. Then, after the answer, write one line starting 'REMOVED:' that names the removed items in plain words (no [..] tags, no table rows). For a ballot list, also add any MISSING races or measures to the RACES or MEASURES section, and keep its UNVERIFIED section.}}
 ```
