@@ -47,7 +47,8 @@ do not do it; report it under BLOCKERS.
 
 1. **Evidence file** at the assigned path, in the scorer JSON shape (see the top of
    `scripts/score.py`): `races[].race`, `measure`, `options[].name`, `red_line`, and
-   `evidence[]` items with `axis`, `sign`, `kind`, `event`, `source`, `date`, `text`.
+   `evidence[]` items with `axis`, `sign`, `kind`, `event`, `source`, `date`, `text`, plus a
+   top-level `gray` list of the voter's torn topics (empty if none).
    A measure has one option, the YES side. In neutral mode, use a short topic name
    as the axis and sign "0" on every row (no directions); nothing is scored. Bullets
    then read `[TOPIC][0][KIND]`, for example `[Housing][0][RECORD]`.

@@ -47,9 +47,11 @@ function parseWeights(text) {
 }
 
 // Chats reformat the requested plain text: bold, bullets, numbered lists, headings, tables.
-// Strip that dressing so a line reads the same however the chat styled it.
+// Strip that dressing so a line reads the same however the chat styled it. Copy buttons that
+// give Markdown source escape punctuation ("\[A\]", "\|") and end lines with "\"; undo that first.
 function normLine(raw) {
-  return String(raw).replace(/\*\*|__|`/g, "").trim()
+  return String(raw).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/\s*\\+\s*$/, "")
+    .replace(/\*\*|__|`/g, "").trim()
     .replace(/^#+\s*/, "")
     .replace(/^(?:[-*•]\s*|\d+[.)]\s+)+/, "")
     .trim();
@@ -106,6 +108,11 @@ function parseResearch(text, weights, neutral) {
     // evidence form; scoring them would count removed facts. Skip until the next CANDIDATE:/MEASURE:.
     if (/^(REMOVED|PROBLEMS|CHECK SUMMARY)\s*(:|$)/i.test(line)) { section = "stopped"; cur = null; continue; }
     if (section === "stopped" && !/^(CANDIDATE|MEASURE):/i.test(line)) continue;
+    // Step 3 asks the chat to name, not research, a candidate missing from the race line.
+    if (/^NEW CANDIDATE\s*:/i.test(line)) {
+      warnings.push(`The chat found a candidate not on your ballot list. Check your official ballot, then edit the race line if needed: ${line}`);
+      continue;
+    }
     // GAPS sits inside an option (before RED LINE or EVIDENCE: is common), so it only pauses
     // evidence until the option's next structural line; its items are unconfirmed, never scored.
     if (/^GAPS\s*(:|$)/i.test(line)) { section = "gaps"; continue; }
@@ -166,7 +173,8 @@ function parseResearch(text, weights, neutral) {
     if (bad.length) { errors.push({line, msg: "Skipped: " + bad.join("; ") + "."}); continue; }
     const row = {axis, sign, kind: k, ...sourceAndDate(ev.rest), text: ev.rest};
     if (ev.event) row.event = ev.event;
-    if (!row.source) delete row.source;
+    // Chats often give a citation title instead of the link; the line still counts.
+    if (!row.source) { delete row.source; warnings.push(`No web address for the source; ask the chat for the full link: ${line}`); }
     if (!row.date) delete row.date;
     cur.evidence.push(row);
   }
@@ -185,8 +193,9 @@ function parseResearch(text, weights, neutral) {
 function countEvidence(text) {
   const p = parseResearch(text, {}, true);
   if (!p.options.length) p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found."});
-  // Neutral mode has no warnings list on the page, so ignored GAPS evidence shows as a problem.
-  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors.concat(p.warnings.map(msg => ({line: "", msg})))};
+  // Warnings (no link, new candidate, ignored GAPS evidence) are shown as "to check" and do not
+  // block the item; errors do.
+  return {recognized: p.options.reduce((t, o) => t + o.evidence.length, 0), errors: p.errors, warnings: p.warnings.map(msg => ({line: "", msg}))};
 }
 
 const isGray = ev => ev.sign === "gray" || ev.gray === true;
@@ -320,8 +329,15 @@ function steps(events) {
   return out;
 }
 
-function summarize(opt, weights) {
-  const {events, gray, warnings} = collapse(opt);
+// grayTopics: the profile lists topics the voter is torn on. Without any, a gray tag cannot
+// mean "torn", so those rows are dropped from the list too, with a warning (as in score.py).
+function summarize(opt, weights, grayTopics) {
+  const c = collapse(opt), {events, warnings} = c;
+  let gray = c.gray;
+  if (gray.length && !grayTopics) {
+    warnings.push(`${opt.name}: tagged gray, but you listed no topics you are torn on (${gray.length} not counted).`);
+    gray = [];
+  }
   const entries = events.flatMap(ev => ev.entries);
   let covered = 0, W = 0;
   for (const a of new Set(entries.filter(e => OWN.includes(e[1])).map(e => e[0]))) covered += weights[a];
@@ -406,17 +422,33 @@ function decide(rows, events, covered, eligible, measure, weights) {
 }
 
 // Returns {call, turns_on, rows, warnings, errors}; errors means nothing was scored.
-function scoreRace(options, weights, isMeasure) {
+function scoreRace(options, weights, isMeasure, grayTopics) {
   const errors = validateRace(options, weights, isMeasure);
   if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors};
   const rows = [], events = [], covered = [], warnings = [];
   for (const o of options) {
-    const s = summarize(o, weights);
+    const s = summarize(o, weights, grayTopics);
     rows.push(s.row); events.push(s.events); covered.push(s.covered); warnings.push(...s.warnings);
   }
   const eligible = options.map((o, i) => i).filter(i => !options[i].red_line);
   const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights);
   return {call, turns_on, rows, warnings, errors};
+}
+
+// Whether the profile lists a topic the voter is torn on: text after "Gray areas:" or a
+// "- topic" line under it. Template placeholders, "none" and the Step 1 EXAMPLES do not count.
+function hasGrayTopics(text) {
+  const real = t => t.trim() && !t.includes("{{") && !/^(none|n\/a)\.?$/i.test(t.trim());
+  let under = false;
+  for (const line of String(text).split(/\r?\n/).map(l => l.trim())) {
+    if (!line) continue;
+    if (/^EXAMPLES\b/i.test(line)) break;
+    const m = line.match(/^gray areas?\b[^:]*:?(.*)$/i);
+    if (m) { if (real(m[1])) return true; under = true; continue; }
+    if (under && /^[-*•]/.test(line)) { if (real(line.replace(/^[-*•]\s*/, ""))) return true; continue; }
+    under = false;
+  }
+  return false;
 }
 
 function calculate(weightsText, researchText) {
@@ -429,11 +461,11 @@ function calculate(weightsText, researchText) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
     return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
-  const res = scoreRace(p.options, weights, p.kind === "measure");
+  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText));
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
   return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, normLine, parseWeights, parseResearch, countEvidence, scoreRace, calculate};
+  module.exports = {pyRound, normLine, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
 }

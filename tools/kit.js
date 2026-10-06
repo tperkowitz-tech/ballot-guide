@@ -250,14 +250,23 @@ function cells(line) {
 // dropped because it is tied to the address. Rows it cannot read are returned in `skipped` as
 // {line, kind}, so the page can offer them as editable rows instead of dropping them. Unreadable
 // lines that may hold an address go to `addressLines` instead: they are shown, never saved.
-const STREET = /\b\d{1,6}\s+(?:[NSEW]\.?\s+)?(?:[\w.'-]+\s+){0,4}(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|Ct|Court|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square)\b/i;
+// Broad on purpose: a held-back line is shown to the user, never lost, while a missed address
+// would be saved. Ballot numbering ("District 4", "Position 12345", "Proposition 50") is not a
+// house number or ZIP; street words are never articles or prepositions (as in check_evidence.py).
+// ponytail: "for 3 Circuit Court" still matches; add words to BALLOT_NO if real ballots trip it.
+const BALLOT_NO = String.raw`(?<!\b(?:District|Dist|Position|Pos|Seat|Proposition|Prop|Measure|Question|Issue|Amendment|Initiative|Referendum|Ordinance|Resolution|Department|Dept|Division|Ward|Precinct|Circuit|Article|Section|Chapter|Bill|HB|SB|No|Number|Num)\.?\s+#?)`;
+const STREET = new RegExp(BALLOT_NO + String.raw`\b\d{1,6}(?:st|nd|rd|th)?\s+(?:(?!(?:the|a|an|to|of|in|on|at|for|and|by|from)\s)[\w.'-]+\s+){0,4}?(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Blvd|Boulevard|Dr|Drive|Way|Ct|Court|Pl|Place|Ter|Terrace|Hwy|Highway|Pkwy|Parkway|Cir|Circle|Loop|Trl|Trail|Sq|Square|Route|Rte)\b`, "i");
+const ZIP = new RegExp(BALLOT_NO + String.raw`\b\d{5}(?:-\d{4})?\b`);
 function mayHaveAddress(line, address) {
   const a = String(address || "").trim().toLowerCase().split(",")[0].trim();
-  return STREET.test(line) || /\b\d{5}(?:-\d{4})?\b/.test(line) || /\bP\.?\s*O\.?\s*Box\b/i.test(line)
+  line = line.replace(/https?:\/\/\S+/gi, " "); // source links are not addresses
+  return STREET.test(line) || ZIP.test(line) || /\bP\.?\s*O\.?\s*Box\b/i.test(line)
     || /polling place|your address/i.test(line) || (a.length > 3 && line.toLowerCase().includes(a));
 }
+// `unverified`: rows the chat marked UNVERIFIED (never items); `noUrl`: rows kept whose source is
+// not a web address. Both are lines for the page to show, not save.
 function parseBallot(text, address = "") {
-  const races = [], measures = [], skipped = [], addressLines = [];
+  const races = [], measures = [], skipped = [], addressLines = [], unverified = [], noUrl = [];
   let section = null, sawHeading = false;
   for (const raw of String(text).split(/\r?\n/)) {
     const line = lineNorm(raw);
@@ -268,13 +277,19 @@ function parseBallot(text, address = "") {
     if (!line || /^\|[\s|:-]+\|?$/.test(line) || (section !== "RACES" && section !== "MEASURES")) continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
+    // "UNVERIFIED: could not open PDF | ..." is a failure note, not a race or measure.
+    if (/^UNVERIFIED\b/i.test(c ? c[0] : line)) {
+      (mayHaveAddress(line, address) ? addressLines : unverified).push(line);
+      continue;
+    }
+    if (mayHaveAddress(line, address)) { addressLines.push(line); continue; }
     if (!c || c.length < 2) {
-      if (mayHaveAddress(line, address)) addressLines.push(line);
-      else skipped.push({line, kind: section === "RACES" ? "race" : "measure"});
+      skipped.push({line, kind: section === "RACES" ? "race" : "measure"});
       continue;
     }
     const srcI = c.findIndex(x => /https?:\/\/|^source\s*:/i.test(x));
     const source = srcI < 0 ? "" : c[srcI].replace(/^source\s*:\s*/i, "");
+    if (!/https?:\/\//i.test(source)) noUrl.push(line);
     if (section === "RACES") {
       const stI = c.findIndex(x => /^(UNCONTESTED|CONTESTED|CROWDED)\b/i.test(x));
       const rest = c.filter((_, i) => i !== srcI && i !== stI);
@@ -286,7 +301,15 @@ function parseBallot(text, address = "") {
       measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
     }
   }
-  return {races, measures, skipped, addressLines, sawHeading};
+  return {races, measures, skipped, addressLines, unverified, noUrl, sawHeading};
+}
+
+// The calculator's profile: the axis lines plus any gray (torn) topics, so calc.js knows a
+// gray tag is allowed. No address, stakes or red lines.
+function calcProfile(state) {
+  const gray = lines(state.gray);
+  // "=" and "weight" would read as an axis weight in parseWeights.
+  return axisLines(state).concat(gray.length ? ["Gray areas:", ...gray.map(l => "- " + l.replace(/=/g, " ").replace(/\bweight\b/gi, "wt"))] : []).join("\n");
 }
 
 // The text that fills RACE: or MEASURE: in Steps 3 and 4.
@@ -331,6 +354,6 @@ function testReportUrl(fields) {
 
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
-    parseBallot, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
+    mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl};
 }
