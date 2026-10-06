@@ -30,9 +30,12 @@ campaign promises. The voter makes the choice. Read `references/rules.md` and
    uncontested candidates. For 5+ candidates, research all by default; an optional
    voter-selected non-party focus rule must list everyone excluded and why.
 4. Neutral mode skips Steps 1 and 5, and has no scores or calls in Step 7.
-   Values mode uses the existing profile, scoring and call instructions in the rules.
-   Unopposed thresholds remain 60+ "Vote for", 41–59 "Your call", 40 or less
-   "Consider leaving blank or writing in", no evidence "Not enough evidence".
+   Values mode uses the profile, scoring and call instructions in the rules: one
+   position per value from distinct events, coverage and an evidence level beside
+   every score, gray items left out, red-lined options excluded from the call, and
+   toss-ups that name the event they turn on. Unopposed: 60+ "Vote for" and 40 or
+   less "Consider leaving blank or writing in" need better than thin evidence;
+   otherwise "Your call"; no evidence "Not enough evidence".
    Viability is separate from scoring and shown only on request; the voter owns
    tactical choices. See the rules for the existing electability treatment.
 5. Verify (Step 6) against primary sources; worker reports are claims until checked.
@@ -49,4 +52,4 @@ excluding addresses and personal stakes. See the rules for verification coverage
 
 - `references/rules.md` — shared research rules and the original values workflow.
 - `references/prompts.md` — unchanged step prompts, with the neutral routing note.
-- `scripts/score.py` — existing calculator; `python3 scripts/score.py --demo`.
+- `scripts/score.py` — calculator; `python3 scripts/score.py --demo`.

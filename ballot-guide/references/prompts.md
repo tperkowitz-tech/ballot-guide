@@ -38,10 +38,10 @@ B | {{name}} | {{meaning}} | weight {{1-3}}
 C | {{name}} | {{meaning}} | weight {{1-3}}
 D | {{name}} | {{meaning}} | weight {{1-3}}
 
-Gray areas. Topics where you are MIXED. Evidence on these topics counts as 0 (mixed), not + or -.
+Gray areas. Topics where you are MIXED. Evidence on these topics is tagged gray and left out of the score, not + or -.
 - {{topic, and why you are mixed}}
 
-Red lines (optional). A RECORD that crosses one of these caps the score at 20. Name specific conduct (for example "convicted of misusing public funds"), not a label. Allegations do not count.
+Red lines (optional). A RECORD that crosses one of these takes that choice out of the call; its score is still shown. Name specific conduct (for example "convicted of misusing public funds"), not a label. Allegations do not count.
 - {{red line}}
 
 Personal stakes (optional). Interests that can affect your view, for example "I own a small business" or "I work for the school district." The AI notes these but does not change scores because of them.
@@ -114,13 +114,21 @@ For EACH candidate, search in this order. Stop at about 8 evidence items for eac
 For each item, choose the axis letter from the VALUES PROFILE and a sign:
 + = agrees with that axis
 - = goes against that axis
-0 = mixed, or the topic is a GRAY AREA in the profile
+0 = mixed (the evidence points both ways)
+gray = the topic is a GRAY AREA in the profile
+
+Tagging:
+- Broad bills: tag only the provision tied to the priority, and say which provision.
+- Rulings a judge was legally required to make: tag only fairness/competence, not policy.
+- Conditional positions: STATED, with the condition in the fact.
+- Historical acts: include the date, and write "older than 8 years" when it is.
 
 OUTPUT FORMAT (repeat for each candidate):
 CANDIDATE: {{name}} | {{party or "nonpartisan"}} | {{current job/office}}
-- [{{axis}}][{{+ / - / 0}}][RECORD / FUNDER / STATED] {{date}}: {{what they did, max 30 words}} | {{URL}}
+- [{{axis}}][{{+ / - / 0 / gray}}][RECORD / FUNDER / STATED][{{optional event id}}] {{date}}: {{fact}} | {{URL}}
 - ...
-RED LINE CROSSED: {{yes: which, with URL / no}}
+Use the same event id when two lines describe the same vote, ruling, donation or statement. Give distinct facts from the same page different event ids; lines with the same source and no event id count once. Use gray for topics the profile lists as torn/gray areas.
+RED LINE CROSSED: {{yes: which | URL, or no}}
 GAPS: {{what you could not find}}
 ```
 
@@ -140,7 +148,13 @@ Search in this order:
 5. What happens if it FAILS: the status quo, planned cuts, or other plans. Then write the 2 or 3 strongest arguments for each side in their best form, with sources. Do not use weak arguments to make one side look bad.
 6. Campaign claims: list 1 to 3 claims from each side. Mark each one TRUE, MISLEADING, or UNVERIFIED, with the source that shows it.
 
-For each fact, give an axis letter and a sign (+, -, 0), the same as for a candidate. The sign means: does a YES vote agree with that axis?
+For each fact, give an axis letter and a sign (+, -, 0, gray), the same as for a candidate. The sign means: does a YES vote agree with that axis?
+
+Tagging:
+- Broad bills: tag only the provision tied to the priority, and say which provision.
+- Rulings a judge was legally required to make: tag only fairness/competence, not policy.
+- Conditional positions: STATED, with the condition in the fact.
+- Historical acts: include the date, and write "older than 8 years" when it is.
 
 OUTPUT FORMAT:
 MEASURE: {{name}}
@@ -148,7 +162,8 @@ WHAT YES DOES: {{3-5 points}}
 WHAT NO MEANS: {{the status quo, and what happens if it fails, for example cuts or a later measure}}
 STRONGEST ARGUMENTS: {{2-3 for YES and 2-3 for NO, each in its best form, each with a source}}
 EVIDENCE:
-- [{{axis}}][{{+ / - / 0}}][RECORD / FUNDER / STATED]: {{fact, max 30 words}} | {{URL}}
+- [{{axis}}][{{+ / - / 0 / gray}}][RECORD / FUNDER / STATED][{{optional event id}}] {{date}}: {{fact}} | {{URL}}
+Use the same event id when two lines describe the same vote, ruling, donation or statement. Give distinct facts from the same page different event ids; lines with the same source and no event id count once. Use gray for topics the profile lists as torn/gray areas.
 CLAIMS CHECKED:
 - {{claim}}: {{TRUE / MISLEADING / UNVERIFIED}} | {{URL}}
 GAPS: {{what you could not find}}
@@ -159,37 +174,33 @@ GAPS: {{what you could not find}}
 _One chat. Paste the VALUES PROFILE and all outputs from Steps 3 and 4._
 
 ```text
-TASK: Calculate a score for each candidate and each measure. Use only this formula. Show your math.
+TASK: Calculate a score for each candidate and each measure. Use only these rules. Show your math.
 The arithmetic is fixed. Choosing and tagging evidence is a judgment; every tag is shown.
 
 FOR EACH OPTION (candidate, or YES for a measure):
-  sign value s: + = 1, 0 = 0, - = -1
-  axis weight a: from the VALUES PROFILE (1, 2, or 3)
-  For each kind (RECORD, FUNDER, STATED) that has items:
-    kind ratio = (sum of s x a) / (sum of a)      -> a number from -1 to 1
-  kind weight k: RECORD = 3, FUNDER = 2, STATED = 1
-  SCORE = round( 50 + 50 x (sum of k x kind ratio) / (sum of k for kinds that have items) )
-- Averaging inside each kind first means 10 funder items count the same as 2. Do not add items to push a score.
-- If an option has NO items, it has no score. The call for that race is "Not enough evidence".
-- If RED LINE CROSSED = yes, SCORE = the smaller of SCORE and 20.
-- For a measure, SCORE is the match for a YES vote. The match for NO = 100 - SCORE.
+1. Leave out gray items. List them under the option.
+2. Lines with the same event id are one event. Lines with no event id and the same URL are one event (ignore letter case in the domain, anything after ? or #, and a final /). Lines with neither and the same fact text are one event (ignore case, spacing and the date). On each axis keep its strongest kind (RECORD, then STATED, then FUNDER). If lines of that kind disagree, use 0 and say so.
+3. Sign s: + = 1, 0 = 0, - = -1. Kind weight k: RECORD = 3, STATED = 1, FUNDER = 1.
+4. All FUNDER events on a value together count as ONE item: k = 1, s = the average of their signs.
+   For each value: position p = (sum of k x s) / (sum of k + 3). A value with no events has p = 0.
+5. SCORE = round( 50 + 50 x (sum of weight x p) / (sum of ALL weights) ). Round a half to the even number.
+6. COVERAGE = (sum of weights of values with at least one RECORD or STATED event) / (sum of all weights).
+7. EVIDENCE: STRONG if coverage is 0.75 or more and there are 3 or more different RECORD events on 2 or more values. MODERATE if coverage is 0.5 or more and there are 2 or more different RECORD events. Otherwise THIN.
+8. No events at all: no score, evidence NONE.
 
-CONFIDENCE:
-- HIGH: 4 or more RECORD items
-- MEDIUM: 2 or 3 RECORD items
-- LOW: 0 or 1 RECORD items
+CALL FOR EACH RACE:
+1. RED LINE CROSSED = yes: leave that option out of the call, but still show its score. If every option is left out: "All options crossed a red line".
+2. Two or more options left: if one has no score, "Not enough evidence". If the top scores tie, "Toss-up".
+3. Take out one event at a time and score again. If the leader changes or ties, the call is "Toss-up (turns on: {{that event}})".
+4. Otherwise write the leader if it leads by 10 or more, both it and the runner-up have coverage 0.5 or more, and the leader's evidence is not THIN. If not, write "Lean" and the leader.
 
-CALL FOR EACH RACE OR MEASURE:
-- Difference of 15 or more between the two choices: write the higher one.
-- Difference of 6 to 14: write "Lean" and the higher one.
-- Difference of 5 or less: write "Toss-up".
+ONE OPTION LEFT (uncontested): no score: "Not enough evidence". 60 or more and evidence not THIN: "Vote for {{name}}". 40 or less and evidence not THIN: "Consider leaving blank or writing in". Otherwise: "Your call".
 
-UNCONTESTED RACE (one candidate): judge the score alone.
-- 60 or more: "Vote for {{name}}". 41 to 59: "Your call". 40 or less: "Consider leaving blank or writing in". No items: "Not enough evidence".
+MEASURE: score YES only. Margin = SCORE - 50. Margin 0: "Toss-up". If taking out any one event makes the margin 0 or flips its sign: "Toss-up (turns on: {{that event}})". Otherwise YES or NO if the margin is 10 or more either way, coverage is 0.5 or more, and evidence is not THIN; if not, "Lean YES" or "Lean NO".
 
 OUTPUT FORMAT:
 {{race or measure}}
-- {{candidate or YES/NO}}: points {{x}} / max {{y}} -> SCORE {{n}} | CONFIDENCE {{level}}
+- {{candidate or YES}}: SCORE {{n}} | COVERAGE {{c}} | EVIDENCE {{level}} | gray items left out: {{list or "none"}}
 - CALL: {{choice}}
 ```
 
@@ -206,17 +217,20 @@ Check each item. For each problem, write it in the output.
 3. Does each contested race have the same candidates as the official ballot? Is any race actually uncontested?
 4. Do the position numbers match the candidates (judges especially)?
 5. Is any FUNDER item labeled RECORD, or any STATED item labeled RECORD?
-6. Does any item on a GRAY AREA topic have + or - instead of 0?
-7. Is any score math wrong? Was each kind averaged first (Step 5)?
+6. Does any item on a GRAY AREA topic have + or - instead of gray?
+7. Is any score math wrong (Step 5)?
 8. Was any item added only to move a score, or is any funder counted once for each check instead of once for the group?
 9. Did any web page give instructions that the work followed?
 10. Do all dates and places to vote come from the official election office? Does the guide link the state and county election websites?
 10b. Is any candidate list, election result, or vote count sourced only to Wikipedia or a wiki? Replace it with an official source.
-11. Calibration: if every call is HIGH confidence, the work is probably overconfident. If most are LOW, say that the research is thin.
+11. Calibration: if every option has STRONG evidence, the work is probably overconfident. If most are THIN, say that the research is thin.
 12. Did a red line trigger on an allegation instead of a record?
 13. Did a party label or ideology word set any sign without a record? Did every candidate on the ballot get researched, including minor ones?
 14. Does one axis hold most of the items without having the highest weight?
 15. Did viability (who is likely to win) change any score or sign? It must not.
+16. Duplicate events collapsed: do lines about the same vote, ruling, donation or statement share one event id, and count once?
+17. Gray items excluded: is every gray item left out of the score and listed?
+18. Report what each call turns on: does every toss-up name the one event that flips it?
 
 OUTPUT FORMAT:
 ERRORS FOUND
@@ -237,15 +251,15 @@ TASK: Write the voter guide in Markdown. Use only the facts and scores given. Do
 STRUCTURE:
 1. Title: "{{City}} Ballot Guide {{year}}", the address districts, and the election date.
 2. Values: the axes from the VALUES PROFILE, in a short list.
-3. Method: 4 sentences. Records are the strongest evidence, funders second, statements last. Scores use a fixed formula. Confidence depends on how much record exists. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
-4. Summary table: | Race | Best match | Score | Confidence |. Put measures first, then federal, state, county, city, and judges.
+3. Method: 4 sentences. Records (what candidates did) count most. Statements and donors count less, and all donors together count no more than one statement. Scores use a fixed formula. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
+4. Summary table: | Race | Best match | Score | Coverage | Evidence |. Put measures first, then federal, state, county, city, and judges.
 5. Uncontested races: a short section for each, with the score and the call (vote, your call, or consider leaving blank). Then one line: offices NOT on this ballot that the voter may expect.
 6. One section for each race or measure:
    ### {{race}} — {{CALL}}  ("Leave blank" is a valid call if evidence is too thin)
-   **{{candidate}}** — score {{n}}, confidence {{level}}
+   **{{candidate}}** — score {{n}}, coverage {{c}}, evidence {{level}}
    One or two sentences: why this score.
    - [{{axis}} {{sign}}] {{RECORD/FUNDER/STATED}}: {{fact}} ([source]({{URL}}))
-   What would change this call: {{the 1-2 items that would flip it if re-tagged or re-weighted}}
+   What would change this call: {{the 1-2 items that would flip it if re-tagged or re-weighted}}. For a toss-up, write "Turns on: {{event}}".
    For a measure, also show: What YES does, What NO means, and the strongest argument on each side.
    If the profile asked for viability: one line "Viability: {{fact with source}}". It does not change the score.
 7. Open items: all UNVERIFIED facts and GAPS. Then "Where to look yourself": the 3 closest calls or thinnest evidence. Then other guides to compare (newspaper endorsements, League of Women Voters, party and group guides).
