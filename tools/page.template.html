@@ -77,6 +77,7 @@ pre{margin:0;padding:14px;background:var(--code);font:12.5px/1.5 var(--mono);whi
 .calc label{font-weight:700}
 textarea{width:100%;padding:10px;background:var(--code);color:var(--ink);border:1px solid var(--rule);border-radius:4px;font:12.5px/1.5 var(--mono);resize:vertical}
 #calc-out{display:flex;flex-direction:column;gap:10px}
+#calc-out .muted{color:var(--muted)}
 .call{font:700 1.05rem var(--display);font-stretch:85%}
 table{border-collapse:collapse;width:100%;font-size:.9rem}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule)}
@@ -151,6 +152,8 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
       <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
       <dt>Score</dt><dd>A summary of the evidence found and how each piece was marked as for or against your priorities. It is not a prediction of who will win.</dd>
+      <dt>Coverage</dt><dd>How many of your priorities have any evidence.</dd>
+      <dt>Evidence level</dt><dd>Strong, moderate or thin, based on how much independent evidence there is.</dd>
     </dl>
   </details>
   <details>
@@ -199,7 +202,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <div class="field">
         <label for="f-red">Deal-breakers (optional)</label>
         <textarea id="f-red" rows="3" placeholder="e.g. convicted of misusing public funds" aria-describedby="f-red-hint"></textarea>
-        <p class="hint" id="f-red-hint">Specific actions that would make you not want to support someone, no matter what else they do. Only proven actions count, not accusations. A deal-breaker caps that person's score at 20. One per line.</p>
+        <p class="hint" id="f-red-hint">Specific actions that would make you not want to support someone, no matter what else they do. Only proven actions count, not accusations. A candidate with a proven deal-breaker is left out of the suggestion; their evidence is still shown. One per line.</p>
       </div>
       <div class="field">
         <label for="f-stakes">Things that affect you personally (optional)</label>
@@ -530,12 +533,28 @@ $("profile-copy").addEventListener("click",ev=>copyText($("profile-out").textCon
 $("calc-fill").addEventListener("click",()=>fillWeights(readState()));
 
 // Calculator output.
-const KIND_LABEL={record:"RECORD",funder:"FUNDER",stated:"STATED"};
 function noteBox(notes){
   const box=el("div",null,"warn"); box.append(el("strong","Check these lines"));
   const ul=el("ul");
   notes.forEach(n=>{const li=el("li",n.msg);if(n.line){li.append(" ",el("code",n.line))}ul.append(li)});
   box.append(ul); return box;
+}
+const LEVEL={strong:"strong evidence",moderate:"moderate evidence",thin:"thin evidence",none:"no evidence"};
+const scoreText=row=>row.score===null?"no score":String(row.score);
+// "score · evidence level · covers N% of your priorities"; shared by the page and the Step 6/7 bundle.
+const optionLine=(row,measure)=>(measure?"Fit of a YES vote: ":row.name+": ")+scoreText(row)+" · "+LEVEL[row.evidence]+" · covers "+Math.round(row.coverage*100)+"% of your priorities";
+// turns_on is set only for a toss-up that one item can flip; the call string then repeats the label.
+const callText=res=>"Call: "+(res.turns_on?"Toss-up":res.call);
+const turnsText=res=>res.turns_on?"This turns on one item — "+res.turns_on+". Check that item first.":"";
+// excluded is "red line" or "red line: <what> | <URL>"; split it for display.
+function redLine(excluded){
+  const rest=excluded.replace(/^red line:?\s*/,""), m=rest.match(/^(.*?)\s*\|?\s*(https?:\/\/\S+)$/);
+  return m?{what:m[1],url:m[2]}:{what:rest,url:""};
+}
+function redLineNote(excluded){
+  const {what,url}=redLine(excluded), p=el("p","Not considered: crossed a deal-breaker"+(what?" — "+what:""),"hint");
+  if(url){const a=el("a","source");a.href=url;a.target="_blank";a.rel="noopener noreferrer";p.append(" (",a,")")}
+  return p;
 }
 function runCalc(){renderCalc($("calc-out"),calculate($("calc-weights").value,$("calc-research").value))}
 function renderCalc(out,r){
@@ -543,30 +562,29 @@ function renderCalc(out,r){
   const notes=[...r.warnings.map(w=>({msg:w,line:""})),...r.errors];
   if(notes.length)out.append(noteBox(notes));
   if(!r.result)return;
-  const res=r.result;
-  out.append(el("p",(r.kind==="measure"?"Measure: "+(r.name||"(no name)"):"Race")+" · Call: "+res.call,"call"));
-  const table=el("table"), head=el("tr");
-  ["Option","Score","Confidence","Items counted"].forEach(h=>{const th=el("th",h);th.scope="col";head.append(th)});
-  table.append(el("thead"),el("tbody")); table.tHead.append(head);
+  const res=r.result, measure=r.kind==="measure";
+  out.append(el("p",(measure?"Measure: "+(r.name||"(no name)"):"Race")+" · "+callText(res),"call"));
+  if(res.turns_on)out.append(el("p",turnsText(res)));
   res.rows.forEach(row=>{
-    const tr=el("tr");
-    [row.name,row.score===null?"no score":String(row.score),row.confidence,String(row.items)].forEach(v=>tr.append(el("td",v)));
-    table.tBodies[0].append(tr);
+    const box=el("div",null,row.excluded?"muted":"");
+    box.append(el("p",optionLine(row,measure)));
+    if(row.excluded)box.append(redLineNote(row.excluded));
+    if(row.gray.length){
+      box.append(el("p","Not counted (topics you are torn on): "+row.gray.length,"hint"));
+      const ul=el("ul"); row.gray.forEach(g=>ul.append(el("li",String(g.text||g.axis+" (no text)")))); box.append(ul);
+    }
+    out.append(box);
   });
-  out.append(table);
   const det=el("details",null,"math"); det.append(el("summary","Show the math"));
-  det.append(el("p","Weights: "+Object.entries(r.weights).map(([k,v])=>k+"="+v).join(", ")+". Kind weights: RECORD 3, FUNDER 2, STATED 1."));
+  det.append(el("p","Weights: "+Object.entries(r.weights).map(([k,v])=>k+"="+v).join(", ")+"."));
+  det.append(el("p","Each priority gets a position from its evidence: records count 3, statements 1, and all donors on a priority together count as one statement (their average direction), plus a neutral starting weight of 3. Lines with the same source count once unless they have different event ids. Priorities without evidence count as unknown. Score = 50 + 50 × weighted average of positions (num / den below)."));
   res.rows.forEach(row=>{
-    if(r.kind==="measure"&&row.name==="NO"){det.append(el("p","NO = 100 − YES"+(row.score===null?": no score.":" = "+row.score)));return}
     det.append(el("p",row.name+":"));
     const ul=el("ul");
-    row.kinds.forEach(k=>ul.append(el("li",`${KIND_LABEL[k.kind]} (${k.n} items): sum of sign × weight = ${k.sa}, sum of weights = ${k.a}, ratio = ${(k.sa/k.a).toFixed(3)}, kind weight ${k.k}`)));
     if(row.uncapped===null)ul.append(el("li","No evidence: no score."));
-    else{
-      ul.append(el("li",`Score = round(50 + 50 × ${row.num.toFixed(3)} / ${row.den}) = ${row.uncapped}`));
-      if(row.red_line)ul.append(el("li",`Red line crossed: score capped at 20 → ${row.score}`));
-    }
-    ul.append(el("li",`RECORD items: ${row.records} → confidence ${row.confidence}`));
+    else ul.append(el("li",`Score = round(50 + 50 × ${row.num.toFixed(3)} / ${row.den}) = ${row.uncapped}`));
+    if(row.excluded)ul.append(el("li","Crossed a deal-breaker: left out of the call"));
+    ul.append(el("li",`Items counted: ${row.events} (records: ${row.records}) → ${LEVEL[row.evidence]}`));
     det.append(ul);
   });
   out.append(det);
@@ -591,7 +609,12 @@ function evalItem(it){
     renderCalc(out,r);
     it.status=r.result&&!r.errors.length?"scored":"problem";
     if(r.result)it.call="Call: "+r.result.call;
-    if(r.result)it.calc="Call: "+r.result.call+". "+r.result.rows.map(x=>`${x.name} ${x.score===null?"no score":x.score} (${x.confidence} confidence)`).join("; ")+(r.errors.length?`. Problems noted: ${r.errors.length}.`:"");
+    if(r.result){
+      const res=r.result, measure=r.kind==="measure";
+      it.calc=[res.call?callText(res)+".":"",turnsText(res),
+        res.rows.map(x=>optionLine(x,measure)+(x.excluded?" (not considered: crossed a deal-breaker"+x.excluded.replace(/^red line/,"")+")":"")+(x.gray.length?` (not counted, torn: ${x.gray.length})`:"")).join("; ")+".",
+        r.errors.length?`Problems noted: ${r.errors.length}.`:""].filter(Boolean).join(" ");
+    }
   }else{
     const c=countEvidence(text);
     it.calc=`${c.recognized} evidence lines recognized, ${c.errors.length} problems`;

@@ -28,7 +28,7 @@ In regular ChatGPT, use the web kit or paste `PROMPT-KIT.md` with web search ena
 
 ## About the scores
 
-The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`ballot-guide/scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Thin evidence can produce extreme scores; check the confidence label.
+The score is a reproducible **summary of the evidence collected and how it was tagged**, not a measured percentage match. The arithmetic is fixed (`ballot-guide/scripts/score.py`, mirrored in the web calculator), but choosing and tagging evidence is a judgment, so every tag is shown with its source for you to challenge. Each of your priorities gets a position from distinct events (lines from one source count once unless given distinct event ids, and donors together count no more than one statement per priority), and priorities with no evidence count as unknown rather than disappearing. Every score shows its coverage (how much of your priorities the evidence reaches) and an evidence level (strong, moderate or thin). A call that one event could flip is a toss-up that says what it turns on, and a crossed deal-breaker takes a choice out of the call while still showing its score.
 
 ## Limits
 

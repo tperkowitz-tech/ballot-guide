@@ -8,7 +8,8 @@ than a contributor's address, political views, or personal stakes.
 
 The Python calculator is `ballot-guide/scripts/score.py`; the browser calculator
 is `tools/calc.js`. Keep their behavior in lockstep and run both calculator tests.
-The folder merge changes no scoring logic.
+`node tools/calc_test.js` includes a parity fuzz that runs 2000 random races through
+both calculators and fails on any mismatch.
 
 Regenerate and check the web/chat kit before opening a pull request:
 
