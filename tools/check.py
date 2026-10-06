@@ -2,6 +2,7 @@
 import re
 import subprocess
 from pathlib import Path
+from frontmatter import validate
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -11,6 +12,7 @@ def run(*args):
 
 
 def main():
+    validate(ROOT / "ballot-guide/SKILL.md")
     generated = [ROOT / "docs/index.html", ROOT / "PROMPT-KIT.md"]
     original = {path: path.read_bytes() for path in generated}
     try:

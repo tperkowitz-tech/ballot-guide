@@ -8,11 +8,11 @@ Build a sourced guide to any US ballot with an AI assistant. It finds the exact 
 |---|---|
 | **Any AI chat** (Gemini, Copilot, Perplexity, ChatGPT, Claude, local models) | Open the web kit: https://tperkowitz-tech.github.io/ballot-guide/. A guided flow builds your profile, gives you each prompt to paste, reads the AI's answers back, scores them, and picks sources for you to spot-check. Plain-text version: [`PROMPT-KIT.md`](PROMPT-KIT.md). |
 | **Claude apps** | Download `ballot-guide.skill` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest) and upload it in the Skills section of Claude's settings. |
-| **Claude Code** | Unzip the release `.skill` into `~/.claude/skills/ballot-guide/`, or copy `ballot-guide/` from a clone into `~/.claude/skills/ballot-guide/`. |
+| **Claude Code** | Unzip the release `.skill` into `~/.claude/skills/`, or copy `ballot-guide/` from a clone into `~/.claude/skills/ballot-guide/`. |
 | **Codex** | From a clone: `mkdir -p ~/.agents/skills && cp -R ballot-guide ~/.agents/skills/`, restart Codex, then ask `Use $ballot-guide to research my ballot.` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)) |
 | **Other Agent Skills hosts** | Install the shared `ballot-guide/` folder in the host's skills directory. |
 
-One shared [`ballot-guide/`](ballot-guide/) folder contains the original entrypoint and a [neutral research reference](ballot-guide/references/neutral-research.md). The web kit starts in neutral mode. Each host's capabilities and rules apply.
+One shared [`ballot-guide/`](ballot-guide/) folder contains one entrypoint and [shared rules](ballot-guide/references/rules.md) for the default neutral comparison and opt-in values workflow. The web kit starts in neutral mode. Each host's capabilities and rules apply.
 
 In regular ChatGPT, use the web kit or paste `PROMPT-KIT.md` with web search enabled; the local `~/.agents/skills/` installation is for Codex and is not loaded automatically by ChatGPT.
 
@@ -35,6 +35,13 @@ The score is a reproducible **summary of the evidence collected and how it was t
 - It supports your own research; it does not replace it.
 - Funders are a weak signal. Many groups give to every likely winner.
 - Dates, deadlines and places to vote come only from your official election office.
+
+## Layout
+
+- `ballot-guide/` — installable skill: entrypoint, shared rules, prompts, calculator, host metadata and license.
+- `tools/` — kit generator, checks and release packaging.
+- `docs/index.html` and `PROMPT-KIT.md` — generated web and chat kits.
+- `dist/ballot-guide.skill` — generated archive with a top-level `ballot-guide/` folder.
 
 ## Maintainers
 

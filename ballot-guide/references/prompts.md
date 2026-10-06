@@ -1,4 +1,5 @@
 # Ballot Guide Step Prompts
+Neutral mode: skip Step 1 and Step 5; no scores or calls in Step 7.
 Each step is self-contained. Paste Step 0 (rules) and the VALUES PROFILE above any other step, whether you run it yourself, hand it to a subagent, or give it to a low-cost model. Step 5's formula is implemented in `scripts/score.py`; prefer the script.
 
 ## Step 0 · Shared rules
