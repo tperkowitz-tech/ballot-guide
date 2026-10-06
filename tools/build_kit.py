@@ -24,15 +24,16 @@ HOW_MODES = [
     "Values match: every choice scored against values you supply. Run all steps, and use the score "
     "calculator for Step 5.",
 ]
-# The page has the profile form and per-step Copy for chat buttons; the Markdown kit is hand-filled.
+# The page walks through four stages; the Markdown kit is hand-filled.
 HOW_STEPS_WEB = [
-    "Fill in the \"Build your profile\" form below. Neutral comparison needs only your election details; "
-    "values match also asks for your values, in your own words. The kit works for any political view.",
-    "For each step, click \"Copy for chat\" and paste into a new chat with web search turned on. Run Step 3 "
-    "once for each race and Step 4 once for each measure; one item per chat keeps a small model accurate. "
-    "Finish with Step 6 to check the work and Step 7 to build the guide.",
-    "Values match only: use the score calculator below instead of Step 5. Small AI models make arithmetic "
-    "mistakes. Paste one Step 3 or Step 4 output at a time, and save the results.",
+    "Your profile: fill in the form. Neutral comparison needs only your election details; values match "
+    "also asks for your values, in your own words. The kit works for any political view.",
+    "Find your ballot: click \"Copy for chat\", paste it into a new chat with web search turned on, and paste "
+    "the AI's answer back. The page turns it into a list of races and measures.",
+    "Research each item: one new chat per race or measure. Paste each answer back; in values mode the page "
+    "does the scoring math for you.",
+    "Check and build: spot-check three sources, then copy the check (Step 6) and the guide (Step 7) into new chats.",
+    "Your address goes only into the Find your ballot chat. Every other chat gets \"Address: withheld\".",
 ]
 HOW_STEPS_MD = [
     "Values match only: fill in Step 1 yourself. Use your own words for your values. The kit works for any "
