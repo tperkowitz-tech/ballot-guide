@@ -145,8 +145,10 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 
 <div class="how" role="region" aria-labelledby="start-h">
   <h2 id="start-h">Before you start</h2>
-  <p>You will need: an AI chat that can search the web (for example Gemini, Copilot, Perplexity, ChatGPT or Claude). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. <a href="sample.html">See sample guides</a> to know what you will get.</p>
-  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Logged-out ChatGPT with search worked in testing.</p>
+  <p>You will need: an AI chat that can search the web (for example ChatGPT or Claude with search turned on). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. <a href="sample.html">See sample guides</a> to know what you will get.</p>
+  <p>Use Claude or Codex? The <a href="https://github.com/tperkowitz-tech/ballot-guide#install-the-skill">Ballot Guide skill</a> does the research for you, with deeper checks. This page is the no-install version for any AI chat.</p>
+  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Logged-out ChatGPT with search worked in testing; free Gemini declined or returned errors on these election questions.</p>
+  <p>Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates. Some say they store what you send, including your address in Step 2, in China (DeepSeek, for one); others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address.</p>
   <p><strong>How it works</strong></p>
   <ol>
     <li>Tell the page about you.</li>
@@ -421,7 +423,7 @@ GAPS: no funder data found</textarea>
   <ul>
     <li><strong>What stays on your computer:</strong> to keep your progress, your browser saves your profile choices, your race list and the AI answers you paste, in this browser on this device only. It stays until you press <em>Start over</em> or clear this site's data in your browser settings. This page never sends it anywhere.</li>
     <li><strong>What is never saved:</strong> your address, the AI's answer that lists your ballot, and that answer's double-check reply (both may repeat your address).</li>
-    <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there. Links you open take you to other websites.</li>
+    <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there; some services, including several free chats made by companies based in China or their affiliates, may store it outside the US. Links you open take you to other websites.</li>
     <li><strong>Hosting:</strong> GitHub Pages serves this page. Like any website host, GitHub receives standard information such as your IP address when the page loads. The page loads nothing from any other site: no fonts, ads or scripts. Your browser enforces this with a security policy built into the page.</li>
     <li><strong>Test report:</strong> the optional "Share how it went" panel only opens a GitHub form with the fields shown in its preview. Nothing is sent unless you submit that form on GitHub.</li>
     <li><strong>Clipboard:</strong> the page writes to your clipboard only when you press a copy button. It never reads your clipboard.</li>
@@ -959,7 +961,7 @@ const NEUTRAL_EVIDENCE = "Neutral mode: write every evidence line as [TOPIC][0][
 // Step 6 checks that only make sense with scores, gray areas, red lines or the calculator.
 const SCORED_CHECKS = /^(6|7|8|11|12|14|15|17|18)\. .*\n/gm;
 // Small or offline chats answer from memory when they cannot browse; make them say so instead.
-const WEB_GATE = "First: if you cannot open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
+const WEB_GATE = "First: if you cannot search the web or open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Searching the web counts as access. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
 const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
 const DOUBLE_CHECK_STEP = 8;
@@ -1308,10 +1310,21 @@ function testReportUrl(fields) {
   return REPORT_BASE + q.map(([k, v]) => "&" + k + "=" + encodeURIComponent(v)).join("");
 }
 
+// A short reply that is the chat refusing or failing, not an answer: "noweb", "error" or "".
+// Gemini, for one, answers election prompts with a generic error.
+function chatRefused(text) {
+  const t = String(text).trim();
+  if (/NO WEB ACCESS/.test(t)) return "noweb";
+  // A reply with a link or a format line is an answer, even if it quotes an error.
+  if (/https?:\/\//.test(t) || /^\s*(?:CANDIDATE|MEASURE|RACES|MEASURES|DISTRICTS|CHECK SUMMARY|UNVERIFIED)\b|^\s*[-*]?\s*\[/im.test(t)) return "";
+  if (t.length < 400 && /encounter(?:ed|ing) an error|something went wrong|try again later|could you try again|can[’']t help with (?:that|responses on elections)|unable to help with (?:that|elections)/i.test(t)) return "error";
+  return "";
+}
+
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
-    REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl};
+    REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};
 }
 </script>
 <script>
@@ -1614,7 +1627,7 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null;
-const KIT_VERSION="v1.5.1";
+const KIT_VERSION="v1.5.2";
 const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
 // checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
@@ -1630,6 +1643,9 @@ const EXAMPLE={
   values:"CANDIDATE: Candidate X | council member\n- [A][+][RECORD] 2025-03-10: Voted yes on an open records bill, final passage 7-2. | https://example.org/source\nRED LINE CROSSED: no\n\nMEASURE: Measure 1\nEVIDENCE:\n- [A][+][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
   neutral:"CANDIDATE: Candidate X | council member\n- [Housing][0][RECORD] 2025-03-10: Voted yes on a zoning bill, final passage 7-2. | https://example.org/source\nGAPS: none\n\nMEASURE: Measure 1\nEVIDENCE:\n- [Libraries][0][RECORD]: The same levy kept library hours open from 2019 to 2025. | https://example.org/source",
 };
+// A refusal or chat error is not a format problem, so it gets no fix-the-format or double-check offer.
+const REFUSED_MSG={noweb:"The chat said it cannot search the web. Use a chat with web search turned on and try again.",
+  error:"The chat returned an error or declined instead of answering. Start a new chat, or try a different AI."};
 const NO_WEB_TIP=" Try a free chat with web search; in testing (October 2026), ChatGPT with search worked without signing in.";
 
 const host=$("steps");
@@ -1851,10 +1867,11 @@ let uid=0;
 function evalItem(it){
   const out=it.ui.out, text=it.answer, st=readState();
   out.replaceChildren(); it.calc=""; it.call="";
+  it.refused=chatRefused(text);
   if(!text.trim())it.status="to do";
-  else if(/NO WEB ACCESS/.test(text)){
+  else if(it.refused){
     it.status="problem";
-    out.append(noteBox([{msg:"The chat said it cannot open web pages. Use a chat with web search turned on and try again."+NO_WEB_TIP,line:""}]));
+    out.append(noteBox([{msg:REFUSED_MSG[it.refused]+NO_WEB_TIP,line:""}]));
   }else if(st.mode==="values"){
     const r=calculate(calcProfile(st),text);
     renderCalc(out,r);
@@ -1887,7 +1904,7 @@ function refreshItem(it){
   u.copy.setAttribute("aria-label","Copy for chat: "+itemName(it));
   u.fix.setAttribute("aria-label","Copy a fix-the-format message for "+itemName(it));
   u.lab.textContent="Paste the AI's answer for "+itemName(it);
-  u.fix.hidden=it.status!=="problem";
+  u.fix.hidden=it.status!=="problem"||!!it.refused;
   u.del.setAttribute("aria-label","Delete "+kindName(it).toLowerCase()+" "+(items.indexOf(it)+1));
   u.title.textContent=kindName(it)+": "+(it.text.trim()||"(not entered)");
   u.status.textContent=(isDone(it)?"✓ ":"")+it.status;
@@ -1895,7 +1912,7 @@ function refreshItem(it){
   u.score.textContent=it.status==="scored"?it.call:"";
   u.copy.disabled=empty; u.need.hidden=!empty;
   u.dcBadge.hidden=!it.checked;
-  u.dc.d.hidden=!$("f-dc").checked||!it.answer.trim();
+  u.dc.d.hidden=!$("f-dc").checked||!it.answer.trim()||!!it.refused;
 }
 
 // ---- Double-check (Step 8) ----
@@ -1918,7 +1935,7 @@ function checkPanel(h){
     const t=h.text(), cs=checkSummary(t), fixed=extractCorrected(t);
     if(ta.value!==t)ta.value=t;
     out.replaceChildren();
-    if(/NO WEB ACCESS/.test(t))out.append(el("p","The checker said it cannot open web pages. Use a chat with web search turned on and try again."+NO_WEB_TIP,"warn"));
+    if(chatRefused(t))out.append(el("p",REFUSED_MSG[chatRefused(t)]+NO_WEB_TIP,"warn"));
     else if(t.trim()){
       out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
       if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
@@ -2105,7 +2122,7 @@ REPORT_OVERALL.forEach(s=>$("share-overall").append(el("option",s)));
 function reportFields(){
   const st=readState(), races=items.filter(i=>i.kind==="race"), measures=items.filter(i=>i.kind==="measure");
   const steps=[];
-  if(items.length)steps.push(`Ballot found (${races.length} races, ${measures.length} measures)`);
+  if(items.length)steps.push(`Ballot found (${races.length} race${races.length===1?"":"s"}, ${measures.length} measure${measures.length===1?"":"s"})`);
   if(races.length)steps.push(`${races.filter(isDone).length} of ${races.length} races researched`);
   if(measures.length)steps.push(`${measures.filter(isDone).length} of ${measures.length} measures fact-checked`);
   if(items.length)steps.push(`Double-checks used: ${items.filter(i=>i.checked).length} of ${items.length}`+(ballotChecked?", plus the ballot list":""));
@@ -2154,7 +2171,7 @@ $("ballot-old-remove").addEventListener("click",()=>settleOld(true));
 function readBallot(){
   const text=$("ballot-answer").value, warn=$("ballot-warn"), found=$("ballot-found");
   warn.replaceChildren(); $("ballot-fix-row").hidden=true; oldItems=[]; $("ballot-old").hidden=true;
-  if(/NO WEB ACCESS/.test(text)){found.textContent="The chat said it cannot open web pages. Use a chat with web search turned on."+NO_WEB_TIP;return}
+  if(chatRefused(text)){found.textContent=REFUSED_MSG[chatRefused(text)]+NO_WEB_TIP;return}
   const p=parseBallot(text,readState().address);
   let rows=[...p.races.map(r=>({kind:"race",text:raceText(r),note:[r.status,r.source&&"source: "+String(r.source).split(/[?#]/)[0]].filter(Boolean).join(" · ")})),
     ...p.measures.map(m=>({kind:"measure",text:measureText(m),note:m.source?"source: "+String(m.source).split(/[?#]/)[0]:""}))];

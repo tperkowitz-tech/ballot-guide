@@ -12,6 +12,7 @@ One row per state, generated from the report log below.
 | State | Reports | Used in | Last tested | Results |
 |---|---|---|---|---|
 | Arizona | 1 | Perplexity (free, logged out) | 2026-10-06 | 1 Did not work |
+| District of Columbia | 1 | Google Gemini (free, signed in) | 2026-10-07 | 1 Did not work |
 | Georgia | 1 | ChatGPT (free, logged out) | 2026-10-06 | 1 Worked with fixes |
 | Ohio | 2 | ChatGPT (free, logged out) | 2026-10-06 | 2 Worked with fixes |
 | Pennsylvania | 1 | ChatGPT (free, logged out) | 2026-10-06 | 1 Worked with fixes |
@@ -32,3 +33,4 @@ Nothing is sent until you submit it. A maintainer adds a row here from each repo
 | 2026-10-06 | Pennsylvania | (public test address) | 2026 General | ChatGPT (free, logged out) | Values | Worked with fixes | Maintainer test; values scores produced; one candidate added outside the ballot list (now flagged) | v1.4.0 |
 | 2026-10-06 | Arizona | (public test address) | 2026 General | Perplexity (free, logged out) | Neutral | Did not work | Maintainer test; could not open official PDFs; second question needs sign-up | v1.4.0 |
 | 2026-10-06 | Ohio | (public test address) | 2026 General | ChatGPT (free, logged out) | Both | Worked with fixes | Maintainer re-test; escaped answers loaded and values mode scored; double-check, court-name and UNVERIFIED issues fixed in v1.5.1 | v1.5.0 |
+| 2026-10-07 | District of Columbia | (public test address) | 2026 General | Google Gemini (free, signed in) | Both | Did not work | Maintainer test; Gemini Flash replied NO WEB ACCESS even after searching, or returned a generic error; no ballot list or evidence produced. Kit now words the web check as search and flags chat errors | v1.5.1 |
