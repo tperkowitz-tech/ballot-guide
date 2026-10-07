@@ -106,7 +106,21 @@ assert.strictEqual(fillStep(7, "build", {...defaultState(), mode: "values"}), "b
 s = defaultState();
 const prof = buildProfile(s);
 const G = WEB_GATE + "\n\n";
-assert.ok(WEB_GATE.startsWith("First: if you cannot open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop."));
+assert.ok(WEB_GATE.startsWith("First: if you cannot search the web or open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Searching the web counts as access."));
+// Refusals and chat errors are told apart from answers.
+{
+  const {chatRefused} = require("./kit.js");
+  assert.strictEqual(chatRefused("NO WEB ACCESS"), "noweb");
+  assert.strictEqual(chatRefused("I seem to be encountering an error. Can I try something else for you?"), "error");
+  assert.strictEqual(chatRefused("I encountered an error doing what you asked. Could you try again?"), "error");
+  assert.strictEqual(chatRefused("I can't help with responses on elections and political figures right now."), "error");
+  assert.strictEqual(chatRefused("I can’t help with responses on elections and political figures right now."), "error");
+  assert.strictEqual(chatRefused("CANDIDATE: X\n- [Housing][0][RECORD] 2025: a | https://a.gov/1"), "");
+  for (const real of ["CANDIDATE: X\n- [A][+][RECORD] 2025: filed after the city site said try again later. | https://a.gov/1",
+    "MEASURE: M\n- [Taxes][0][STATED] She said \"something went wrong\" with the levy.",
+    "- [Safety][0][RECORD] 2024: staff encountered an error in booking logs",
+    "RACES\n- Mayor | A vs B | CONTESTED\nUNVERIFIED: county site said try again later"]) assert.strictEqual(chatRefused(real), "", real);
+}
 assert.strictEqual(forChat(3, "RULES", step3, s, {race: "Mayor"}), G + "RULES\n\n" + prof + "\n\n" + fillStep(3, step3, s, {race: "Mayor"}));
 assert.strictEqual(forChat(0, "RULES", "RULES", s), G + "RULES");
 assert.strictEqual(forChat(1, "RULES", "template", s), G + prof);

@@ -9,7 +9,7 @@ const NEUTRAL_EVIDENCE = "Neutral mode: write every evidence line as [TOPIC][0][
 // Step 6 checks that only make sense with scores, gray areas, red lines or the calculator.
 const SCORED_CHECKS = /^(6|7|8|11|12|14|15|17|18)\. .*\n/gm;
 // Small or offline chats answer from memory when they cannot browse; make them say so instead.
-const WEB_GATE = "First: if you cannot open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
+const WEB_GATE = "First: if you cannot search the web or open web pages in this chat, and no source pages are pasted below, reply only with NO WEB ACCESS and stop. Searching the web counts as access. Do not guess or answer from memory. Use only the pages you open or the pages pasted here.";
 const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
 const DOUBLE_CHECK_STEP = 8;
@@ -358,8 +358,19 @@ function testReportUrl(fields) {
   return REPORT_BASE + q.map(([k, v]) => "&" + k + "=" + encodeURIComponent(v)).join("");
 }
 
+// A short reply that is the chat refusing or failing, not an answer: "noweb", "error" or "".
+// Gemini, for one, answers election prompts with a generic error.
+function chatRefused(text) {
+  const t = String(text).trim();
+  if (/NO WEB ACCESS/.test(t)) return "noweb";
+  // A reply with a link or a format line is an answer, even if it quotes an error.
+  if (/https?:\/\//.test(t) || /^\s*(?:CANDIDATE|MEASURE|RACES|MEASURES|DISTRICTS|CHECK SUMMARY|UNVERIFIED)\b|^\s*[-*]?\s*\[/im.test(t)) return "";
+  if (t.length < 400 && /encounter(?:ed|ing) an error|something went wrong|try again later|could you try again|can[’']t help with (?:that|responses on elections)|unable to help with (?:that|elections)/i.test(t)) return "error";
+  return "";
+}
+
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
-    REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl};
+    REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};
 }
