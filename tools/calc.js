@@ -52,13 +52,32 @@ function parseWeights(text) {
 // ChatGPT renders a pasted "\[A\]" as math, and its Copy button then gives "$A$$+$$RECORD$";
 // those tags at a line start (after any bullet) read as "[A][+][RECORD]". kit.js runs cleanMd on
 // stored answers before copying them, so neither form is pasted back into a chat.
+// Google AI Mode's Copy gives names as "[name](https://www.google.com/search?...)" and sources as
+// "[site](url)" with "[1, 2]" footnote markers and a trailing "[n] [site](url)" list; mdLink keeps
+// the words, except a site-like label on a real link becomes its URL so the source stays readable.
+// Not "words (url)": in a ballot row the first cell with a URL is the source, so a linked
+// candidate name would become the row's source.
+const SEARCH_LINK = /^https?:\/\/(?:www\.)?google\.[a-z.]+\/search\b/i;
+// ponytail: site-like = a URL, a dotted domain, a citation number or a known source name; any
+// other source label becomes text and gets the "no web address" warning. Add names as they show up.
+const SITE_LABEL = /^(?:https?:\/\/\S+|[\w-]+(?:\.[\w-]+)+(?:\/\S*)?|\d+|ballotpedia|vote411|fec|opensecrets|votesmart|vote smart|wikipedia)$/i;
+const mdLink = (all, label, url) => !SEARCH_LINK.test(url) && SITE_LABEL.test(label.trim()) ? url : label;
+// A footnote marker: "[1]" or "[1, 2]" right after sentence-ending punctuation, or at the end of a
+// line or table cell. Elsewhere ("Amendment [1] to", "Rule 12[1] says") the number is kept.
+const FOOTNOTE = String.raw`\[\d+(?:\s*,\s*\d+)*\]`;
 function cleanMd(text) {
   return String(text).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/[^\S\r\n]*\\+[^\S\r\n]*$/gm, "")
     .replace(/^([^\S\r\n]*(?:(?:[-*•_]|\d+[.)])[^\S\r\n]*)*)((?:\$[^$\r\n]+\$){2,})/gm, (all, pre, run) => {
       // Only tag-like runs: a letter or topic first ("$5$$10$ fee" stays), and a kind or a sign.
       const t = run.slice(1, -1).split("$$");
       return /^\s*[A-Za-z]/.test(t[0]) && t.some(x => kindOf(x) || validSign(normSign(x))) ? pre + t.map(x => `[${x}]`).join("") : all;
-    });
+    })
+    // Footnote list lines: "[1] [site](url)" or "[1] https://...".
+    .replace(/^[^\S\r\n]*\[\d+\][^\S\r\n]*(?:\[[^\]\r\n]*\]\([^\r\n]*\)|https?:\/\/\S+)[^\S\r\n]*$/gm, "")
+    .replace(/\[([^\]\r\n]*)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/g, mdLink)
+    // A tag after another tag ("[Housing][0]") is evidence, never a footnote; "([1])" goes whole.
+    .replace(new RegExp(String.raw`(?<=[.!?]["”')]?)[^\S\r\n]*\(?${FOOTNOTE}\)?|(?<!\])[^\S\r\n]*\(?${FOOTNOTE}\)?(?=[^\S\r\n]*(?:\||$))`, "gm"), "")
+    .replace(/^[^\S\r\n]*[-*•][^\S\r\n]*$/gm, ""); // empty bullets
 }
 function normLine(raw) {
   return cleanMd(raw)
@@ -104,6 +123,8 @@ const LOOKS_LIKE_EVIDENCE = /\b(RECORD|QUESTIONNAIRE|STATED|FUNDER|ENDORSEMENT)\
 const TABLE_RULE = /^\|[\s|:-]+\|?$/;
 // "[A][+][RECORD] 2024: UNVERIFIED ..." is a placeholder the prompt asks for, not a fact.
 const UNCONFIRMED = /^(?:\d{4}(?:-\d{2}-\d{2})?\s*:?\s*)?UNVERIFIED\b/i;
+// A chatbot's closing offer ("Would you like me to…", "Let me know if…"); it and any list under it are not part of the answer.
+const CLOSING_OFFER = /^(?:would you like|do you want|want me to|shall i|should i|let me know|if you(?:['’]d| would)? like|i can also|i could also)\b/i;
 const NEUTRAL_ANSWER = "This answer was written for a neutral comparison. Copy the question again (it now asks for your priorities' letters) and paste the new answer.";
 const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
@@ -126,7 +147,7 @@ function parseResearch(text, weights, neutral) {
     let m;
     // The checker's REMOVED/PROBLEMS/summary sections list facts that were NOT confirmed, often in
     // evidence form; scoring them would count removed facts. Skip until the next CANDIDATE:/MEASURE:.
-    if (/^(REMOVED|PROBLEMS|CHECK SUMMARY)\s*(:|$)/i.test(line)) { section = "stopped"; cur = null; continue; }
+    if (/^(REMOVED|PROBLEMS|CHECK SUMMARY)\s*(:|$)/i.test(line) || CLOSING_OFFER.test(line)) { section = "stopped"; cur = null; continue; }
     if (section === "stopped" && !/^(CANDIDATE|MEASURE):/i.test(line)) continue;
     // Step 3 asks the chat to name, not research, a candidate missing from the race line.
     if (/^NEW CANDIDATE\s*:/i.test(line)) {
@@ -505,5 +526,5 @@ function calculate(weightsText, researchText) {
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, cleanMd, normLine, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
+  module.exports = {pyRound, cleanMd, normLine, CLOSING_OFFER, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
 }

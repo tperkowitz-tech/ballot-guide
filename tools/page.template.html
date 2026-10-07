@@ -147,7 +147,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <h2 id="start-h">Before you start</h2>
   <p>You will need: an AI chat that can search the web (for example ChatGPT or Claude with search turned on). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. <a href="sample.html">See sample guides</a> to know what you will get.</p>
   <p>Use Claude or Codex? The <a href="https://github.com/tperkowitz-tech/ballot-guide#install-the-skill">Ballot Guide skill</a> does the research for you, with deeper checks. This page is the no-install version for any AI chat.</p>
-  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Logged-out ChatGPT with search worked in testing; free Gemini declined or returned errors on these election questions.</p>
+  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Logged-out ChatGPT with search worked in testing; free Gemini declined or returned errors on these election questions. Google AI Mode searched every step and worked for basic research, but missed some ballot items; check its ballot list against your official sample ballot.</p>
   <p>Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates. Some say they store what you send, including your address in Step 2, in China (DeepSeek, for one); others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address.</p>
   <p><strong>How it works</strong></p>
   <ol>
@@ -200,6 +200,12 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       <input type="text" id="f-address" autocomplete="off" placeholder="123 Main St, Springfield, IL 62701" aria-describedby="f-address-hint">
       <p class="hint" id="f-address-hint">Finds your exact ballot. Used only in the Step 2 question and its double-check; never saved on this device.</p>
       <details class="more"><summary>More about the address</summary><p class="hint">Districts can split a street, so a full address finds your exact ballot. If you prefer, enter only your city, county and state; the guide may then include races that are not on your ballot. You paste the Step 2 question into an AI chat yourself, and that chat service may keep it.</p></details>
+    </div>
+    <div class="field">
+      <label for="f-place">City or county, and state</label>
+      <input type="text" id="f-place" autocomplete="off" placeholder="e.g. Columbus, Ohio or Washington, DC" aria-describedby="f-place-hint f-place-bad">
+      <p class="hint" id="f-place-hint">Goes into every question, so the AI knows which city's races you mean. Filled in from your address if you leave it empty; no street or ZIP. Saved on this device.</p>
+      <p class="hint warn" id="f-place-bad" hidden>Use only city or county and state, with no street, unit or numbers. Until then this is left out of every question and not saved.</p>
     </div>
     <div class="field">
       <label for="f-date">Election date</label>
@@ -278,6 +284,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
     <li>Wait for the full answer (it may take a minute while it searches).</li>
     <li>Copy the whole answer and paste it in the box below.</li>
   </ol>
+  <p class="hint">Some search-based AI tools, such as Google AI Mode, put your question in the page address, so it can be saved in your browser history.</p>
   <p class="hint" id="ballot-noaddr">No address entered in Step 1. The chat will need your city, county and state; you can add them in the chat.</p>
   <label for="ballot-answer">Paste the AI's answer here</label>
   <p class="hint">Example of the format (made-up data):</p>
@@ -406,7 +413,7 @@ GAPS: no funder data found</textarea>
   <ul>
     <li><strong>What stays on your computer:</strong> to keep your progress, your browser saves your profile choices, your race list and the AI answers you paste, in this browser on this device only. It stays until you press <em>Start over</em> or clear this site's data in your browser settings. This page never sends it anywhere.</li>
     <li><strong>What is never saved:</strong> your address, the AI's answer that lists your ballot, and that answer's double-check reply (both may repeat your address).</li>
-    <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there; some services, including several free chats made by companies based in China or their affiliates, may store it outside the US. Links you open take you to other websites.</li>
+    <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there; some services, including several free chats made by companies based in China or their affiliates, may store it outside the US. Some search-based AI tools, such as Google AI Mode, put your question in the page address, so it can be saved in your browser history. Links you open take you to other websites.</li>
     <li><strong>Hosting:</strong> GitHub Pages serves this page. Like any website host, GitHub receives standard information such as your IP address when the page loads. The page loads nothing from any other site: no fonts, ads or scripts. Your browser enforces this with a security policy built into the page.</li>
     <li><strong>Test report:</strong> the optional "Share how it went" panel only opens a GitHub form with the fields shown in its preview. Nothing is sent unless you submit that form on GitHub.</li>
     <li><strong>Clipboard:</strong> the page writes to your clipboard only when you press a copy button. It never reads your clipboard.</li>
@@ -438,7 +445,12 @@ function announce(msg){const r=document.getElementById("live");r.textContent="";
 // Copy with a fallback for pages opened from disk or browsers without the async clipboard.
 function copyText(text,btn){
   const label=btn.textContent;
-  const done=msg=>{btn.textContent=msg;announce(msg);setTimeout(()=>btn.textContent=label,1600)};
+  // Long copies get a note beside the button, since some chats silently cut the end.
+  const row=btn.closest(".btn-row")||btn, long=longCopyNote(text);
+  let note=row.nextElementSibling&&row.nextElementSibling.classList.contains("len-note")?row.nextElementSibling:null;
+  if(long&&!note){note=el("p","","hint len-note");row.after(note)}
+  if(note){note.textContent=long;note.hidden=!long}
+  const done=msg=>{btn.textContent=msg;announce(long?msg+". "+long:msg);setTimeout(()=>btn.textContent=label,1600)};
   const fallback=()=>{
     const t=document.createElement("textarea");t.value=text;t.setAttribute("readonly","");t.style.position="fixed";t.style.opacity="0";
     document.body.appendChild(t);t.select();
@@ -473,8 +485,14 @@ const EXAMPLE={
 };
 // A refusal or chat error is not a format problem, so it gets no fix-the-format or double-check offer.
 const REFUSED_MSG={noweb:"The chat said it cannot search the web. Use a chat with web search turned on and try again.",
-  error:"The chat returned an error or declined instead of answering. Start a new chat, or try a different AI."};
+  error:"The chat returned an error or declined instead of answering. Start a new chat, or try a different AI.",
+  needplace:"The chat needs the place and candidates. Check the Place field in Step 1 and the race line, then copy again.",
+  split:"The chat says this is too big for one answer. Copy one part at a time, or ask it to do part 1."};
 const NO_WEB_TIP=" Try a free chat with web search; in testing (October 2026), ChatGPT with search worked without signing in.";
+// A missing place or a split is fixed on this page, so it gets no try-another-chat tip. Step 2
+// (ballot) has no race line, so its missing-place message names only the Step 1 fields.
+const refusedText=(k,ballot)=>ballot&&k==="needplace"?"The chat needs the place. Check your address and the Place field in Step 1, then copy again."
+  :REFUSED_MSG[k]+(k==="needplace"||k==="split"?"":NO_WEB_TIP);
 
 const host=$("steps");
 STEPS.forEach((s,i)=>{
@@ -535,7 +553,7 @@ function readState(){
   const st=defaultState();
   st.mode=document.querySelector('input[name=mode]:checked').value;
   st.crowded=document.querySelector('input[name=crowded]:checked').value;
-  st.address=$("f-address").value; st.date=$("f-date").value;
+  st.address=$("f-address").value; st.place=$("f-place").value; st.date=$("f-date").value;
   st.axes=[...$("axes").children].map(r=>{const [n,m]=r.querySelectorAll("input");return {name:n.value,meaning:m.value,weight:Number(r.querySelector("select").value)}});
   st.gray=$("f-gray").value; st.red=$("f-red").value; st.stakes=$("f-stakes").value;
   st.viability=$("f-viability").checked;
@@ -547,7 +565,7 @@ function readState(){
 function writeState(st){
   document.querySelector(`input[name=mode][value=${st.mode==="values"?"values":"neutral"}]`).checked=true;
   document.querySelector(`input[name=crowded][value=${st.crowded==="focus"?"focus":"all"}]`).checked=true;
-  $("f-date").value=st.date||"";
+  $("f-date").value=st.date||""; $("f-place").value=typeof st.place==="string"?st.place:"";
   $("axes").replaceChildren();
   (Array.isArray(st.axes)&&st.axes.length?st.axes:defaultState().axes).slice(0,6).forEach(a=>addAxis({name:String(a.name||""),meaning:String(a.meaning||""),weight:[1,2,3].includes(a.weight)?a.weight:2}));
   $("f-gray").value=st.gray||""; $("f-red").value=st.red||""; $("f-stakes").value=st.stakes||"";
@@ -583,6 +601,7 @@ function render(){
   });
   $("s1-status").textContent=(neutral?"Neutral comparison":"Values match")+" · election "+(st.date||"date not set")+(st.address.trim()?" · address entered (used only in Step 2)":"");
   $("ballot-noaddr").hidden=!!st.address.trim();
+  $("f-place-bad").hidden=!st.place.trim()||!!safePlace(st);
   // Re-score pasted answers only when the mode, the weights or the gray topics change, not on every keystroke.
   const scoring=neutral?"neutral":calcProfile(st);
   if(scoring!==lastScoring){lastScoring=scoring;items.forEach(evalItem)}
@@ -598,7 +617,8 @@ function render(){
 
 function save(){
   // The address is deliberately left out of storage: it is the one field that identifies a person.
-  const {address,...profile}=readState();
+  const st=readState(), {address,...profile}=st;
+  profile.place=safePlace(st); // a street typed into the place field is never saved
   const keep=items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:it.status,...checkFields(it)}));
   try{localStorage.setItem(STORE,JSON.stringify({profile,items:keep,ballotChecked}))}catch(_){/* storage blocked or full: the page still works, nothing is remembered */}
 }
@@ -618,6 +638,8 @@ function load(){
   if(migrated){save();try{if(localStorage.getItem(STORE))localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: v1 stays until Start over */}}
 }
 load();
+// Runs before the form's own change listener, so render() sees the prefilled place.
+$("f-address").addEventListener("change",()=>{const p=$("f-place");if(!p.value.trim())p.value=placeFromAddress($("f-address").value)});
 $("profile-form").addEventListener("input",render);
 $("profile-form").addEventListener("change",render);
 $("axis-add").addEventListener("click",()=>{addAxis({name:"",meaning:"",weight:2});render();$("axes").lastElementChild.querySelector("input").focus()});
@@ -699,7 +721,7 @@ function evalItem(it){
   if(!text.trim())it.status="to do";
   else if(it.refused){
     it.status="problem";
-    out.append(noteBox([{msg:REFUSED_MSG[it.refused]+NO_WEB_TIP,line:""}]));
+    out.append(noteBox([{msg:refusedText(it.refused),line:""}]));
   }else if(st.mode==="values"){
     const r=calculate(calcProfile(st),text);
     renderCalc(out,r);
@@ -745,7 +767,7 @@ function refreshItem(it){
 
 // ---- Double-check (Step 8) ----
 // One panel per answer, for Stage 2 and each Stage 3 item. h: {chat(), answer(), text(), setText(v),
-// use(corrected), undo(), checked(), canUndo(), skipped(), skip()}.
+// use(corrected), undo(), checked(), canUndo(), skipped(), skip(), ballot (the Step 2 list)}.
 function checkPanel(h){
   const d=el("details",null,"dc"), sum=el("summary"), badge=el("span","","st");
   sum.append(el("span","Double-check (recommended)"),badge);
@@ -763,7 +785,7 @@ function checkPanel(h){
     const t=h.text(), cs=checkSummary(t), fixed=extractCorrected(t);
     if(ta.value!==t)ta.value=t;
     out.replaceChildren();
-    if(chatRefused(t))out.append(el("p",REFUSED_MSG[chatRefused(t)]+NO_WEB_TIP,"warn"));
+    if(chatRefused(t))out.append(el("p",refusedText(chatRefused(t),h.ballot),"warn"));
     else if(t.trim()){
       out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
       if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
@@ -970,7 +992,7 @@ function refreshShare(){
 ["share-state","share-area","share-overall","share-problems"].forEach(id=>$(id).addEventListener("input",refreshShare));
 
 // Stage 2 double-check. Its texts live only in memory, like the Step 2 answer itself.
-const ballotDc=checkPanel({
+const ballotDc=checkPanel({ballot:true,
   chat:()=>checkChat(BALLOT_STEP,{answer:$("ballot-answer").value}), answer:()=>$("ballot-answer").value,
   text:()=>ballotCheckText, setText:v=>{ballotCheckText=v},
   use:f=>{ballotOriginal=$("ballot-answer").value;$("ballot-answer").value=f;ballotChecked=true;readBallot()},
@@ -999,7 +1021,7 @@ $("ballot-old-remove").addEventListener("click",()=>settleOld(true));
 function readBallot(){
   const text=$("ballot-answer").value, warn=$("ballot-warn"), found=$("ballot-found");
   warn.replaceChildren(); $("ballot-fix-row").hidden=true; oldItems=[]; $("ballot-old").hidden=true;
-  if(chatRefused(text)){found.textContent=REFUSED_MSG[chatRefused(text)]+NO_WEB_TIP;return}
+  if(chatRefused(text)){found.textContent=refusedText(chatRefused(text),true);return}
   const p=parseBallot(text,readState().address);
   let rows=[...p.races.map(r=>({kind:"race",text:raceText(r),note:[r.status,r.source&&"source: "+String(r.source).split(/[?#]/)[0]].filter(Boolean).join(" · ")})),
     ...p.measures.map(m=>({kind:"measure",text:measureText(m),note:m.source?"source: "+String(m.source).split(/[?#]/)[0]:""}))];
