@@ -164,6 +164,21 @@ assert.strictEqual(require("./calc.js").countEvidence(base + "\nGAPS:\n- [A][+][
   // Dollar amounts are not tags.
   assert.strictEqual(cleanMd("$5$$10$ fee change"), "$5$$10$ fee change");
   assert.strictEqual(cleanMd("$Fee$$Hike$ only"), "$Fee$$Hike$ only");
+  // Google AI Mode links: search links and plain-words labels keep the words; a site-like label
+  // keeps the URL. Footnote markers, the footnote list and empty bullets go; evidence tags stay.
+  assert.strictEqual(cleanMd("[Jane Q. Doe](https://www.google.com/search?q=jane&kgmid=/g/1) vs [Ohio SoS](https://sos.ohio.gov/x)"), "Jane Q. Doe vs Ohio SoS");
+  assert.strictEqual(cleanMd("[Smith](https://smithforohio.com) vs Jones"), "Smith vs Jones"); // a one-word name is not a site
+  assert.strictEqual(cleanMd("a | [Ballotpedia](https://ballotpedia.org/A_(b)) | [e.org/p](https://e.org/p) | [FEC](https://fec.gov/c)"), "a | https://ballotpedia.org/A_(b) | https://e.org/p | https://fec.gov/c");
+  assert.strictEqual(cleanMd("- [Housing][0][RECORD][2024] 2024: Voted yes.[1, 2] | https://a.gov/1\n* \n[1] [https://a.gov/1](https://a.gov/1)\n[2] [ballotpedia.org](https://b.gov)\n[3] https://c.gov"),
+    "- [Housing][0][RECORD][2024] 2024: Voted yes. | https://a.gov/1\n\n\n\n");
+  // Footnotes go only after sentence punctuation or at a line or cell end; other bracketed numbers stay.
+  for (const [i, o] of [["Amendment [1] to the budget", "Amendment [1] to the budget"], ["Rule 12[1] says no", "Rule 12[1] says no"],
+    ["Voted yes ([1])", "Voted yes"], ["Voted yes [2, 3] | https://a.gov", "Voted yes | https://a.gov"], ["It passed! [4] Later", "It passed! Later"]]) assert.strictEqual(cleanMd(i), o, i);
+  const ev = parseResearch("CANDIDATE: [Jane Doe](https://www.google.com/search?q=jane)\n- [A][+][RECORD] 2025: Voted yes [3]. | [sos.ohio.gov](https://sos.ohio.gov/v)", {A: 3});
+  assert.deepStrictEqual([ev.options[0].name, ev.options[0].evidence[0].source], ["Jane Doe", "https://sos.ohio.gov/v"]);
+  // A closing offer and the list under it are not evidence lines or format problems.
+  const off = countEvidence("CANDIDATE: J\n- [Housing][0][RECORD] 2025: a | https://a.gov/1\n\nWould you like me to:\n- [Taxes] check her voting RECORD\n- find more");
+  assert.deepStrictEqual([off.recognized, off.errors, off.warnings], [1, [], []]);
   assert.deepStrictEqual(calculate("A=3", "MEASURE: M\n- [A][+][RECORD] 2020: x | https://e.org/1\n$5$$10$ fee change").errors, []);
   const br = "CANDIDATE: J\n- [PublicSafety][0][STATED][F1] 2025-01-27: text | https://e.org/1";
   const mm = "CANDIDATE: J\n- $PublicSafety$$0$$STATED$$F1$ 2025-01-27: text | https://e.org/1";

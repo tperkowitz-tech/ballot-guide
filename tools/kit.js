@@ -14,12 +14,12 @@ const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
 const DOUBLE_CHECK_STEP = 8;
 // Browser: calc.js is inlined before this file and defines these. Node: load it.
-const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount} =
-  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence};
+const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount, CLOSING_OFFER: offerLine} =
+  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence, CLOSING_OFFER};
 
 function defaultState() {
   return {
-    mode: "neutral", address: "", date: "",
+    mode: "neutral", address: "", place: "", date: "",
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
@@ -55,12 +55,38 @@ function focusRuleSentence(state) {
   return parts.join(", and ");
 }
 
+// The coarse place ("Columbus, Ohio"), so a race line like "Mayor" names a city without the
+// address. A place that may hold a street is "" (never saved or copied): any digit (house numbers
+// and ZIPs; city and state names have none), a unit word, or a street mayHaveAddress catches.
+// The address's first part is compared only when it has 3+ parts: for "Columbus, Ohio" that part
+// is the city, and the place would always match it.
+// A unit word only counts when a unit number or letter follows ("Apt B", "Fl 3"), so "Miami, FL",
+// "Ste. Genevieve" and "Box Elder County" stay valid places.
+const UNIT = /\b(?:apt|apartment|unit|suite|ste|bldg|building|floor|fl|room|rm|lot|box)(?:\.?\s*#?\s*\d|\.?\s+#?\s*[a-z]\b|\.\s*[a-z]\b)|#/i;
+function safePlace(state) {
+  const p = String(state.place || "").trim(), addr = String(state.address || "");
+  return p && !/\d/.test(p) && !UNIT.test(p) && !mayHaveAddress(p, addr.split(",").length >= 3 ? addr : "") ? p : "";
+}
+
+// Prefill for the place field: a trailing "City, ST" ("D.C." too) or "City, State" in the address,
+// never the street, a unit ("Apt B") or the ZIP. "" when the address does not end that way.
+function placeFromAddress(address) {
+  const parts = String(address || "").replace(/[\s,]*\b(?:USA|United States)\.?\s*$/i, "").replace(/[\s,]*\b\d{5}(?:-\d{4})?\s*$/, "")
+    .split(",").map(x => x.trim()).filter(x => x && !UNIT.test(x));
+  if (parts.length < 2) return "";
+  const city = parts[parts.length - 2], st = parts[parts.length - 1];
+  const state = /^(?:[A-Za-z]\.?){2}$/.test(st) ? st.replace(/\./g, "").toUpperCase() : REPORT_STATES.find(n => n.toLowerCase() === st.toLowerCase() && n !== "Other/territory");
+  const place = state ? `${city}, ${state}` : "";
+  return safePlace({place}) ? place : "";
+}
+
 // The address identifies a person, so it is included only when asked for (the ballot lookup).
 function buildProfile(state, withAddress) {
   const values = state.mode === "values";
   // Neutral mode has no values; the steps still say "VALUES PROFILE", so the title names it.
   const out = [values ? "VALUES PROFILE" : "YOUR ELECTION (the profile the steps call VALUES PROFILE)",
     withAddress ? `Address: ${state.address.trim() || "not given"}` : ADDRESS_WITHHELD,
+    `Place: ${safePlace(state) || "not given"}`,
     `Election date: ${state.date || "not given"}`,
     `Mode: ${values ? "Values match" : "Neutral comparison"}`];
   if (!values) out.push(NEUTRAL_LINE);
@@ -128,12 +154,29 @@ function splitForChat(text, max) {
     : `Part ${n} of ${n}.\n\n${c}\n\nNow do the task above using all parts.`);
 }
 
+// The checked question in short form: its TASK and RACE/MEASURE lines plus the OUTPUT FORMAT the
+// answer had to follow. The whole question pushed the copy past chat input limits (Google AI Mode
+// silently cuts at 8,192 characters); the check rules are in Step 8 itself, and the place is in the profile.
+function checkQuestion(stepIndex, stepText, state, ex) {
+  const full = fillStep(stepIndex, stepText, state, ex), [ask, fmt] = full.split(/^OUTPUT FORMAT[^\n]*\n/m);
+  if (fmt === undefined) return full;
+  return [...ask.split("\n").filter(l => /^(TASK|RACE|MEASURE):/.test(l)),
+    "(Short form: the full question is left out. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim()].join("\n");
+}
+
+// Copies longer than this may be cut off silently: Google AI Mode's input stops at 8,192 characters.
+const LONG_COPY = 8000;
+function longCopyNote(text) {
+  const n = String(text).length;
+  return n > LONG_COPY ? `This is ${n.toLocaleString("en-US")} characters; some chats (such as Google AI Mode) cut off long text. If the chat's answer seems to ignore the end, use a chat that accepts longer text.` : "";
+}
+
 // Step 8 text with the checked question and answer filled in. extras: {checkStep, question (the
 // raw Step 2/3/4 text, filled here the same way the first chat got it), race/measure, answer}.
 function fillCheck(stepText, state, ex) {
   let text = stepText;
   if (ex.question != null) {
-    const q = fillStep(ex.checkStep, ex.question, state, ex);
+    const q = checkQuestion(ex.checkStep, ex.question, state, ex);
     text = text.replace("{{the original step prompt}}", () => q);
   }
   if (ex.answer != null) text = text.replace("{{the answer}}", () => mdPlain(ex.answer).trim());
@@ -278,7 +321,8 @@ function parseBallot(text, address = "") {
     const h = line.match(/^(DISTRICTS|RACES|MEASURES|UNVERIFIED)\s*:?\s*$/i);
     if (h) { section = h[1].toUpperCase(); sawHeading = true; continue; }
     // A checker's corrected list may append these; their rows are not ballot items.
-    if (/^(GAPS|REMOVED|PROBLEMS|CHECK SUMMARY)\b/i.test(line)) { section = null; continue; }
+    // A closing offer ("Would you like me to…") and any list under it are not ballot rows.
+    if (/^(GAPS|REMOVED|PROBLEMS|CHECK SUMMARY)\b/i.test(line) || offerLine.test(line)) { section = null; continue; }
     if (!line || /^\|[\s|:-]+\|?$/.test(line) || !section || section === "DISTRICTS") continue;
     const c = cells(line);
     if ((c && /^(office|name|measure)$/i.test(c[0])) || /^none\b/i.test(line)) continue; // table header, empty section
@@ -358,19 +402,23 @@ function testReportUrl(fields) {
   return REPORT_BASE + q.map(([k, v]) => "&" + k + "=" + encodeURIComponent(v)).join("");
 }
 
-// A short reply that is the chat refusing or failing, not an answer: "noweb", "error" or "".
-// Gemini, for one, answers election prompts with a generic error.
+// A short reply that is the chat refusing or failing, not an answer: "noweb", "needplace", "split",
+// "error" or "". Gemini, for one, answers election prompts with a generic error; Google AI Mode
+// asked for the city or candidates when the question did not name a place. A plain SPLIT NEEDED
+// (Step 0 rule 7: the task is too large) is "split", not a missing place.
 function chatRefused(text) {
   const t = String(text).trim();
   if (/NO WEB ACCESS/.test(t)) return "noweb";
   // A reply with a link or a format line is an answer, even if it quotes an error.
   if (/https?:\/\//.test(t) || /^\s*(?:CANDIDATE|MEASURE|RACES|MEASURES|DISTRICTS|CHECK SUMMARY|UNVERIFIED)\b|^\s*[-*]?\s*\[/im.test(t)) return "";
+  if (t.length < 800 && /provide (?:the |your |a )?(?:city|county|state|location|place|jurisdiction|candidate|list of candidates)|no candidate names|(?:city|county) (?:or|and) state|which (?:city|county|jurisdiction|state)/i.test(t)) return "needplace";
+  if (t.length < 1500 && /SPLIT NEEDED/.test(t)) return "split";
   if (t.length < 400 && /encounter(?:ed|ing) an error|something went wrong|try again later|could you try again|can[’']t help with (?:that|responses on elections)|unable to help with (?:that|elections)/i.test(t)) return "error";
   return "";
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
+  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};
 }

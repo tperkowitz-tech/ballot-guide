@@ -1,6 +1,6 @@
 // Checks the profile and Copy-for-chat text built by tools/kit.js. Run: node tools/kit_test.js
 const assert = require("assert");
-const {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, focusRuleSentence, buildProfile, fillStep, fixFormat, splitForChat, forChat,
+const {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
   mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
   REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl} = require("./kit.js");
 const {parseWeights, countEvidence, hasGrayTopics} = require("./calc.js");
@@ -14,7 +14,7 @@ let s = defaultState();
 s.axes[0].name = "Hidden";
 s.gray = "something";
 let p = buildProfile(s);
-assert.ok(p.startsWith("YOUR ELECTION (the profile the steps call VALUES PROFILE)\nAddress: withheld (not needed for this step)\nElection date: not given\nMode: Neutral comparison\n"));
+assert.ok(p.startsWith("YOUR ELECTION (the profile the steps call VALUES PROFILE)\nAddress: withheld (not needed for this step)\nPlace: not given\nElection date: not given\nMode: Neutral comparison\n"));
 assert.ok(p.includes("Neutral mode: do not collect values, score, rank, or recommend."));
 assert.ok(!/Value axes|Hidden|Gray areas|Viability/.test(p));
 assert.ok(p.endsWith("Crowded races (5+ candidates): research every candidate"));
@@ -25,7 +25,7 @@ Object.assign(s, {mode: "values", address: "1 Main St", date: "2026-11-03", gray
 s.axes = [{name: "Public services", meaning: "Fund schools", weight: 3}, {name: "Tax level", meaning: "Lower taxes", weight: 1}];
 p = buildProfile(s, true);
 assert.ok(p.startsWith("VALUES PROFILE\n"));
-assert.ok(p.includes("Address: 1 Main St\nElection date: 2026-11-03\nMode: Values match\n"));
+assert.ok(p.includes("Address: 1 Main St\nPlace: not given\nElection date: 2026-11-03\nMode: Values match\n"));
 assert.ok(p.includes("Value axes:\nA | Public services | Fund schools | weight 3\nB | Tax level | Lower taxes | weight 1\n"));
 assert.ok(p.includes("Gray areas:\n- drug policy\n"));
 assert.ok(!/Red lines|Personal stakes|Neutral mode/.test(p));
@@ -365,3 +365,75 @@ assert.strictEqual(checkSummary(null), null);
 }
 
 console.log("kit_test: all checks passed");
+
+// v1.6.0 (Google AI Mode test). Place: in every copy that has the profile; the street only in
+// Step 2 and its double-check.
+{
+  const md = require("fs").readFileSync(require("path").join(__dirname, "../ballot-guide/references/prompts.md"), "utf8");
+  const real = [...md.matchAll(/^## Step (\d)[^\n]*\n[\s\S]*?```text\n([\s\S]*?)\n```/gm)].map(m => m[2]);
+  const st = {...defaultState(), address: "77 Example Rd, Faketown, ZZ 99999", place: "Faketown, Ohio"};
+  const ex = {race: "Mayor: A vs B", measure: "Issue 1", attach: "ANSWERS"};
+  for (const i of [3, 4, 6, 7]) {
+    const t = forChat(i, real[0], real[i], st, ex);
+    assert.ok(!t.includes("77 Example Rd") && t.includes("Place: Faketown, Ohio"), "step " + i);
+  }
+  for (const k of [3, 4]) {
+    const t = forChat(8, real[0], real[8], st, {checkStep: k, question: real[k], ...ex, answer: "CANDIDATE: Z"});
+    assert.ok(!t.includes("77 Example Rd") && t.includes("Place: Faketown, Ohio"), "step 8 checking " + k);
+  }
+  assert.ok(forChat(2, real[0], real[2], st).includes("Address: 77 Example Rd, Faketown, ZZ 99999\nPlace: Faketown, Ohio"));
+  // A street typed into the place field never leaves Step 2 (and the page saves only safePlace).
+  for (const bad of ["12 Oak St, Faketown", "12 Broadway, New York", "12 Oak", "Apt 4B, Columbus", "Unit B, Columbus", "# B, Columbus", "Faketown, OH 99999"]) {
+    assert.strictEqual(safePlace({place: bad}), "", bad);
+    assert.ok(buildProfile({...st, place: bad}).includes("Place: not given"), bad);
+  }
+  // A street part without digits is caught through the address; a city-only address is not a street.
+  assert.strictEqual(safePlace({place: "Rural Route, Faketown", address: "Rural Route, Faketown, OH"}), "");
+  for (const [place, address] of [["Columbus, Ohio", "Columbus, Ohio"], ["Washington, DC", ""], ["Faketown, Ohio", st.address]]) assert.strictEqual(safePlace({place, address}), place);
+  // State codes and place names that share a unit word's letters stay valid; "Suite 200" style units do not.
+  for (const place of ["Miami, FL", "Unity, ME", "Ste. Genevieve, MO", "Box Elder County, Utah", "Florence, AL"]) assert.strictEqual(safePlace({place, address: ""}), place, place);
+  for (const bad of ["Suite 200, Columbus", "Fl 3, Miami, FL", "Apt B, Miami"]) assert.strictEqual(safePlace({place: bad, address: ""}), "", bad);
+  assert.strictEqual(placeFromAddress("123 Main St, Miami, FL 33101"), "Miami, FL");
+  // Prefill: trailing "City, ST" or "City, State" only; never a street part or ZIP.
+  assert.strictEqual(placeFromAddress("123 Main St, Springfield, IL 62701"), "Springfield, IL");
+  assert.strictEqual(placeFromAddress("1 Example Ave NW, Washington, dc 20001-1234, USA"), "Washington, DC");
+  assert.strictEqual(placeFromAddress("Columbus, ohio"), "Columbus, Ohio");
+  assert.strictEqual(placeFromAddress("1 Example Ave, Washington, D.C."), "Washington, DC");
+  assert.strictEqual(placeFromAddress("1 Example Ave, Apt 2, Springfield, I.L. 62701"), "Springfield, IL");
+  for (const bad of ["", "123 Main St Springfield IL", "123 Main St, IL", "Springfield, Ill", "123 Main St, Spr", "123 Main St, Apt B, OH"]) assert.strictEqual(placeFromAddress(bad), "", bad);
+
+  // Step 8 sends the question in short form: task, item, output format; no research instructions.
+  const full = forChat(8, real[0], real[8], st, {checkStep: 3, question: real[3], race: "Mayor: A vs B", answer: "CANDIDATE: Z"});
+  assert.ok(full.includes("TASK: Collect evidence for ONE race.") && full.includes("RACE: Mayor: A vs B") && full.includes("OUTPUT FORMAT:\nCANDIDATE: {{name}}"));
+  assert.ok(!full.includes("Research every candidate, including minor ones.") && full.includes("CORRECTED ANSWER:"));
+  assert.ok(forChat(8, real[0], real[8], st, {checkStep: 4, question: real[4], measure: "Issue 1", answer: "a"}).includes("MEASURE: Issue 1\n(Short form"));
+  const dc = forChat(8, real[0], real[8], st, {checkStep: 2, question: real[2], answer: "RACES"});
+  assert.ok(dc.includes("Address: 77 Example Rd") && dc.includes("OUTPUT FORMAT:\nDISTRICTS"));
+  const big = "CANDIDATE: Jane Doe | x\n" + Array.from({length: 20}, (_, i) => `- [Housing][0][RECORD] 2025-03-${10 + i}: Voted yes on zoning bill ${i}, final passage 7-2. | https://example.gov/minutes/${i}`).join("\n");
+  assert.ok(forChat(8, real[0], real[8], st, {checkStep: 3, question: real[3], race: "Mayor: A vs B", answer: big}).length < 8000, "typical Step 8 fits 8,000");
+
+  // Length note only past 8,000 characters.
+  assert.strictEqual(longCopyNote("x".repeat(8000)), "");
+  assert.strictEqual(longCopyNote("x".repeat(11600)), "This is 11,600 characters; some chats (such as Google AI Mode) cut off long text. If the chat's answer seems to ignore the end, use a chat that accepts longer text.");
+
+  // "Needs the place" replies, without false positives on real answers.
+  const {chatRefused} = require("./kit.js");
+  for (const t of ["SPLIT NEEDED: no candidate names or city location are provided.", "Please provide the city and state for this race.",
+    "To research this race, please provide the candidate list."]) assert.strictEqual(chatRefused(t), "needplace", t);
+  // Step 0 rule 7: a plain SPLIT NEEDED means the task is too large, not that the place is missing.
+  assert.strictEqual(chatRefused("SPLIT NEEDED:\n- Part 1: Mayor\n- Part 2: City Council"), "split");
+  for (const t of ["CANDIDATE: X\n- [A][+][STATED] 2025: Asked voters to provide the city budget. | https://a.gov/1",
+    "RACES\n- Mayor | A vs B | CONTESTED\nUNVERIFIED: which county runs the election"]) assert.strictEqual(chatRefused(t), "", t);
+
+  // Google AI Mode's real ballot row: names kept, the Google search link dropped, the real source kept.
+  const ai = parseBallot("RACES\n* U.S. House Delegate | At-Large | [Alex B. Doe, Jr.](https://www.google.com/search?q=alex+b.+doe,+jr.&kgmid=/g/11bzx61f7x) (Party A) vs Casey Roe | CONTESTED | source: https://www.thegreenpapers.com/G26/DC\n* \n"
+    + "Would you like me to find your polling place?\n- Find polling place hours\n- Mayor | 12 Oak St | x");
+  assert.deepStrictEqual(ai.races, [{office: "U.S. House Delegate", position: "At-Large", candidates: "Alex B. Doe, Jr. (Party A) vs Casey Roe", status: "CONTESTED", source: "https://www.thegreenpapers.com/G26/DC"}]);
+  // The closing offer and the list under it are not rows, and not "may include an address" notes.
+  assert.deepStrictEqual([ai.skipped, ai.addressLines, ai.noUrl], [[], [], []]);
+  // A source link keeps its URL; a bare domain is still flagged as no web address.
+  const src = parseBallot("MEASURES\n- Initiative 1 | Raises the wage [1, 2] | source: [dcboe.org](https://dcboe.org/m1)\n- Initiative 2 | Fee | source: dcboe.org\n[1] [dcboe.org](https://dcboe.org/m1)\n[2] https://dcboe.org/m2");
+  assert.deepStrictEqual(src.measures.map(m => [m.summary, m.source]), [["Raises the wage", "https://dcboe.org/m1"], ["Fee", "dcboe.org"]]);
+  assert.deepStrictEqual(src.noUrl, ["Initiative 2 | Fee | source: dcboe.org"]);
+}
+console.log("kit_test: v1.6.0 checks passed");
