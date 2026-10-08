@@ -30,7 +30,7 @@ assert.deepStrictEqual(rows(r), [["YES", 50, "thin"]]);
 assert.strictEqual(r.result.call, "Toss-up");
 
 // Funder flood: 2 records + 8 hostile funders (one entry, mean -1) -> (6-1)/(6+1+3) -> 75; Q has no evidence.
-r = calculate("A=3", ["CANDIDATE: P", "- [A][+][RECORD] r1", "- [A][+][RECORD] r2", ...[...Array(8).keys()].map(i => `- [A][-][FUNDER] f${i}`), "CANDIDATE: Q"].join("\n"));
+r = calculate("A=3", ["CANDIDATE: P", "- [A][+][RECORD] r1 | https://e.org/r1", "- [A][+][RECORD] r2 | https://e.org/r2", ...[...Array(8).keys()].map(i => `- [A][-][FUNDER] f${i} | https://e.org/f${i}`), "CANDIDATE: Q"].join("\n"));
 assert.strictEqual(r.result.rows[0].score, 75);
 assert.strictEqual(r.result.rows[1].score, null);
 assert.strictEqual(r.result.call, "Not enough evidence");
@@ -39,7 +39,7 @@ assert.strictEqual(r.result.call, "Not enough evidence");
 assert.deepStrictEqual([0.5, 1.5, 2.5, 12.5, 12.6].map(pyRound), [0, 2, 2, 12, 13]);
 
 // Invalid evidence lines are reported and skipped, not fatal.
-r = calculate("A=3", "CANDIDATE: Z\n- [A][+][RECORD] ok\n- [C][+][RECORD] bad axis\n- [A][?][RECORD] bad sign\n- [A][+][RUMOR] bad kind\n- [A] RECORD unreadable");
+r = calculate("A=3", "CANDIDATE: Z\n- [A][+][RECORD] ok | https://e.org/ok\n- [C][+][RECORD] bad axis\n- [A][?][RECORD] bad sign\n- [A][+][RUMOR] bad kind\n- [A] RECORD unreadable");
 assert.strictEqual(r.errors.length, 4);
 assert.strictEqual(r.result.rows[0].items, 1);
 
@@ -62,7 +62,7 @@ const variants = {
     "CANDIDATE: Y", "| A | supports | Record | c | u |", "RED LINE CROSSED: yes"],
 };
 for (const [label, lines] of Object.entries(variants)) {
-  r = calculate(W2, lines.join("\n"));
+  r = calculate(W2, lines.map(l => l.replace(/\b([abc]) \| u\b/, "$1 | https://e.org/$1")).join("\n"));
   assert.deepStrictEqual(r.errors, [], label);
   assert.deepStrictEqual(rows(r), [["X", 60, "thin"], ["Y", 75, "thin"]], label);
   assert.strictEqual(r.result.call, "Your call", label);
@@ -76,11 +76,14 @@ for (const [label, lines] of Object.entries(variants)) {
   assert.deepStrictEqual(calculate(W2, escaped), calculate(W2, plainRace));
   assert.deepStrictEqual(parseResearch(escaped, {}, true), parseResearch(plainRace, {}, true));
 }
-// Source written as a title, not a link: the line still counts, with a warning naming it.
-r = calculate("A=3", "CANDIDATE: X\n- [A][+][RECORD][e1] 2025: voted yes | Ohio Secretary of State\n- [A][+][RECORD][e2] 2025: b | https://e.org/b");
-assert.deepStrictEqual([r.errors, r.result.rows[0].events], [[], 2]);
-assert.deepStrictEqual(r.warnings, ["No web address for the source; ask the chat for the full link: [A][+][RECORD][e1] 2025: voted yes | Ohio Secretary of State"]);
-assert.strictEqual(require("./calc.js").countEvidence("CANDIDATE: X\n- [Housing][0][RECORD] 2025: a | County site").warnings.length, 1);
+// Source written as a title or a bare domain, not a link: not counted until it has one, with a
+// warning naming the line (values and neutral mode).
+r = calculate("A=3", "CANDIDATE: X\n- [A][+][RECORD][e1] 2025: voted yes | Ohio Secretary of State\n- [A][+][RECORD][e2] 2025: b | https://e.org/b\n- [A][+][RECORD][e3] 2025: c | apnews.com");
+assert.deepStrictEqual([r.errors, r.result.rows[0].events, r.result.rows[0].items], [[], 1, 1]);
+assert.deepStrictEqual(r.warnings, ["Not counted until it has a full link: [A][+][RECORD][e1] 2025: voted yes | Ohio Secretary of State",
+  "Not counted until it has a full link: [A][+][RECORD][e3] 2025: c | apnews.com"]);
+r = require("./calc.js").countEvidence("CANDIDATE: X\n- [Housing][0][RECORD] 2025: a | County site");
+assert.deepStrictEqual([r.recognized, r.errors, r.warnings.length], [0, [], 1]);
 // NEW CANDIDATE lines are never scored or read as evidence; the page is told to check the ballot.
 {
   const nc = "CANDIDATE: X\n- [A][+][RECORD] a | https://e.org/a\nNEW CANDIDATE: Pat Doe | https://e.org/new\nGAPS: none\nNEW CANDIDATE: Lee Roe | https://e.org/n2";
@@ -91,7 +94,7 @@ assert.strictEqual(require("./calc.js").countEvidence("CANDIDATE: X\n- [Housing]
   assert.strictEqual(require("./calc.js").countEvidence(nc).warnings.length, 2);
 }
 // Sign words for mixed: neutral, mixed and 0 all count as 0.
-r = calculate("A=3", "MEASURE: M\n- [A][neutral][STATED] a\n- [A][Mixed][STATED] b\n- [A][0][STATED] c");
+r = calculate("A=3", "MEASURE: M\n- [A][neutral][STATED] a | https://e.org/a\n- [A][Mixed][STATED] b | https://e.org/b\n- [A][0][STATED] c | https://e.org/c");
 assert.deepStrictEqual(r.errors, []);
 assert.strictEqual(r.result.rows[0].score, 50);
 
@@ -119,7 +122,7 @@ for (const tail of ["\nGAPS:\n- [A][+][RECORD] y unconfirmed | https://y.org/2",
   assert.deepStrictEqual(r.errors, [], tail);
   assert.deepStrictEqual(r.result, plain.result, tail);
 }
-r = calculate("A=3", "CANDIDATE: Z\n- [A][+][RECORD] z\nGAPS: none\n- [A][-][RECORD] gap item\nCANDIDATE: Y\n- [A][-][RECORD] y");
+r = calculate("A=3", "CANDIDATE: Z\n- [A][+][RECORD] z | https://z.org/1\nGAPS: none\n- [A][-][RECORD] gap item\nCANDIDATE: Y\n- [A][-][RECORD] y | https://y.org/1");
 assert.deepStrictEqual(r.errors, []);
 assert.deepStrictEqual(r.result.rows.map(x => x.score), plain.result.rows.map(x => x.score));
 
@@ -209,12 +212,87 @@ assert.strictEqual(require("./calc.js").countEvidence(base + "\nGAPS:\n- [A][+][
   assert.deepStrictEqual(nk.errors.map(e => e.msg), [na.errors[0].msg]);
 }
 
+// A withdrawn candidate is scored and shown but never the call: the CANDIDATE: name field saying
+// so, or a WITHDRAWN: line naming them (before or after their block). Neutral mode: "to check".
+{
+  const {countEvidence} = require("./calc.js");
+  const recs = (n, sign) => [0, 1, 2].map(i => `- [A][${sign}][RECORD][${n}${i}] 2025: vote ${i} | https://e.org/${n}${i}`).join("\n");
+  const race = (a, b) => `CANDIDATE: Davide Example | x\n${recs("d", "+")}\n${a}CANDIDATE: Lee Roe | y\n${recs("l", "-")}\n${b}`;
+  const plain = calculate("A=1", race("", ""));
+  assert.strictEqual(plain.result.call, "Davide Example");
+  const named = (a, b) => race(a, b).replace("CANDIDATE: Davide Example |", "CANDIDATE: Davide Example (withdrew from the race) |");
+  for (const [a, b, f] of [["", "", named], ["", "", (x, y) => race(x, y).replace("Example |", "Example (not on the ballot) |")],
+    ["", "WITHDRAWN: Davide Example | https://e.org/w"], ["", "WITHDRAWN: davide example (D) | https://e.org/w"]]) {
+    const text = (f || race)(a, b);
+    r = calculate("A=1", text);
+    assert.deepStrictEqual([r.errors, r.result.call, r.result.rows[0].excluded, r.result.rows[1].excluded],
+      [[], "Consider leaving blank or writing in", "withdrew", null], text);
+    assert.ok(r.warnings.some(w => / may have withdrawn or may not be on the ballot; check your official ballot:/.test(w)), text);
+    assert.strictEqual(countEvidence(text).warnings.filter(w => /may have withdrawn/.test(w.msg)).length, 1, text);
+  }
+  r = calculate("A=1", "WITHDRAWN: Davide Example | https://e.org/w\n" + race("", ""));
+  assert.strictEqual(r.result.rows[0].excluded, "withdrew");
+  // A surname shared by two candidates excludes no one; it only warns.
+  r = calculate("A=1", "WITHDRAWN: Roe | https://e.org/w\nCANDIDATE: Jo Roe\n- [A][+][RECORD] 2025: a | https://e.org/1\nCANDIDATE: Bob Roe\n- [A][-][RECORD] 2025: b | https://e.org/2");
+  assert.deepStrictEqual(r.result.rows.map(x => x.excluded), [null, null]);
+  assert.ok(r.warnings.some(w => /a candidate withdrew/.test(w)));
+  // Records, GAPS and job text that mention withdrawing never exclude a candidate.
+  for (const line of ["- [A][+][RECORD] 2024: voted for HB 2 after the sponsor withdrew the amendment | https://e.org/n1",
+    "- [A][+][RECORD] 2024: backed a bill that was later withdrawn | https://e.org/n2",
+    "- [A][+][STATED] 2024: Supports withdrawing from the Paris agreement | https://e.org/n3",
+    "- [A][+][STATED] 2024: said the fee will not appear on utility bills | https://e.org/n4",
+    "GAPS: could not confirm whether her rival withdrew"]) {
+    assert.strictEqual(calculate("A=1", race(line + "\n", "")).result.call, "Davide Example", line);
+  }
+  r = calculate("A=1", race("", "").replace("Davide Example | x", "Davide Example | withdrew from 2022 Senate race, now county clerk"));
+  assert.deepStrictEqual([r.result.call, r.result.rows[0].excluded], ["Davide Example", null]);
+  // WITHDRAWN: matches whole names only: "Li" is not inside "Oliver Smith".
+  r = calculate("A=1", race("", "WITHDRAWN: Oliver Smith | https://e.org/o").replace("Davide Example", "Li"));
+  assert.deepStrictEqual([r.result.call, r.result.rows[0].excluded], ["Li", null]);
+  r = calculate("A=1", race("", "WITHDRAWN: Davide | https://e.org/o"));
+  assert.strictEqual(r.result.rows[0].excluded, "withdrew");
+  // A part pasted twice repeats a candidate: warned, never silent.
+  r = calculate("A=1", race("", "") + "\n" + race("", "").split("CANDIDATE: Lee Roe")[0]);
+  assert.ok(r.warnings.includes("Davide Example: This candidate appears twice; a part may have been pasted twice."), r.warnings);
+  // A WITHDRAWN: line naming no one in the race is only a warning; "withdrawal" in a record is not a withdrawal.
+  r = calculate("A=1", race("- [A][+][RECORD][t] 2024: backed treaty withdrawal | https://e.org/t\n", "WITHDRAWN: Pat Doe | https://e.org/p"));
+  assert.deepStrictEqual([r.result.call, r.warnings], ["Davide Example", ["The chat says a candidate withdrew. Check your official ballot, then edit the race line if needed: WITHDRAWN: Pat Doe | https://e.org/p"]]);
+}
+// Party endorsements and donors count only under a party priority; other kinds are unaffected.
+{
+  const ans = "CANDIDATE: X\n- [A][+][RECORD] 2025: vote | https://e.org/1\n- [A][+][ENDORSEMENT] 2026: Endorsed by the Ohio Example Party | https://e.org/2";
+  const dropped = ["X: Party evidence is used only if you list party as a priority: 2026: Endorsed by the Ohio Example Party | https://e.org/2"];
+  r = calculate("A | Schools | Fund schools | weight 3", ans);
+  assert.deepStrictEqual([r.result.rows[0].score, r.warnings], [75, dropped]);
+  r = calculate("A | Party | Support the Example Party platform | weight 3", ans);
+  assert.deepStrictEqual([r.result.rows[0].score, r.warnings], [79, []]);
+  // Only on the party axis itself: a party priority B does not open axis A.
+  r = calculate("A | Schools | Fund schools | weight 3\nB | Party | Example Party candidates | weight 1", ans);
+  assert.deepStrictEqual(r.warnings, dropped);
+  const axes = t => parseWeights(t).partyAxes;
+  assert.deepStrictEqual(["A=3", "A | Third parties | third-party access | weight 2", "A | Choice | third party candidates | weight 2",
+    "A | Unity | less party-line voting | weight 2", "A | Unity | fewer party line votes | weight 2", "A | Bipartisan | bipartisan deals | weight 2"].map(axes),
+    [[], [], [], [], [], []]);
+  assert.deepStrictEqual(["A | Party | Example Party | weight 2", "A | Political party | my political party's nominees | weight 2"].map(axes), [["A"], ["A"]]);
+  // A named party only: lowercase or generic "party" rows still count.
+  const kept = t => calculate("A=3", `CANDIDATE: X\n- [A][+][ENDORSEMENT] 2026: ${t} | https://e.org/2`).warnings;
+  for (const t of ["a party line vote", "praised the party platform", "block party fundraiser", "Endorsed by any party"]) assert.deepStrictEqual(kept(t), [], t);
+}
+// ChatGPT's citation-chip label after a link at a line end goes; prose after a link stays.
+{
+  const {cleanMd} = require("./calc.js");
+  assert.strictEqual(cleanMd("- [A][+][RECORD] 2025: x | https://apnews.com/x  AP News\nb | https://a.gov/p Ohio Secretary of State +1"),
+    "- [A][+][RECORD] 2025: x | https://apnews.com/x\nb | https://a.gov/p");
+  assert.strictEqual(cleanMd("GAPS: https://x.gov/a was down"), "GAPS: https://x.gov/a was down");
+  assert.strictEqual(cleanMd("| a | https://a.gov/p | CONTESTED |"), "| a | https://a.gov/p | CONTESTED |");
+}
+
 console.log("calc_test: all checks passed");
 
 // Unopposed candidates: absolute cutoffs, but thin evidence is always "Your call".
 {
   const w = {A: 1};
-  const recs = sign => [0, 1, 2].map(i => ({axis: "A", sign, kind: "record", event: "e" + i}));
+  const recs = sign => [0, 1, 2].map(i => ({axis: "A", sign, kind: "record", event: "e" + i, source: "https://e.org/" + i}));
   const solo = ev => scoreRace([{name: "Z", red_line: false, evidence: ev}], w, false).call;
   assert.strictEqual(solo(recs("+")), "Vote for Z");
   assert.strictEqual(solo(recs("0")), "Your call");
@@ -226,14 +304,16 @@ console.log("calc_test: all checks passed");
 
 // Table rows meant as evidence but with an unreadable kind must warn, not vanish.
 {
-  const r = calculate("A=3\nB=2", "CANDIDATE: X\n| A | + | RECORD | real | u |\n| B | - | Records | donor | u |\n| B | - | funding | donor | u |\n| B | - | Voting record | v | u |");
+  const r = calculate("A=3\nB=2", "CANDIDATE: X\n| A | + | RECORD | real | https://e.org/r |\n| B | - | Records | donor | u |\n| B | - | funding | donor | u |\n| B | - | Voting record | v | u |");
   assert.strictEqual(r.errors.length, 3, "three unreadable table rows warn");
   console.log("calc_test: table warning checks passed");
 }
 
 // Scoring model v2: the same cases score.py --demo asserts.
 {
-  const ev = (axis, sign, kind, extra) => ({axis, sign, kind, ...extra});
+  // Every row gets its own page unless a test names one; rows without a link are not counted.
+  let page = 0;
+  const ev = (axis, sign, kind, extra) => ({axis, sign, kind, source: `https://example.org/p${page++}`, ...extra});
   const one = (w, opts, measure) => scoreRace(opts, w, !!measure);
   const eq4 = "A=2, B=2, C=2, D=2";
   // Same fact as 4 rows (same source and date) == 1 row.
@@ -249,12 +329,12 @@ console.log("calc_test: all checks passed");
   assert.strictEqual(one({A: 3}, [{name: "X", evidence: [ev("A", "-", "record")]}]).rows[0].score, 25);
   assert.strictEqual(one({A: 3}, [{name: "X", evidence: [ev("A", "-", "record"), ev("A", "+", "funder")]}]).rows[0].score, 36);
   // Gray rows (sign words or the flag) leave the score unchanged and are listed.
-  const base = calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD] r");
-  const grayRows = "CANDIDATE: X\n- [A][+][RECORD] r\n- [B][grey][STATED] torn topic\n- [C][torn][RECORD] t\n- [D][G][FUNDER] g";
+  const base = calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD] r | https://e.org/r");
+  const grayRows = "CANDIDATE: X\n- [A][+][RECORD] r | https://e.org/r\n- [B][grey][STATED] torn topic | https://e.org/b\n- [C][torn][RECORD] t | https://e.org/c\n- [D][G][FUNDER] g | https://e.org/d";
   r = calculate(eq4 + "\nGray areas:\n- drug policy", grayRows);
   assert.deepStrictEqual(r.errors, []);
   assert.strictEqual(r.result.rows[0].score, base.result.rows[0].score);
-  assert.deepStrictEqual(r.result.rows[0].gray.map(g => g.text), ["torn topic", "t", "g"]);
+  assert.deepStrictEqual(r.result.rows[0].gray.map(g => g.text), ["torn topic | https://e.org/b", "t | https://e.org/c", "g | https://e.org/d"]);
   assert.strictEqual(one({A: 1}, [{name: "X", evidence: [ev("A", "+", "record", {gray: true}), ev("A", "+", "stated")]}]).rows[0].score, 62); // 62.5 rounds half to even
   // No torn topics in the profile: gray rows are not scored or listed, and the page is told.
   r = calculate(eq4, grayRows);
@@ -272,7 +352,7 @@ console.log("calc_test: all checks passed");
   assert.deepStrictEqual(one({A: 1}, []).errors, ["race has no options"]);
   assert.deepStrictEqual(one({A: 9}, [{name: "X", evidence: []}]).errors, ["weight for A must be an integer 1-3 (found 9)"]);
   // Conflicting same-kind tags on one event: warning, sign 0.
-  r = calculate("A=1", "CANDIDATE: X\n- [A][+][RECORD][e1] a\n- [A][-][RECORD][e1] b");
+  r = calculate("A=1", "CANDIDATE: X\n- [A][+][RECORD][e1] a | https://e.org/a\n- [A][-][RECORD][e1] b | https://e.org/b");
   assert.strictEqual(r.result.rows[0].score, 50);
   assert.ok(r.warnings.some(w => w.includes("conflicting tags for one event (e1)")));
   // Red-lined leader is excluded; the other option is called.
@@ -281,7 +361,7 @@ console.log("calc_test: all checks passed");
   assert.deepStrictEqual([r.call, r.rows[0].excluded, r.rows[0].score > r.rows[1].score], ["Vote for Y", "red line", true]);
   assert.strictEqual(one({A: 1}, [{name: "X", red_line: true, evidence: []}]).call, "All options crossed a red line");
   // One event decides the leader -> toss-up naming it.
-  r = calculate("A=1", "CANDIDATE: X\n- [A][+][RECORD] 2024-05-01: voted for HB 1 | https://example.org/hb1\nCANDIDATE: Y\n- [A][0][RECORD] mixed record");
+  r = calculate("A=1", "CANDIDATE: X\n- [A][+][RECORD] 2024-05-01: voted for HB 1 | https://example.org/hb1\nCANDIDATE: Y\n- [A][0][RECORD] mixed record | https://example.org/m");
   assert.strictEqual(r.result.call, "Toss-up (turns on: 2024-05-01: voted for HB 1 | https://example.org/hb1)");
   assert.strictEqual(r.result.turns_on, "2024-05-01: voted for HB 1 | https://example.org/hb1");
   // Robust lead: clear with coverage, lean without.
@@ -300,15 +380,12 @@ console.log("calc_test: all checks passed");
   const p = parseResearch("CANDIDATE: X\n- [A][+][RECORD][ hb1217 ] 2025-03-04: voted | https://example.org/a\n- [A][-][STATED] said 1999 things | https://example.org/b", {A: 1});
   assert.deepStrictEqual(p.options[0].evidence.map(e => [e.event, e.date, e.source]),
     [["hb1217", "2025-03-04", "https://example.org/a"], [undefined, undefined, "https://example.org/b"]]);
-  // Event keys: same URL (no date/event) == 1 row; same text (no URL) == 1 row; distinct event ids count twice.
+  // Event keys: same URL (no date/event) == 1 row; distinct event ids count twice.
   const sameUrl = "- [A][+][RECORD] voted | https://example.org/v";
   const urlRows = [sameUrl, "- [A][+][RECORD] voted again | https://Example.ORG/v/?utm=1#x", sameUrl, sameUrl];
   r = calculate(eq4, ["CANDIDATE: X", ...urlRows].join("\n"));
   assert.deepStrictEqual(rows(r), rows(calculate(eq4, "CANDIDATE: X\n" + sameUrl)));
   assert.deepStrictEqual([r.result.rows[0].events, r.warnings], [1, []]);
-  r = calculate(eq4, "CANDIDATE: X\n" + Array(4).fill("- [A][+][RECORD] 2025: voted for HB 1").join("\n"));
-  assert.deepStrictEqual(rows(r), rows(calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD] voted  for hb 1")));
-  assert.deepStrictEqual(r.warnings.filter(w => !w.startsWith("No web address")), ["X: No source: duplicates of this line cannot be detected (2025: voted for HB 1)."]);
   r = calculate(eq4, "CANDIDATE: X\n- [A][+][RECORD][a] one | https://example.org/v\n- [A][+][RECORD][b] two | https://example.org/v");
   assert.strictEqual(r.result.rows[0].events, 2);
   // Funders: eight favorable == one (62.5 -> 62); opposing record + 8 favorable funders moves <= 12.5 (25 -> 36).
@@ -381,8 +458,8 @@ console.log("calc_test: all checks passed");
     {name: "Y", evidence: [ev("A", "0", "record")]}]);
   assert.strictEqual(r.turns_on, "donors and endorsements on A");
   // Parser: QUESTIONNAIRE/Q and ENDORSEMENT/E in brackets and tables.
-  const pk = parseResearch("CANDIDATE: X\n- [A][+][QUESTIONNAIRE][q1] 2026: answered yes | https://example.org/q\n- [A][+][Q][q2] b\n"
-    + "- [B][-][ENDORSEMENT] c | https://example.org/e\n- [B][-][e] d\n| A | + | questionnaire | e | u |\n| B | + | E | f | u |", {A: 1, B: 1});
+  const pk = parseResearch("CANDIDATE: X\n- [A][+][QUESTIONNAIRE][q1] 2026: answered yes | https://example.org/q\n- [A][+][Q][q2] b | https://example.org/q2\n"
+    + "- [B][-][ENDORSEMENT] c | https://example.org/e\n- [B][-][e] d | https://example.org/d\n| A | + | questionnaire | e | https://example.org/te |\n| B | + | E | f | https://example.org/tf |", {A: 1, B: 1});
   assert.deepStrictEqual(pk.errors, []);
   assert.deepStrictEqual(pk.options[0].evidence.map(e => e.kind),
     ["questionnaire", "questionnaire", "endorsement", "endorsement", "questionnaire", "endorsement"]);
@@ -432,15 +509,19 @@ console.log("calc_test: all checks passed");
           kind: rnd() < 0.01 ? "rumor" : pick(heavy ? ["record", "questionnaire", "questionnaire", "questionnaire", "stated", "funder", "endorsement"]
             : ["record", "record", "questionnaire", "stated", "funder", "endorsement"]),
           event: maybe(0.4, pick(["e1", "e2", "e3"])),
-          source: maybe(0.4, pick(["https://a.example", "https://b.example", "HTTPS://A.Example/", "https://a.example?q=1#f", ""])),
+          // Mostly real links; the rest (none, empty, a bare domain, a title) are left out with a warning.
+          source: rnd() < 0.85 ? pick(["https://a.example", "https://b.example", "HTTPS://A.Example/", "https://a.example?q=1#f", " http://c.example/x"])
+            : pick([undefined, "", "a.example", "AP News"]),
           date: maybe(0.5, pick(["2024", "2025-01-02"])),
           gray: maybe(0.05, true),
-          text: maybe(0.6, pick(["fact " + e, "Same  fact", "[A][+][RECORD] 2025: same fact", "2024-01-02: same FACT", ""])),
+          text: maybe(0.6, pick(["fact " + e, "Same  fact", "[A][+][RECORD] 2025: same fact", "2024-01-02: same FACT", "",
+            "Endorsed by the Example Party", "a party endorsement", "Party Hall rally", "a party line vote", "Block Party fair", "any party"])),
         });
       }
-      options.push({name: measure ? "YES" : "O" + o, red_line: rnd() < 0.15 && pick([true, "", " bribe ", "bribe | https://c.example"]), evidence});
+      options.push({name: measure ? "YES" : "O" + o, red_line: rnd() < 0.15 && pick([true, "", " bribe ", "bribe | https://c.example"]),
+        withdrawn: maybe(0.1, true), evidence});
     }
-    cases.push(JSON.parse(JSON.stringify({axes, gray: rnd() < 0.5, race: {race: "R" + n, measure, options}})));
+    cases.push(JSON.parse(JSON.stringify({axes, gray: rnd() < 0.5, partyAxes: letters.filter(() => rnd() < 0.3), race: {race: "R" + n, measure, options}})));
   }
   const py = spawnSync("python3", ["-c", `
 import json, sys
@@ -449,7 +530,7 @@ from score import score_race
 out = []
 for c in json.load(sys.stdin):
     try:
-        r = score_race(c["race"], c["axes"], c["gray"])
+        r = score_race(c["race"], c["axes"], c["gray"], c["partyAxes"])
         out.append({k: r[k] for k in ("call", "turns_on", "options", "warnings")})
     except ValueError as e:
         out.append({"error": str(e)})
@@ -459,13 +540,16 @@ print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")],
   const FIELDS = ["name", "score", "low", "high", "evidence", "confidence", "coverage", "events", "records", "questionnaires", "gray", "excluded"];
   let mismatches = 0, kinds = new Set();
   cases.forEach((c, i) => {
-    const r = scoreRace(c.race.options, c.axes, c.race.measure, c.gray);
+    const r = scoreRace(c.race.options, c.axes, c.race.measure, c.gray, c.partyAxes);
     const got = r.errors.length ? {error: r.errors.join("; ")}
       : JSON.parse(JSON.stringify({call: r.call, turns_on: r.turns_on, warnings: r.warnings,
           options: r.rows.map(o => Object.fromEntries(FIELDS.map(f => [f, o[f]])))}));
     kinds.add(got.error ? "error" : got.call.replace(/ .*/, ""));
     if (!got.error && got.call.includes("(uneven evidence)")) kinds.add("uneven");
     if (!got.error && / on [A-Z]$/.test(got.turns_on || "")) kinds.add("pooled-turn");
+    if (!got.error && got.options.some(o => o.excluded === "withdrew")) kinds.add("withdrawn");
+    if (!got.error && got.warnings.some(w => w.includes("full link"))) kinds.add("no-link");
+    if (!got.error && got.warnings.some(w => w.includes("Party evidence"))) kinds.add("party");
     try { assert.deepStrictEqual(got, want[i]); } catch (e) {
       if (++mismatches <= 3) console.error("parity mismatch", JSON.stringify(c), JSON.stringify(got), JSON.stringify(want[i]));
     }

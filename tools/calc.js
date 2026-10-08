@@ -25,26 +25,31 @@ function pyRound(x) {
 // Other lines are ignored so the whole pasted profile works. First weight for a letter wins,
 // because the Step 1 template's EXAMPLES section comes after the voter's own axes.
 function parseWeights(text) {
-  const weights = {}, warnings = [];
-  const set = (letter, w) => {
+  const weights = {}, warnings = [], partyAxes = [];
+  const set = (letter, w, line) => {
     const L = letter.toUpperCase();
     if (has(weights, L)) {
       if (weights[L] !== w) warnings.push(`Axis ${L} is listed more than once; using the first weight (${weights[L]}).`);
       return;
     }
     weights[L] = w;
+    if (PARTY_AXIS.test(line)) partyAxes.push(L);
   };
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Za-z])\b.*?\bweight\s*([1-3])\b/i);
-    if (m) { set(m[1], Number(m[2])); continue; }
+    if (m) { set(m[1], Number(m[2]), line); continue; }
     for (const s of line.matchAll(/\b([A-Za-z])\s*=\s*(\d+)\b/g)) {
       const w = Number(s[2]);
-      if (w >= 1 && w <= 3) set(s[1], w);
+      if (w >= 1 && w <= 3) set(s[1], w, "");
       else warnings.push(`Weight for ${s[1].toUpperCase()} must be 1, 2 or 3 (found ${s[2]}); ignored.`);
     }
   }
-  return {weights, warnings};
+  return {weights, warnings, partyAxes};
 }
+// A priority that names a party preference ("Party | Example Party candidates", "political party"):
+// "party" as its own word, not hyphen-joined ("third-party", "party-line"), and not "third party"
+// or "party line(s)".
+const PARTY_AXIS = /(?<![-\w])(?<!\bthird[^\S\r\n]+)party(?![-\w])(?![^\S\r\n]+lines?\b)/i;
 
 // Chats reformat the requested plain text: bold, bullets, numbered lists, headings, tables.
 // Strip that dressing so a line reads the same however the chat styled it. Copy buttons that
@@ -65,6 +70,11 @@ const mdLink = (all, label, url) => !SEARCH_LINK.test(url) && SITE_LABEL.test(la
 // A footnote marker: "[1]" or "[1, 2]" right after sentence-ending punctuation, or at the end of a
 // line or table cell. Elsewhere ("Amendment [1] to", "Rule 12[1] says") the number is kept.
 const FOOTNOTE = String.raw`\[\d+(?:\s*,\s*\d+)*\]`;
+// ChatGPT's Copy leaves its citation chip's label after a link: "https://apnews.com/x  AP News +1".
+// Only a short name (capitalized words, small joining words, a domain, "+n") ending the line goes,
+// so prose after a link ("https://x.gov/a was down") stays.
+const CHIP_WORD = String.raw`(?:[A-Z][\w.&'’-]*|[\w-]+(?:\.[\w-]+)+|of|the|and|for|on|in|\+\d+)`;
+const CHIP = new RegExp(String.raw`(https?:\/\/[^\s|<>]+)[^\S\r\n]+(?:[A-Z][\w.&'’-]*|[\w-]+(?:\.[\w-]+)+)(?:[^\S\r\n]+${CHIP_WORD}){0,5}[^\S\r\n]*$`, "gm");
 function cleanMd(text) {
   return String(text).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/[^\S\r\n]*\\+[^\S\r\n]*$/gm, "")
     .replace(/^([^\S\r\n]*(?:(?:[-*•_]|\d+[.)])[^\S\r\n]*)*)((?:\$[^$\r\n]+\$){2,})/gm, (all, pre, run) => {
@@ -77,6 +87,7 @@ function cleanMd(text) {
     .replace(/\[([^\]\r\n]*)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/g, mdLink)
     // A tag after another tag ("[Housing][0]") is evidence, never a footnote; "([1])" goes whole.
     .replace(new RegExp(String.raw`(?<=[.!?]["”')]?)[^\S\r\n]*\(?${FOOTNOTE}\)?|(?<!\])[^\S\r\n]*\(?${FOOTNOTE}\)?(?=[^\S\r\n]*(?:\||$))`, "gm"), "")
+    .replace(CHIP, "$1")
     .replace(/^[^\S\r\n]*[-*•][^\S\r\n]*$/gm, ""); // empty bullets
 }
 function normLine(raw) {
@@ -126,6 +137,13 @@ const UNCONFIRMED = /^(?:\d{4}(?:-\d{2}-\d{2})?\s*:?\s*)?UNVERIFIED\b/i;
 // A chatbot's closing offer ("Would you like me to…", "Let me know if…"); it and any list under it are not part of the answer.
 const CLOSING_OFFER = /^(?:would you like|do you want|want me to|shall i|should i|let me know|if you(?:['’]d| would)? like|i can also|i could also)\b/i;
 const NEUTRAL_ANSWER = "This answer was written for a neutral comparison. Copy the question again (it now asks for your priorities' letters) and paste the new answer.";
+// A candidate who left the race: still scored and shown, never the call. Read only from a
+// WITHDRAWN: line or the CANDIDATE: name field ("Jo Roe (withdrew from the race)"); records and
+// job lines mention withdrawn bills, amendments and earlier races too often to trust.
+const WITHDREW = /\b(?:withdr(?:ew|awn)|dropped out)\b.*\b(?:race|ballot|election|campaign)\b|\bnot on the ballot\b|\bremoved from the ballot\b/i;
+const nameKey = s => s.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^\w' -]/g, " ").replace(/\s+/g, " ").trim();
+// Same person: equal names, or one whole-word inside the other when both have 3+ characters.
+const sameName = (a, b) => a === b || (a.length > 2 && b.length > 2 && (` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `)));
 const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
@@ -142,6 +160,11 @@ function parseResearch(text, weights, neutral) {
   let otherAxes = 0, topicAxes = 0;
   const isTopic = a => (a.match(/[A-Za-z]/g) || []).length >= 3 && !/\b[A-Za-z]\b|\d/.test(a);
   let kind = null, name = "", cur = null, section = null;
+  const gone = []; // WITHDRAWN: lines, matched to candidates by name once all are read
+  const withdraw = (o, line) => {
+    if (!o.withdrawn) warnings.push(`${o.name} may have withdrawn or may not be on the ballot; check your official ballot: ${line}`);
+    o.withdrawn = true;
+  };
   for (const raw of text.split(/\r?\n/)) {
     const line = normLine(raw);
     let m;
@@ -154,6 +177,7 @@ function parseResearch(text, weights, neutral) {
       warnings.push(`The chat found a candidate not on your ballot list. Check your official ballot, then edit the race line if needed: ${line}`);
       continue;
     }
+    if ((m = line.match(/^WITHDRAWN\s*:\s*([^|]*)/i))) { gone.push({who: nameKey(m[1]), cur, line}); continue; }
     // GAPS sits inside an option (before RED LINE or EVIDENCE: is common), so it only pauses
     // evidence until the option's next structural line; its items are unconfirmed, never scored.
     if (/^GAPS\s*(:|$)/i.test(line)) { section = "gaps"; continue; }
@@ -170,6 +194,7 @@ function parseResearch(text, weights, neutral) {
       kind = "race";
       cur = {name: m[1].trim() || `Candidate ${options.length + 1}`, red_line: false, evidence: []};
       options.push(cur);
+      if (WITHDREW.test(m[1])) withdraw(cur, line);
       continue;
     }
     if ((m = line.match(/^MEASURE:\s*(.*)$/i))) {
@@ -227,10 +252,23 @@ function parseResearch(text, weights, neutral) {
     }
     const row = {axis, sign, kind: k, ...sourceAndDate(ev.rest), text: ev.rest};
     if (ev.event) row.event = ev.event;
-    // Chats often give a citation title instead of the link; the line still counts.
-    if (!row.source) { delete row.source; warnings.push(`No web address for the source; ask the chat for the full link: ${line}`); }
+    // Chats often give a citation title or a bare domain instead of the link; no fact counts
+    // until its page can be opened.
+    if (!row.source) { warnings.push(`Not counted until it has a full link: ${line}`); cur.lines--; continue; }
     if (!row.date) delete row.date;
     cur.evidence.push(row);
+  }
+  for (const g of gone) {
+    // Only an unambiguous match excludes anyone ("Roe" with two Roes on the ballot only warns).
+    const hits = g.who ? options.filter(x => sameName(nameKey(x.name), g.who)) : [];
+    const o = hits.length === 1 ? hits[0] : (!g.who && g.cur);
+    if (o && kind === "race") withdraw(o, g.line);
+    else warnings.push(`The chat says a candidate withdrew. Check your official ballot, then edit the race line if needed: ${g.line}`);
+  }
+  // Pasting one part of a split answer twice repeats its candidates.
+  const names = options.map(o => nameKey(o.name));
+  if (kind === "race") for (const o of options.filter((o, i) => names.indexOf(names[i]) !== i)) {
+    warnings.push(`${o.name}: This candidate appears twice; a part may have been pasted twice.`);
   }
   const wasNeutral = !neutral && topicAxes > 0 && !otherAxes;
   if (wasNeutral) {
@@ -301,18 +339,28 @@ function validateRace(options, weights, isMeasure) {
   return errs;
 }
 
-// Split out gray rows; collapse rows of one event (see eventKey) to one entry per axis,
-// keeping the strongest kind.
-function collapse(opt) {
+// A party endorsement or donor: a named party ("Ohio Example Party", case-sensitive so "a party
+// line vote" and "block party" stay) or "party endorsement"; as in score.py.
+const PARTY_NAME = /\b(?!(?:The|Any|A|Block)\b)[A-Z][A-Za-z]* +Party\b/, PARTY_ENDORSE = /\bparty endorsement\b/i;
+const partyRow = t => typeof t === "string" && (PARTY_NAME.test(t) || PARTY_ENDORSE.test(t));
+// Leave out rows without a web link and party endorsements and donors not tagged on one of the
+// voter's party priorities (partyAxes; as in score.py); split out gray rows; collapse rows of one
+// event (see eventKey) to one entry per axis, keeping the strongest kind.
+function collapse(opt, partyAxes) {
   const gray = [], groups = new Map(), warnings = [];
   (opt.evidence || []).forEach((ev, i) => {
+    const label = ev.event || ev.text || ev.source || `${opt.name} item ${i + 1}`;
+    if (!(typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source))) {
+      warnings.push(`${opt.name}: Not counted until it has a full link: ${label}`);
+      return;
+    }
+    if (AGGREGATE.includes(ev.kind) && partyRow(ev.text) && !(partyAxes || []).includes(ev.axis)) {
+      warnings.push(`${opt.name}: Party evidence is used only if you list party as a priority: ${label}`);
+      return;
+    }
     if (isGray(ev)) { gray.push(ev); return; }
     const key = eventKey(ev, i);
-    if (!groups.has(key)) {
-      const label = ev.event || ev.text || ev.source || `${opt.name} item ${i + 1}`;
-      groups.set(key, {label, rows: []});
-      if (!ev.event && !ev.source) warnings.push(`${opt.name}: No source: duplicates of this line cannot be detected (${label}).`);
-    }
+    if (!groups.has(key)) groups.set(key, {label, rows: []});
     groups.get(key).rows.push(ev);
   });
   const events = [];
@@ -390,8 +438,8 @@ function steps(events) {
 
 // grayTopics: the profile lists topics the voter is torn on. Without any, a gray tag cannot
 // mean "torn", so those rows are dropped from the list too, with a warning (as in score.py).
-function summarize(opt, weights, grayTopics) {
-  const c = collapse(opt), {events, warnings} = c;
+function summarize(opt, weights, grayTopics, partyAxes) {
+  const c = collapse(opt, partyAxes), {events, warnings} = c;
   let gray = c.gray;
   if (gray.length && !grayTopics) {
     warnings.push(`${opt.name}: tagged gray, but you listed no topics you are torn on (${gray.length} not counted).`);
@@ -413,7 +461,7 @@ function summarize(opt, weights, grayTopics) {
   const parts = fitParts(events, weights);
   const row = {name: opt.name, score: parts.score, low: parts.low, high: parts.high, evidence: level, confidence: level,
     coverage: pyRound(cov * 100) / 100, events: events.length, records, questionnaires, gray,
-    excluded: !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
+    excluded: opt.withdrawn ? "withdrew" : !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
     // Older page fields: num/den give "Score = round(50 + 50 × num / den)".
     red_line: !!opt.red_line, items: (opt.evidence || []).length, kinds: [], num: parts.total, den: parts.W, uncapped: parts.score};
   return {row, events, covered, warnings};
@@ -430,7 +478,7 @@ function decide(rows, events, covered, eligible, measure, weights) {
   let wAll = 0;
   for (const a of Object.keys(weights)) wAll += weights[a];
   const half = covered.map(c => 2 * c >= wAll); // coverage >= 0.5, in exact integers
-  if (!eligible.length) return ["All options crossed a red line", null];
+  if (!eligible.length) return [rows.some(r => r.excluded === "withdrew") ? "All options withdrew or crossed a red line" : "All options crossed a red line", null];
   if (measure) {
     const s = rows[0].score;
     if (s === null) return ["Not enough evidence", null];
@@ -481,15 +529,16 @@ function decide(rows, events, covered, eligible, measure, weights) {
 }
 
 // Returns {call, turns_on, rows, warnings, errors}; errors means nothing was scored.
-function scoreRace(options, weights, isMeasure, grayTopics) {
+// partyAxes: letters of the voter's party priorities (parseWeights); party evidence counts only there.
+function scoreRace(options, weights, isMeasure, grayTopics, partyAxes) {
   const errors = validateRace(options, weights, isMeasure);
   if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors};
   const rows = [], events = [], covered = [], warnings = [];
   for (const o of options) {
-    const s = summarize(o, weights, grayTopics);
+    const s = summarize(o, weights, grayTopics, partyAxes);
     rows.push(s.row); events.push(s.events); covered.push(s.covered); warnings.push(...s.warnings);
   }
-  const eligible = options.map((o, i) => i).filter(i => !options[i].red_line);
+  const eligible = options.map((o, i) => i).filter(i => !options[i].red_line && !options[i].withdrawn);
   const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights);
   return {call, turns_on, rows, warnings, errors};
 }
@@ -511,7 +560,7 @@ function hasGrayTopics(text) {
 }
 
 function calculate(weightsText, researchText) {
-  const {weights, warnings} = parseWeights(weightsText);
+  const {weights, warnings, partyAxes} = parseWeights(weightsText);
   if (!Object.keys(weights).length) {
     return {warnings, errors: [{line: "", msg: "No value weights found. Paste your Step 1 profile or type A=3, B=2."}], result: null};
   }
@@ -520,7 +569,7 @@ function calculate(weightsText, researchText) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
     return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
-  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText));
+  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText), partyAxes);
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
   return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }

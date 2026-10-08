@@ -146,7 +146,7 @@ def check_option(opt, axes, where):
         if len(rows) > 1:
             errors.append(f"{where}: {len(rows)} items on axis {axis} share {src} without event ids; they would count once")
     # Reuse score.py's own grouping so this warns exactly when the score falls back to 0.
-    warnings += [w for w in collapse({"name": where, "evidence": valid})[2] if "conflicting tags" in w]
+    warnings += [w for w in collapse({"name": where, "evidence": valid}, [ev.get("axis") for ev in valid])[2] if "conflicting tags" in w]
     return errors, warnings
 
 
@@ -166,6 +166,9 @@ def demo():
     assert "missing source" in bad(source="")[0]
     assert "http" in bad(source="ftp://x.example/a")[0]
     assert check(base([ok], measure=True))[0] == []
+    # A withdrawn candidate (score.py leaves it out of the call) is accepted as is.
+    e, w = check({"axes": {"A": 3}, "races": [{"race": "R", "options": [{"name": "X", "withdrawn": True, "evidence": [ok]}]}]})
+    assert e == [] and w == [], (e, w)
     e, _ = check({"axes": {"A": 3}, "races": [{"race": "M", "measure": True, "options": [
         {"name": "YES", "evidence": []}, {"name": "NO", "evidence": []}]}]})
     assert "exactly one option" in e[0], e

@@ -46,9 +46,10 @@ do not do it; report it under BLOCKERS.
 ## Researcher report format (required)
 
 1. **Evidence file** at the assigned path, in the scorer JSON shape (see the top of
-   `scripts/score.py`): `races[].race`, `measure`, `options[].name`, `red_line`, and
+   `scripts/score.py`): `races[].race`, `measure`, `options[].name`, `red_line`, `withdrawn` (true if the candidate withdrew), and
    `evidence[]` items with `axis`, `sign`, `kind`, `event`, `source`, `date`, `text`, plus a
-   top-level `gray` list of the voter's torn topics (empty if none).
+   top-level `gray` list of the voter's torn topics (empty if none) and a `party_axes` list of
+   the letters of any party priorities (party endorsements and donors count only there).
    A measure has one option, the YES side. In neutral mode, use a short topic name
    as the axis and sign "0" on every row (no directions); nothing is scored. Bullets
    then read `[TOPIC][0][KIND]`, for example `[Housing][0][RECORD]`.

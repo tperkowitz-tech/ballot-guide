@@ -3,24 +3,30 @@
 Input JSON:
   {"axes": {"A": 3, "B": 2, ...},          # axis letter -> integer weight 1-3
    "gray": optional [str],                 # the profile's gray-area (torn) topics
+   "party_axes": optional [str],           # letters of the voter's party priorities
    "races": [{"race": str,
               "measure": optional bool,
               "options": [{"name": str,
                            "red_line": optional bool or str (what was crossed, may end " | URL"),
+                           "withdrawn": optional bool (withdrew or not on the ballot),
                            "evidence": [{"axis": "A",
                                          "sign": "+" | "-" | "0" | "gray",
                                          "kind": "record" | "questionnaire" | "stated"
                                                  | "funder" | "endorsement",
                                          "event": optional str,
-                                         "source": optional URL,
+                                         "source": http(s) URL,
                                          "date": optional str,
                                          "gray": optional bool,
                                          "text": optional str}]}]}]}
 
+A row without an http(s) source is skipped with a warning, and so is a funder or
+endorsement row whose text names a party (a capitalized "<Name> Party", not The/Any/A/Block,
+or "party endorsement") unless its axis is in "party_axes". A red-lined or withdrawn option is scored and shown but left out of the
+call ("excluded": "red line..." or "withdrew").
 "0" is genuinely mixed evidence and counts; "gray" (or gray: true) marks a topic the
 voter is torn on and is left out of the math. Gray rows are listed only when "gray" names
 at least one topic; otherwise they are dropped with a warning. Rows sharing an event (explicit `event`,
-else the same normalized source, else the same normalized text) count once per axis. Per
+else the same normalized source) count once per axis. Per
 axis, all funder and endorsement events together count as one entry (k = 1, sign = their
 mean), so donors and endorsers never outweigh one statement, and all questionnaire answers
 together count as one entry (k = 2 for one answer, 3 for more, sign = their mean), so
@@ -95,19 +101,35 @@ def validate(race, axes):
     return errs
 
 
-def collapse(opt):
-    """Split out gray rows; collapse rows of one event to one entry per axis."""
+# A party endorsement or donor: a named party ("Ohio Example Party", case-sensitive so "a party
+# line vote" and "block party" stay) or "party endorsement". ASCII, as in calc.js.
+PARTY_NAME = re.compile(r"\b(?!(?:The|Any|A|Block)\b)[A-Z][A-Za-z]* +Party\b", re.A)
+PARTY_ENDORSE = re.compile(r"\bparty endorsement\b", re.I | re.A)
+
+
+def party_row(text):
+    return isinstance(text, str) and bool(PARTY_NAME.search(text) or PARTY_ENDORSE.search(text))
+
+
+def collapse(opt, party_axes=()):
+    """Leave out rows without a web link and party endorsements and donors not tagged on one of
+    the voter's party priorities; split out gray rows; collapse rows of one event to one entry per axis."""
     name, gray, groups, warnings = opt.get("name"), [], {}, []
     for i, ev in enumerate(opt.get("evidence", [])):
+        label = ev.get("event") or ev.get("text") or ev.get("source") or f"{name} item {i + 1}"
+        src = ev.get("source")
+        if not (isinstance(src, str) and re.match(r"\s*https?://", src, re.I)):
+            warnings.append(f"{name}: Not counted until it has a full link: {label}")
+            continue
+        if ev.get("kind") in AGGREGATE and party_row(ev.get("text")) and ev.get("axis") not in party_axes:
+            warnings.append(f"{name}: Party evidence is used only if you list party as a priority: {label}")
+            continue
         if is_gray(ev):
             gray.append(ev)
             continue
         key = event_key(ev, i)
         if key not in groups:
-            groups[key] = {"label": ev.get("event") or ev.get("text") or ev.get("source") or f"{name} item {i + 1}",
-                           "rows": []}
-            if not ev.get("event") and not ev.get("source"):
-                warnings.append(f"{name}: No source: duplicates of this line cannot be detected ({groups[key]['label']}).")
+            groups[key] = {"label": label, "rows": []}
         groups[key]["rows"].append(ev)
     events = []
     for g in groups.values():
@@ -185,8 +207,8 @@ def steps(events):
     return out
 
 
-def summarize(opt, axes, gray_topics=False):
-    events, gray, warnings = collapse(opt)
+def summarize(opt, axes, gray_topics=False, party_axes=()):
+    events, gray, warnings = collapse(opt, party_axes)
     # Without torn topics in the profile a gray tag cannot mean "torn": drop it, say so.
     if gray and not gray_topics:
         warnings.append(f"{opt.get('name')}: tagged gray, but you listed no topics you are torn on ({len(gray)} not counted).")
@@ -206,7 +228,7 @@ def summarize(opt, axes, gray_topics=False):
     row = {"name": opt.get("name"), "score": score, "low": low, "high": high,
            "evidence": level, "confidence": level, "coverage": round(cov * 100) / 100,
            "events": len(events), "records": records, "questionnaires": quest, "gray": gray,
-           "excluded": excluded(opt.get("red_line"))}
+           "excluded": "withdrew" if opt.get("withdrawn") else excluded(opt.get("red_line"))}
     return row, events, covered, warnings
 
 
@@ -226,6 +248,8 @@ def decide(rows, events, covered, eligible, measure, axes):
     w_all = sum(axes.values())
     half = [2 * c >= w_all for c in covered]  # coverage >= 0.5, in exact integers
     if not eligible:
+        if any(r["excluded"] == "withdrew" for r in rows):
+            return "All options withdrew or crossed a red line", None
         return "All options crossed a red line", None
     if measure:
         s = rows[0]["score"]
@@ -287,16 +311,16 @@ def decide(rows, events, covered, eligible, measure, axes):
     return (name if clear else f"Lean {name}"), None
 
 
-def score_race(race, axes, gray_topics=False):
+def score_race(race, axes, gray_topics=False, party_axes=()):
     errs = validate(race, axes)
     if errs:
         raise ValueError("; ".join(errs))
     opts = race["options"]
     rows, events, covered, warnings = [], [], [], []
     for o in opts:
-        row, evs, cov, warn = summarize(o, axes, gray_topics)
+        row, evs, cov, warn = summarize(o, axes, gray_topics, party_axes)
         rows.append(row), events.append(evs), covered.append(cov), warnings.extend(warn)
-    eligible = [i for i, o in enumerate(opts) if not o.get("red_line")]
+    eligible = [i for i, o in enumerate(opts) if not o.get("red_line") and not o.get("withdrawn")]
     measure = bool(race.get("measure"))
     call, turns_on = decide(rows, events, covered, eligible, measure, axes)
     return {"race": race.get("race"), "call": call, "turns_on": turns_on,
@@ -307,7 +331,7 @@ def score(data):
     out = []
     for race in data["races"]:
         try:
-            out.append(score_race(race, data["axes"], bool(data.get("gray"))))
+            out.append(score_race(race, data["axes"], bool(data.get("gray")), data.get("party_axes") or []))
         except ValueError as e:
             raise ValueError(f"{race.get('race')}: {e}") from e
     return out
@@ -315,7 +339,10 @@ def score(data):
 
 def demo():
     one = lambda axes, opts, measure=False, gray=False: score_race({"race": "R", "measure": measure, "options": opts}, axes, gray)
-    ev = lambda axis, sign, kind, **kw: {"axis": axis, "sign": sign, "kind": kind, **kw}
+    # Every row gets its own page unless a test names one; rows without a link are not counted.
+    pages = iter(range(10 ** 6))
+    ev = lambda axis, sign, kind, **kw: {"axis": axis, "sign": sign, "kind": kind,
+                                         "source": f"https://example.org/p{next(pages)}", **kw}
     eq4 = {"A": 2, "B": 2, "C": 2, "D": 2}
     # Same fact as 4 rows (same source and date) counts as 1 row.
     fact = ev("A", "+", "record", source="https://example.org/v", date="2025-01-02")
@@ -325,11 +352,24 @@ def demo():
     urls = ["https://example.org/v", "HTTPS://Example.ORG/v/", "https://example.org/v?utm=1", "https://example.org/v#x"]
     assert one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record", source=u) for u in urls]}])["options"] == \
         one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record", source=urls[0])]}])["options"]
-    # Same text, no source == 1 row, with a no-source warning; tags, date and spacing ignored.
-    texts = ["voted for HB 1", "[A][+][RECORD] voted for  HB 1", "2025-01-02: Voted for HB 1", "2025: voted for hb 1"]
-    r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record", text=t) for t in texts]}])
-    assert r["options"] == one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record", text=texts[0])]}])["options"]
-    assert r["warnings"] == ["X: No source: duplicates of this line cannot be detected (voted for HB 1)."], r
+    # No http(s) link (none, a bare domain, a title): not counted, with a warning.
+    r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record", source=s, text="voted for HB 1") for s in ("", "apnews.com", None)]}])
+    assert (r["options"][0]["score"], r["call"]) == (None, "Not enough evidence"), r
+    assert r["warnings"] == ["X: Not counted until it has a full link: voted for HB 1"] * 3, r
+    # Party endorsements and donors count only when the voter has a party priority.
+    pe = [ev("A", "+", "record"), ev("A", "+", "endorsement", text="Endorsed by the Ohio Example Party")]
+    r = one({"A": 3}, [{"name": "X", "evidence": pe}])
+    assert r["options"][0]["score"] == 75 and r["warnings"] == \
+        ["X: Party evidence is used only if you list party as a priority: Endorsed by the Ohio Example Party"], r
+    r = score_race({"race": "R", "options": [{"name": "X", "evidence": pe}]}, {"A": 3}, party_axes=["A"])
+    assert r["options"][0]["score"] == 79 and r["warnings"] == [], r  # (3 + 1) / (3 + 1 + 3)
+    # Only on a party axis: the same row tagged on another axis is left out.
+    r = score_race({"race": "R", "options": [{"name": "X", "evidence": pe}]}, {"A": 3, "B": 1}, party_axes=["B"])
+    assert "Party evidence" in r["warnings"][0], r
+    # Lowercase or generic "party" is not a named party.
+    assert not any(party_row(t) for t in ("a party line vote", "praised the party platform", "block party fundraiser",
+                                          "Endorsed by any party", "Block Party sponsor", "The Party said"))
+    assert all(party_row(t) for t in ("Libertarian Party", "the Ohio Example Party", "won the party endorsement"))
     # Distinct event ids on one URL count separately.
     assert one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record", source=urls[0], event=e) for e in "ab"]}])["options"][0]["events"] == 2
     # One statement on 1 of 4 equal axes: known axis only, 50 + 50 * (1/4) = 62.5 -> 62, thin;
@@ -387,10 +427,10 @@ def demo():
     assert solo(endorse(8) + fund(8)) == solo(fund(1)) == 62
     assert solo([ev("A", "-", "record")] + endorse(8) + fund(8, "-")) == 29  # (-3 + 0) / (3 + 1 + 3)
     # A gray row leaves the score unchanged and is listed.
-    g = ev("B", "gray", "record", text="torn topic")
+    g, g2 = ev("B", "gray", "record", text="torn topic"), ev("C", "gray", "stated")
     base = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record")]}])["options"][0]
-    gr = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), g, ev("C", "gray", "stated")]}], gray=True)["options"][0]
-    assert gr["score"] == base["score"] and gr["gray"] == [g, ev("C", "gray", "stated")]
+    gr = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), g, g2]}], gray=True)["options"][0]
+    assert gr["score"] == base["score"] and gr["gray"] == [g, g2]
     flagged = ev("B", "+", "record", gray=True)  # the flag form works too
     assert one(eq4, [{"name": "X", "evidence": [ev("A", "+", "record"), flagged]}], gray=True)["options"][0]["score"] == base["score"]
     # No torn topics in the profile: gray rows are neither scored nor listed, and are reported.
@@ -421,6 +461,12 @@ def demo():
     assert r["options"][0]["excluded"] == "red line: convicted | https://example.org/c", r
     r = one({"A": 1}, [{"name": "X", "red_line": True, "evidence": []}])
     assert r["call"] == "All options crossed a red line"
+    # A withdrawn candidate is scored and shown but never the call, like a red line.
+    r = one({"A": 2, "B": 1}, [{"name": "X", "withdrawn": True, "evidence": strong + [ev("B", "+", "record", event="b2")]},
+                               {"name": "Y", "evidence": strong}])
+    assert (r["call"], r["options"][0]["excluded"]) == ("Vote for Y", "withdrew") and r["options"][0]["score"] is not None, r
+    r = one({"A": 1}, [{"name": "X", "withdrawn": True, "evidence": []}, {"name": "Y", "red_line": True, "evidence": []}])
+    assert r["call"] == "All options withdrew or crossed a red line", r
     # One event decides the leader -> toss-up naming it.
     r = one({"A": 1}, [{"name": "X", "evidence": [ev("A", "+", "record", text="voted for HB 1")]},
                        {"name": "Y", "evidence": [ev("A", "0", "record")]}])

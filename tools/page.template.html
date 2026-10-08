@@ -147,7 +147,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <h2 id="start-h">Before you start</h2>
   <p>You will need: an AI chat that can search the web (for example ChatGPT or Claude with search turned on). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. <a href="sample.html">See sample guides</a> to know what you will get.</p>
   <p>Use Claude or Codex? The <a href="https://github.com/tperkowitz-tech/ballot-guide#install-the-skill">Ballot Guide skill</a> does the research for you, with deeper checks. This page is the no-install version for any AI chat.</p>
-  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Logged-out ChatGPT with search worked in testing; free Gemini declined or returned errors on these election questions. Google AI Mode searched every step and worked for basic research, but missed some ballot items; check its ballot list against your official sample ballot.</p>
+  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Free Gemini declined or returned errors on these election questions, and Google AI Mode did not find ballot lists reliably (in one test it used a primary-election list). Logged-out ChatGPT with search is the free option that worked in testing; still check its ballot list against your official sample ballot.</p>
   <p>Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates. Some say they store what you send, including your address in Step 2, in China (DeepSeek, for one); others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address.</p>
   <p><strong>How it works</strong></p>
   <ol>
@@ -668,7 +668,10 @@ function redLine(excluded){
   const rest=excluded.replace(/^red line:?\s*/,""), m=rest.match(/^(.*?)\s*\|?\s*(https?:\/\/\S+)$/);
   return m?{what:m[1],url:m[2]}:{what:rest,url:""};
 }
+// A withdrawn candidate (excluded "withdrew") is left out of the call like a red line.
+const WITHDREW_NOTE="Not considered: withdrew (check your official ballot)";
 function redLineNote(excluded){
+  if(excluded==="withdrew")return el("p",WITHDREW_NOTE,"hint");
   const {what,url}=redLine(excluded), p=el("p","Not considered: crossed a deal-breaker"+(what?" — "+what:""),"hint");
   if(url){const a=el("a","source");a.href=url;a.target="_blank";a.rel="noopener noreferrer";p.append(" (",a,")")}
   return p;
@@ -700,7 +703,7 @@ function renderCalc(out,r){
     const ul=el("ul");
     if(row.uncapped===null)ul.append(el("li","No evidence: no score."));
     else ul.append(el("li",`Score = round(50 + 50 × ${row.num.toFixed(3)} / ${row.den}) = ${row.uncapped}; could be ${row.low}–${row.high}`));
-    if(row.excluded)ul.append(el("li","Crossed a deal-breaker: left out of the call"));
+    if(row.excluded)ul.append(el("li",row.excluded==="withdrew"?"Withdrew: left out of the call":"Crossed a deal-breaker: left out of the call"));
     ul.append(el("li",`Items counted: ${row.events} (records: ${row.records}, questionnaires: ${row.questionnaires}) → ${LEVEL[row.evidence]}`));
     det.append(ul);
   });
@@ -730,7 +733,7 @@ function evalItem(it){
     if(r.result){
       const res=r.result, measure=r.kind==="measure";
       it.calc=[res.call?callText(res)+".":"",turnsText(res),
-        res.rows.map(x=>optionLine(x,measure)+(x.excluded?" (not considered: crossed a deal-breaker"+x.excluded.replace(/^red line/,"")+")":"")+(x.gray.length?` (not counted, torn: ${x.gray.length})`:"")).join("; ")+".",
+        res.rows.map(x=>optionLine(x,measure)+(x.excluded==="withdrew"?" ("+WITHDREW_NOTE.toLowerCase()+")":x.excluded?" (not considered: crossed a deal-breaker"+x.excluded.replace(/^red line/,"")+")":"")+(x.gray.length?` (not counted, torn: ${x.gray.length})`:"")).join("; ")+".",
         r.errors.length?`Problems noted: ${r.errors.length}.`:""].filter(Boolean).join(" ");
     }
   }else{
@@ -763,6 +766,10 @@ function refreshItem(it){
   u.copy.disabled=empty; u.need.hidden=!empty;
   u.dcBadge.hidden=!it.checked;
   u.dc.d.hidden=!$("f-dc").checked||!it.answer.trim()||!!it.refused;
+  // SPLIT NEEDED: ask for the next part until every listed part is in.
+  const si=splitInfo(it.answer);
+  u.split.hidden=!si||(si.total!==null&&si.next>si.total);
+  if(si){u.partCopy.textContent="Copy: do part "+si.next;u.partLab.textContent="Add the next part: paste the chat's answer for part "+si.next}
 }
 
 // ---- Double-check (Step 8) ----
@@ -787,6 +794,7 @@ function checkPanel(h){
     out.replaceChildren();
     if(chatRefused(t))out.append(el("p",refusedText(chatRefused(t),h.ballot),"warn"));
     else if(t.trim()){
+      if(checkMismatch(t))out.append(el("p","The checker's summary and its problem list don't match; review the corrected answer before using it.","warn"));
       out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
       if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
       else if(!usableCorrected(fixed,h.answer()))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
@@ -842,14 +850,27 @@ function buildItem(it){
     checked:()=>it.checked, canUndo:()=>!!it.original, skipped:()=>it.checkSkipped, skip:()=>{it.checkSkipped=true;save();advance(it)},
   });
   dc.d.open=!it.checked&&!it.checkSkipped;
-  body.append(row,lab,ta,out,dc.d);
+  // SPLIT NEEDED: one short follow-up per part for the same chat; each pasted part is appended to the answer.
+  const split=el("div",null,"split"), partRow=el("div",null,"btn-row"), partCopy=el("button","","copy primary");
+  const partLab=el("label"), partTa=el("textarea"), addRow=el("div",null,"btn-row"), partAdd=el("button","Add this part","copy");
+  partCopy.type=partAdd.type="button"; partTa.id="part-"+(++uid); partTa.rows=4; partTa.autocomplete="off"; partLab.htmlFor=partTa.id;
+  partRow.append(partCopy); addRow.append(partAdd);
+  split.append(el("p","The chat split this into parts. Copy the follow-up into the same chat, then paste its answer below, one part at a time.","hint"),partRow,partLab,partTa,addRow);
+  partCopy.addEventListener("click",()=>copyText(splitFollowUp(splitInfo(it.answer).next),partCopy));
+  partAdd.addEventListener("click",()=>{
+    if(!partTa.value.trim())return;
+    it.answer=addPart(it.answer,splitInfo(it.answer).next,partTa.value);partTa.value="";
+    Object.assign(it,checkFields({}));ta.value=it.answer;dc.refresh();evalItem(it);refreshStages();save();
+    (split.hidden?ta:partTa).focus();
+  });
+  body.append(row,lab,ta,out,split,dc.d);
   d.append(sum,body);
   copy.addEventListener("click",()=>copyText(forChat(step,STEPS[0].text,STEPS[step].text,readState(),{[it.kind]:it.text}),copy));
   fix.addEventListener("click",()=>copyText(fixFormat(step,STEPS[step].text,readState()),fix));
   // A new or edited answer has not been checked, so its earlier check no longer applies.
   // Move on only after a paste into an unfinished item: folding while someone types or fixes a typo steals focus.
   ta.addEventListener("input",ev=>{const was=finished(it);it.answer=ta.value;Object.assign(it,checkFields({}));dc.refresh();evalItem(it);refreshStages();save();if(!was&&/^insertFrom(Paste|Drop)/.test(ev.inputType||""))advance(it)});
-  Object.assign(it.ui,{d,status:st,title,score,copy,need,fix,lab,out,dc,dcBadge});
+  Object.assign(it.ui,{d,status:st,title,score,copy,need,fix,lab,out,dc,dcBadge,split,partCopy,partLab});
   $("items").append(d);
   evalItem(it);
 }
@@ -1045,6 +1066,8 @@ function readBallot(){
   found.textContent=prose?"We couldn't read the format, so here is each line; edit or delete.":`Found ${p.races.length} races and ${p.measures.length} measures.`;
   if(p.skipped.length&&!prose)warn.append(noteBox(p.skipped.map(x=>({msg:"Not read; add it by hand if it is a race or measure:",line:x.line}))));
   if(p.noUrl.length)warn.append(noteBox(p.noUrl.map(line=>({msg:"No web address for the source; ask the chat for the full link:",line}))));
+  if(p.suspect.length)warn.append(noteBox(p.suspect.map(line=>({msg:"This line may come from a primary list or be incomplete. Check it against your official sample ballot.",line}))));
+  if(p.writeIns.length)warn.append(noteBox(p.writeIns.map(line=>({msg:"Write-in candidate left off the race line (only names printed on the ballot are researched):",line}))));
   buildLists(); save();
   if(oldItems.length){
     $("ballot-old-msg").textContent=`${oldItems.length} earlier items with answers are not on this new list. Keep them?`;
@@ -1058,6 +1081,7 @@ $("reset-yes").addEventListener("click",()=>{
   try{localStorage.removeItem(STORE);localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: nothing saved to clear */}
   items=[]; spotShown=[];
   ballotChecked=false; ballotCheckText=""; ballotOriginal=""; ballotSkipped=false; ballotDc.refresh();
+  document.querySelectorAll(".len-note").forEach(n=>n.remove());
   $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren(); $("ballot-fix-row").hidden=true; $("s3-next-item").hidden=true; oldItems=[]; $("ballot-old").hidden=true;
   writeState(defaultState()); buildLists(); render();
   $("reset-confirm").hidden=true;

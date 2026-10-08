@@ -406,6 +406,10 @@ console.log("kit_test: all checks passed");
   const full = forChat(8, real[0], real[8], st, {checkStep: 3, question: real[3], race: "Mayor: A vs B", answer: "CANDIDATE: Z"});
   assert.ok(full.includes("TASK: Collect evidence for ONE race.") && full.includes("RACE: Mayor: A vs B") && full.includes("OUTPUT FORMAT:\nCANDIDATE: {{name}}"));
   assert.ok(!full.includes("Research every candidate, including minor ones.") && full.includes("CORRECTED ANSWER:"));
+  assert.ok(!full.includes("Use the same event id") && full.includes("- ...\nRED LINE CROSSED:"));
+  // Values mode keeps the gray rule, so the checker knows gray marks a torn topic.
+  const vfull = forChat(8, real[0], real[8], {...st, mode: "values"}, {checkStep: 3, question: real[3], race: "Mayor: A vs B", answer: "CANDIDATE: Z"});
+  assert.ok(!vfull.includes("Use the same event id") && vfull.includes("- ...\nUse gray for topics the profile lists as torn/gray areas.\nRED LINE CROSSED:"));
   assert.ok(forChat(8, real[0], real[8], st, {checkStep: 4, question: real[4], measure: "Issue 1", answer: "a"}).includes("MEASURE: Issue 1\n(Short form"));
   const dc = forChat(8, real[0], real[8], st, {checkStep: 2, question: real[2], answer: "RACES"});
   assert.ok(dc.includes("Address: 77 Example Rd") && dc.includes("OUTPUT FORMAT:\nDISTRICTS"));
@@ -437,3 +441,42 @@ console.log("kit_test: all checks passed");
   assert.deepStrictEqual(src.noUrl, ["Initiative 2 | Fee | source: dcboe.org"]);
 }
 console.log("kit_test: v1.6.0 checks passed");
+
+// v1.6.1: primary-list red flags (kept, flagged), write-ins off the race line, checker
+// summary vs its lists, and SPLIT NEEDED parts.
+{
+  const {checkMismatch, splitInfo, splitFollowUp, addPart, chatRefused} = require("./kit.js");
+  const bl = parseBallot("RACES\n- Governor | A (Party A) vs UNVERIFIED | CONTESTED | source: https://e.org/g\n"
+    + "- Treasurer | B or C | CONTESTED | source: https://e.org/t\n- Auditor | D vs E | CONTESTED | source: https://e.org/Primary-Certified-Candidates.pdf\n"
+    + "- Mayor | F vs G | CONTESTED | source: https://e.org/m\n- Clerk | Al Doe, Jr. vs H (write-in), I | CONTESTED | source: https://e.org/c");
+  assert.deepStrictEqual(bl.races.map(r => r.candidates), ["A (Party A) vs UNVERIFIED", "B or C", "D vs E", "F vs G", "Al Doe, Jr. vs I"]);
+  assert.deepStrictEqual(bl.suspect, ["Governor | A (Party A) vs UNVERIFIED | CONTESTED | source: https://e.org/g",
+    "Treasurer | B or C | CONTESTED | source: https://e.org/t", "Auditor | D vs E | CONTESTED | source: https://e.org/Primary-Certified-Candidates.pdf"]);
+  assert.deepStrictEqual(bl.writeIns, ["Clerk | Al Doe, Jr. vs H (write-in), I | CONTESTED | source: https://e.org/c"]);
+
+  const cs = (sum, problems, removed) => `CHECK SUMMARY: ${sum}\nPROBLEMS:\n${problems}\nCORRECTED ANSWER:\nCANDIDATE: X\n${removed}`;
+  assert.strictEqual(checkMismatch(cs("5 CONFIRMED, 1 WRONG, 1 NOT FOUND, 0 NO SOURCE", "- a: WRONG | b\n- c: NOT FOUND\n- d: TAG?", "REMOVED: c")), false);
+  assert.strictEqual(checkMismatch(cs("5 CONFIRMED, 0 WRONG, 0 NOT FOUND, 0 NO SOURCE", "- none", "REMOVED: none")), false);
+  assert.strictEqual(checkMismatch(cs("5 CONFIRMED, 0 WRONG, 0 NOT FOUND, 0 NO SOURCE", "- a: WRONG | b\n- c: NOT FOUND", "")), true);
+  assert.strictEqual(checkMismatch(cs("5 CONFIRMED, 3 WRONG, 0 NOT FOUND, 0 NO SOURCE", "- a: WRONG | b", "")), true);
+  assert.strictEqual(checkMismatch(cs("5 CONFIRMED, 0 WRONG, 0 NOT FOUND, 0 NO SOURCE", "- none", "REMOVED: the 2019 vote")), true);
+  assert.strictEqual(checkMismatch("no summary here"), false);
+  for (const none of ["REMOVED: (none)", "REMOVED: nothing removed", "REMOVED: -", "REMOVED: N/A", "REMOVED:", "REMOVED: none."]) {
+    assert.strictEqual(checkMismatch(cs("5 CONFIRMED, 0 WRONG, 0 NOT FOUND, 0 NO SOURCE", "- none", none)), false, none);
+  }
+
+  const split = "SPLIT NEEDED:\n- Part 1: Candidate A\n- Part 2: Candidate B\n- Part 3: Candidate C";
+  assert.deepStrictEqual(splitInfo(split), {total: 3, next: 1});
+  assert.strictEqual(splitFollowUp(1), "Do part 1 only, in the same output format.");
+  const one = addPart(split, 1, "CANDIDATE: A\n- [A][+][RECORD] 2025: x | https://e.org/1\n");
+  assert.strictEqual(one, split + "\n\nPART 1 ANSWER:\nCANDIDATE: A\n- [A][+][RECORD] 2025: x | https://e.org/1");
+  assert.deepStrictEqual(splitInfo(one), {total: 3, next: 2});
+  assert.strictEqual(chatRefused(one), "");
+  assert.strictEqual(countEvidence(one).recognized, 1);
+  assert.deepStrictEqual(splitInfo("SPLIT NEEDED: too large"), {total: null, next: 1});
+  // Only part lines before the first answer line count: two parts, part 1 answered in the same reply, so part 2 is next.
+  assert.deepStrictEqual(splitInfo("SPLIT NEEDED:\n1. Candidate A\n2. Candidate B\nCANDIDATE: A | x\n- [A][+][RECORD] 2025: x | https://e.org/1\n- [A][+][STATED] 2025: y | https://e.org/2\n- note"),
+    {total: 2, next: 2});
+  assert.strictEqual(splitInfo("CANDIDATE: A"), null);
+  console.log("kit_test: v1.6.1 checks passed");
+}

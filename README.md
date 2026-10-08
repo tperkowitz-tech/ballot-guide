@@ -30,7 +30,7 @@ What the skill does that the web and prompt kits can't:
 
 [![The Ballot Guide web kit](docs/img/web-kit.jpg)](https://tperkowitz-tech.github.io/ballot-guide/)
 
-In testing (October 2026), ChatGPT with search worked without signing in. Free Copilot needs a sign-in, logged-out Perplexity stops after one question, and free Gemini declined or returned errors on these election questions. Google AI Mode searched every step and worked for basic research, but missed some ballot items; check its ballot list against your official sample ballot. See [where it's been tested](TESTED.md).
+In testing (October 2026), logged-out ChatGPT with search was the free option that worked; still check its ballot list against your official sample ballot. Free Copilot needs a sign-in, logged-out Perplexity stops after one question, free Gemini declined or returned errors on these election questions, and Google AI Mode did not find ballot lists reliably (in one test it used a primary-election list). See [where it's been tested](TESTED.md).
 
 With the kits, plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time. The web kit saves your progress.
 
