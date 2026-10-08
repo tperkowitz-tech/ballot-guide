@@ -78,7 +78,7 @@ TASK: Find every race and measure on the ballot for the address in the VALUES PR
 Do these steps in order:
 1. Find the districts for the address: congressional, state legislative, county council or commission, city, school, transit, fire, and judicial districts. Use an official lookup (the state or county election office) or the US Census geocoder (geocoding.geo.census.gov). Give the source.
 2. Find the official local voters' pamphlet or sample ballot from the county election office. The candidate list must come from an official source (certified filings, pamphlet, or certified primary results), not from memory or Wikipedia. Write the date of the list. Also find the state voters' pamphlet. Judges and statewide items are often only in the state pamphlet.
-3. For each race, find the candidates who are on the GENERAL election ballot. Use the primary results or the official candidate list. Do not list candidates who lost the primary.
+3. For each race, find the candidates who are on the GENERAL election ballot. Use the primary results or the official candidate list. Do not list candidates who lost the primary. List only candidates printed on the ballot. Leave out declared write-in candidates.
 4. Mark a race UNCONTESTED if only one candidate is on the ballot. Uncontested races are still researched and scored, so the voter can vote for the candidate or leave the race blank.
 5. CHECK: Pamphlet text can mix up the order of names and seats. For each judicial or multi-position race, confirm the position number for each candidate from a second source.
 6. If an official PDF will not open, try the same office's web pages (candidate lists, sample ballot lookup, results pages) or the state's candidate search. If you still cannot read it, say which document and stop for that part; do not guess.
@@ -107,6 +107,7 @@ If you are a sub-agent, write only to your assigned file and include UNVERIFIED,
 RACE: {{office, position, ALL candidates on the ballot}}
 Research every candidate, including minor ones. Do not skip a candidate because they are unlikely to win.
 If you find a candidate who is not in the race line above, write NEW CANDIDATE: name | source on its own line and do not research them.
+If a candidate has withdrawn or will not appear on the ballot, write WITHDRAWN: name | source on its own line and do not research them.
 
 For EACH candidate, search in this order. Stop at about 8 evidence items for each candidate. If the record is thin, keep going down the list.
 1. RECORD:
@@ -310,13 +311,13 @@ For each fact or line in the answer:
 3. For WRONG items, give the correct fact and its source.
 Also check:
 - For a ballot list: compare with the official candidate list or sample ballot. List anything missing or extra.
-- For votes on legislative bills: is it the final passage vote, with the right date and count? Votes and motions of boards, councils, commissions and courts count as RECORD on their own terms; do not remove them for not being a final-passage vote.
-- For tags: if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?, but do not change it in the corrected answer. (Skip in neutral mode.)
+- For bill votes: is it the final passage vote, with the right date and count? Board, council, commission and court votes need not be final-passage votes (rule 4).
+- For tags (not in neutral mode): if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?; do not change it in the corrected answer.
 
 OUTPUT FORMAT:
 CHECK SUMMARY: {{n}} CONFIRMED, {{n}} WRONG, {{n}} NOT FOUND, {{n}} NO SOURCE
 PROBLEMS:
 - {{line}}: {{WRONG / NOT FOUND / NO SOURCE / MISSING / EXTRA / TAG?}} | {{correct fact and source, if any}}
 CORRECTED ANSWER:
-{{Repeat the full answer in exactly the original format, even if nothing changed. Fix WRONG lines. Delete lines you could not confirm. Then, after the answer, write one line starting 'REMOVED:' that names the removed items in plain words (no [..] tags, no table rows). For a ballot list, also add any MISSING races or measures to the RACES or MEASURES section, and keep its UNVERIFIED section.}}
+{{Repeat the full answer in exactly the original format, even if nothing changed. Fix WRONG lines. Delete lines you could not confirm. After it, write one line starting 'REMOVED:' that names the removed items in plain words (no [..] tags, no table rows). For a ballot list, also add any MISSING races or measures to the RACES or MEASURES section, and keep its UNVERIFIED section.}}
 ```

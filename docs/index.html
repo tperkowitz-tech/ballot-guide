@@ -147,7 +147,7 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <h2 id="start-h">Before you start</h2>
   <p>You will need: an AI chat that can search the web (for example ChatGPT or Claude with search turned on). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. <a href="sample.html">See sample guides</a> to know what you will get.</p>
   <p>Use Claude or Codex? The <a href="https://github.com/tperkowitz-tech/ballot-guide#install-the-skill">Ballot Guide skill</a> does the research for you, with deeper checks. This page is the no-install version for any AI chat.</p>
-  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Logged-out ChatGPT with search worked in testing; free Gemini declined or returned errors on these election questions. Google AI Mode searched every step and worked for basic research, but missed some ballot items; check its ballot list against your official sample ballot.</p>
+  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Free Gemini declined or returned errors on these election questions, and Google AI Mode did not find ballot lists reliably (in one test it used a primary-election list). Logged-out ChatGPT with search is the free option that worked in testing; still check its ballot list against your official sample ballot.</p>
   <p>Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates. Some say they store what you send, including your address in Step 2, in China (DeepSeek, for one); others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address.</p>
   <p><strong>How it works</strong></p>
   <ol>
@@ -473,26 +473,31 @@ function pyRound(x) {
 // Other lines are ignored so the whole pasted profile works. First weight for a letter wins,
 // because the Step 1 template's EXAMPLES section comes after the voter's own axes.
 function parseWeights(text) {
-  const weights = {}, warnings = [];
-  const set = (letter, w) => {
+  const weights = {}, warnings = [], partyAxes = [];
+  const set = (letter, w, line) => {
     const L = letter.toUpperCase();
     if (has(weights, L)) {
       if (weights[L] !== w) warnings.push(`Axis ${L} is listed more than once; using the first weight (${weights[L]}).`);
       return;
     }
     weights[L] = w;
+    if (PARTY_AXIS.test(line)) partyAxes.push(L);
   };
   for (const line of text.split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Za-z])\b.*?\bweight\s*([1-3])\b/i);
-    if (m) { set(m[1], Number(m[2])); continue; }
+    if (m) { set(m[1], Number(m[2]), line); continue; }
     for (const s of line.matchAll(/\b([A-Za-z])\s*=\s*(\d+)\b/g)) {
       const w = Number(s[2]);
-      if (w >= 1 && w <= 3) set(s[1], w);
+      if (w >= 1 && w <= 3) set(s[1], w, "");
       else warnings.push(`Weight for ${s[1].toUpperCase()} must be 1, 2 or 3 (found ${s[2]}); ignored.`);
     }
   }
-  return {weights, warnings};
+  return {weights, warnings, partyAxes};
 }
+// A priority that names a party preference ("Party | Example Party candidates", "political party"):
+// "party" as its own word, not hyphen-joined ("third-party", "party-line"), and not "third party"
+// or "party line(s)".
+const PARTY_AXIS = /(?<![-\w])(?<!\bthird[^\S\r\n]+)party(?![-\w])(?![^\S\r\n]+lines?\b)/i;
 
 // Chats reformat the requested plain text: bold, bullets, numbered lists, headings, tables.
 // Strip that dressing so a line reads the same however the chat styled it. Copy buttons that
@@ -513,6 +518,11 @@ const mdLink = (all, label, url) => !SEARCH_LINK.test(url) && SITE_LABEL.test(la
 // A footnote marker: "[1]" or "[1, 2]" right after sentence-ending punctuation, or at the end of a
 // line or table cell. Elsewhere ("Amendment [1] to", "Rule 12[1] says") the number is kept.
 const FOOTNOTE = String.raw`\[\d+(?:\s*,\s*\d+)*\]`;
+// ChatGPT's Copy leaves its citation chip's label after a link: "https://apnews.com/x  AP News +1".
+// Only a short name (capitalized words, small joining words, a domain, "+n") ending the line goes,
+// so prose after a link ("https://x.gov/a was down") stays.
+const CHIP_WORD = String.raw`(?:[A-Z][\w.&'’-]*|[\w-]+(?:\.[\w-]+)+|of|the|and|for|on|in|\+\d+)`;
+const CHIP = new RegExp(String.raw`(https?:\/\/[^\s|<>]+)[^\S\r\n]+(?:[A-Z][\w.&'’-]*|[\w-]+(?:\.[\w-]+)+)(?:[^\S\r\n]+${CHIP_WORD}){0,5}[^\S\r\n]*$`, "gm");
 function cleanMd(text) {
   return String(text).replace(/\\([^\sA-Za-z0-9])/g, "$1").replace(/[^\S\r\n]*\\+[^\S\r\n]*$/gm, "")
     .replace(/^([^\S\r\n]*(?:(?:[-*•_]|\d+[.)])[^\S\r\n]*)*)((?:\$[^$\r\n]+\$){2,})/gm, (all, pre, run) => {
@@ -525,6 +535,7 @@ function cleanMd(text) {
     .replace(/\[([^\]\r\n]*)\]\((https?:\/\/(?:[^\s()]|\([^\s()]*\))+)\)/g, mdLink)
     // A tag after another tag ("[Housing][0]") is evidence, never a footnote; "([1])" goes whole.
     .replace(new RegExp(String.raw`(?<=[.!?]["”')]?)[^\S\r\n]*\(?${FOOTNOTE}\)?|(?<!\])[^\S\r\n]*\(?${FOOTNOTE}\)?(?=[^\S\r\n]*(?:\||$))`, "gm"), "")
+    .replace(CHIP, "$1")
     .replace(/^[^\S\r\n]*[-*•][^\S\r\n]*$/gm, ""); // empty bullets
 }
 function normLine(raw) {
@@ -574,6 +585,13 @@ const UNCONFIRMED = /^(?:\d{4}(?:-\d{2}-\d{2})?\s*:?\s*)?UNVERIFIED\b/i;
 // A chatbot's closing offer ("Would you like me to…", "Let me know if…"); it and any list under it are not part of the answer.
 const CLOSING_OFFER = /^(?:would you like|do you want|want me to|shall i|should i|let me know|if you(?:['’]d| would)? like|i can also|i could also)\b/i;
 const NEUTRAL_ANSWER = "This answer was written for a neutral comparison. Copy the question again (it now asks for your priorities' letters) and paste the new answer.";
+// A candidate who left the race: still scored and shown, never the call. Read only from a
+// WITHDRAWN: line or the CANDIDATE: name field ("Jo Roe (withdrew from the race)"); records and
+// job lines mention withdrawn bills, amendments and earlier races too often to trust.
+const WITHDREW = /\b(?:withdr(?:ew|awn)|dropped out)\b.*\b(?:race|ballot|election|campaign)\b|\bnot on the ballot\b|\bremoved from the ballot\b/i;
+const nameKey = s => s.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^\w' -]/g, " ").replace(/\s+/g, " ").trim();
+// Same person: equal names, or one whole-word inside the other when both have 3+ characters.
+const sameName = (a, b) => a === b || (a.length > 2 && b.length > 2 && (` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `)));
 const GAPS_END = /^(RED LINE CROSSED|EVIDENCE:|WHAT YES DOES|WHAT NO MEANS|STRONGEST ARGUMENTS|CLAIMS CHECKED|CANDIDATE:|MEASURE:)/i;
 
 // Reads one Step 3 (race) or Step 4 (measure) output. Invalid evidence lines are reported
@@ -590,6 +608,11 @@ function parseResearch(text, weights, neutral) {
   let otherAxes = 0, topicAxes = 0;
   const isTopic = a => (a.match(/[A-Za-z]/g) || []).length >= 3 && !/\b[A-Za-z]\b|\d/.test(a);
   let kind = null, name = "", cur = null, section = null;
+  const gone = []; // WITHDRAWN: lines, matched to candidates by name once all are read
+  const withdraw = (o, line) => {
+    if (!o.withdrawn) warnings.push(`${o.name} may have withdrawn or may not be on the ballot; check your official ballot: ${line}`);
+    o.withdrawn = true;
+  };
   for (const raw of text.split(/\r?\n/)) {
     const line = normLine(raw);
     let m;
@@ -602,6 +625,7 @@ function parseResearch(text, weights, neutral) {
       warnings.push(`The chat found a candidate not on your ballot list. Check your official ballot, then edit the race line if needed: ${line}`);
       continue;
     }
+    if ((m = line.match(/^WITHDRAWN\s*:\s*([^|]*)/i))) { gone.push({who: nameKey(m[1]), cur, line}); continue; }
     // GAPS sits inside an option (before RED LINE or EVIDENCE: is common), so it only pauses
     // evidence until the option's next structural line; its items are unconfirmed, never scored.
     if (/^GAPS\s*(:|$)/i.test(line)) { section = "gaps"; continue; }
@@ -618,6 +642,7 @@ function parseResearch(text, weights, neutral) {
       kind = "race";
       cur = {name: m[1].trim() || `Candidate ${options.length + 1}`, red_line: false, evidence: []};
       options.push(cur);
+      if (WITHDREW.test(m[1])) withdraw(cur, line);
       continue;
     }
     if ((m = line.match(/^MEASURE:\s*(.*)$/i))) {
@@ -675,10 +700,23 @@ function parseResearch(text, weights, neutral) {
     }
     const row = {axis, sign, kind: k, ...sourceAndDate(ev.rest), text: ev.rest};
     if (ev.event) row.event = ev.event;
-    // Chats often give a citation title instead of the link; the line still counts.
-    if (!row.source) { delete row.source; warnings.push(`No web address for the source; ask the chat for the full link: ${line}`); }
+    // Chats often give a citation title or a bare domain instead of the link; no fact counts
+    // until its page can be opened.
+    if (!row.source) { warnings.push(`Not counted until it has a full link: ${line}`); cur.lines--; continue; }
     if (!row.date) delete row.date;
     cur.evidence.push(row);
+  }
+  for (const g of gone) {
+    // Only an unambiguous match excludes anyone ("Roe" with two Roes on the ballot only warns).
+    const hits = g.who ? options.filter(x => sameName(nameKey(x.name), g.who)) : [];
+    const o = hits.length === 1 ? hits[0] : (!g.who && g.cur);
+    if (o && kind === "race") withdraw(o, g.line);
+    else warnings.push(`The chat says a candidate withdrew. Check your official ballot, then edit the race line if needed: ${g.line}`);
+  }
+  // Pasting one part of a split answer twice repeats its candidates.
+  const names = options.map(o => nameKey(o.name));
+  if (kind === "race") for (const o of options.filter((o, i) => names.indexOf(names[i]) !== i)) {
+    warnings.push(`${o.name}: This candidate appears twice; a part may have been pasted twice.`);
   }
   const wasNeutral = !neutral && topicAxes > 0 && !otherAxes;
   if (wasNeutral) {
@@ -749,18 +787,28 @@ function validateRace(options, weights, isMeasure) {
   return errs;
 }
 
-// Split out gray rows; collapse rows of one event (see eventKey) to one entry per axis,
-// keeping the strongest kind.
-function collapse(opt) {
+// A party endorsement or donor: a named party ("Ohio Example Party", case-sensitive so "a party
+// line vote" and "block party" stay) or "party endorsement"; as in score.py.
+const PARTY_NAME = /\b(?!(?:The|Any|A|Block)\b)[A-Z][A-Za-z]* +Party\b/, PARTY_ENDORSE = /\bparty endorsement\b/i;
+const partyRow = t => typeof t === "string" && (PARTY_NAME.test(t) || PARTY_ENDORSE.test(t));
+// Leave out rows without a web link and party endorsements and donors not tagged on one of the
+// voter's party priorities (partyAxes; as in score.py); split out gray rows; collapse rows of one
+// event (see eventKey) to one entry per axis, keeping the strongest kind.
+function collapse(opt, partyAxes) {
   const gray = [], groups = new Map(), warnings = [];
   (opt.evidence || []).forEach((ev, i) => {
+    const label = ev.event || ev.text || ev.source || `${opt.name} item ${i + 1}`;
+    if (!(typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source))) {
+      warnings.push(`${opt.name}: Not counted until it has a full link: ${label}`);
+      return;
+    }
+    if (AGGREGATE.includes(ev.kind) && partyRow(ev.text) && !(partyAxes || []).includes(ev.axis)) {
+      warnings.push(`${opt.name}: Party evidence is used only if you list party as a priority: ${label}`);
+      return;
+    }
     if (isGray(ev)) { gray.push(ev); return; }
     const key = eventKey(ev, i);
-    if (!groups.has(key)) {
-      const label = ev.event || ev.text || ev.source || `${opt.name} item ${i + 1}`;
-      groups.set(key, {label, rows: []});
-      if (!ev.event && !ev.source) warnings.push(`${opt.name}: No source: duplicates of this line cannot be detected (${label}).`);
-    }
+    if (!groups.has(key)) groups.set(key, {label, rows: []});
     groups.get(key).rows.push(ev);
   });
   const events = [];
@@ -838,8 +886,8 @@ function steps(events) {
 
 // grayTopics: the profile lists topics the voter is torn on. Without any, a gray tag cannot
 // mean "torn", so those rows are dropped from the list too, with a warning (as in score.py).
-function summarize(opt, weights, grayTopics) {
-  const c = collapse(opt), {events, warnings} = c;
+function summarize(opt, weights, grayTopics, partyAxes) {
+  const c = collapse(opt, partyAxes), {events, warnings} = c;
   let gray = c.gray;
   if (gray.length && !grayTopics) {
     warnings.push(`${opt.name}: tagged gray, but you listed no topics you are torn on (${gray.length} not counted).`);
@@ -861,7 +909,7 @@ function summarize(opt, weights, grayTopics) {
   const parts = fitParts(events, weights);
   const row = {name: opt.name, score: parts.score, low: parts.low, high: parts.high, evidence: level, confidence: level,
     coverage: pyRound(cov * 100) / 100, events: events.length, records, questionnaires, gray,
-    excluded: !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
+    excluded: opt.withdrawn ? "withdrew" : !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
     // Older page fields: num/den give "Score = round(50 + 50 × num / den)".
     red_line: !!opt.red_line, items: (opt.evidence || []).length, kinds: [], num: parts.total, den: parts.W, uncapped: parts.score};
   return {row, events, covered, warnings};
@@ -878,7 +926,7 @@ function decide(rows, events, covered, eligible, measure, weights) {
   let wAll = 0;
   for (const a of Object.keys(weights)) wAll += weights[a];
   const half = covered.map(c => 2 * c >= wAll); // coverage >= 0.5, in exact integers
-  if (!eligible.length) return ["All options crossed a red line", null];
+  if (!eligible.length) return [rows.some(r => r.excluded === "withdrew") ? "All options withdrew or crossed a red line" : "All options crossed a red line", null];
   if (measure) {
     const s = rows[0].score;
     if (s === null) return ["Not enough evidence", null];
@@ -929,15 +977,16 @@ function decide(rows, events, covered, eligible, measure, weights) {
 }
 
 // Returns {call, turns_on, rows, warnings, errors}; errors means nothing was scored.
-function scoreRace(options, weights, isMeasure, grayTopics) {
+// partyAxes: letters of the voter's party priorities (parseWeights); party evidence counts only there.
+function scoreRace(options, weights, isMeasure, grayTopics, partyAxes) {
   const errors = validateRace(options, weights, isMeasure);
   if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors};
   const rows = [], events = [], covered = [], warnings = [];
   for (const o of options) {
-    const s = summarize(o, weights, grayTopics);
+    const s = summarize(o, weights, grayTopics, partyAxes);
     rows.push(s.row); events.push(s.events); covered.push(s.covered); warnings.push(...s.warnings);
   }
-  const eligible = options.map((o, i) => i).filter(i => !options[i].red_line);
+  const eligible = options.map((o, i) => i).filter(i => !options[i].red_line && !options[i].withdrawn);
   const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights);
   return {call, turns_on, rows, warnings, errors};
 }
@@ -959,7 +1008,7 @@ function hasGrayTopics(text) {
 }
 
 function calculate(weightsText, researchText) {
-  const {weights, warnings} = parseWeights(weightsText);
+  const {weights, warnings, partyAxes} = parseWeights(weightsText);
   if (!Object.keys(weights).length) {
     return {warnings, errors: [{line: "", msg: "No value weights found. Paste your Step 1 profile or type A=3, B=2."}], result: null};
   }
@@ -968,7 +1017,7 @@ function calculate(weightsText, researchText) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
     return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
-  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText));
+  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText), partyAxes);
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
   return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }
@@ -1137,11 +1186,13 @@ function splitForChat(text, max) {
 // The checked question in short form: its TASK and RACE/MEASURE lines plus the OUTPUT FORMAT the
 // answer had to follow. The whole question pushed the copy past chat input limits (Google AI Mode
 // silently cuts at 8,192 characters); the check rules are in Step 8 itself, and the place is in the profile.
+// Step 3's event-id advice is for writing the answer, not checking it, so it is left out too; the
+// values-mode gray rule after it stays, so the checker does not flag correct gray tags.
 function checkQuestion(stepIndex, stepText, state, ex) {
   const full = fillStep(stepIndex, stepText, state, ex), [ask, fmt] = full.split(/^OUTPUT FORMAT[^\n]*\n/m);
   if (fmt === undefined) return full;
   return [...ask.split("\n").filter(l => /^(TASK|RACE|MEASURE):/.test(l)),
-    "(Short form: the full question is left out. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim()].join("\n");
+    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: (?=\S)|\n)/m, "")].join("\n");
 }
 
 // Copies longer than this may be cut off silently: Google AI Mode's input stops at 8,192 characters.
@@ -1263,6 +1314,47 @@ function checkLine(sum) {
     .filter(([n], i) => i === 0 || n).map(([n, l]) => `${n} ${l}`).join(" · ");
 }
 
+// Whether the CHECK SUMMARY counts disagree with the checker's own lists: its WRONG / NOT FOUND /
+// NO SOURCE count against the PROBLEMS lines with those labels, or a REMOVED: line that names
+// something while the summary found nothing to remove. False without a summary.
+function checkMismatch(text) {
+  const sum = checkSummary(text);
+  if (!sum) return false;
+  const ls = String(text).split(/\r?\n/).map(lineNorm);
+  const p = ls.findIndex(l => /^PROBLEMS\b/i.test(l));
+  let problems = 0;
+  if (p >= 0) {
+    for (const l of [ls[p].replace(/^PROBLEMS\s*:?/i, ""), ...ls.slice(p + 1)]) {
+      if (/^(CORRECTED ANSWER|REMOVED)\b/i.test(l)) break;
+      if (/\b(WRONG|NOT[\s_-]*FOUND|NO[\s_-]*SOURCE)\b/.test(l)) problems++;
+    }
+  }
+  const removed = ls.find(l => /^REMOVED\s*:/i.test(l));
+  // "REMOVED: (none)", "nothing removed", "n/a", "-" or nothing at all: nothing was removed.
+  const removedSome = !!removed && !/^REMOVED\s*:[\s(\[.-]*(?:(?:none|nothing)(?: removed)?|n\/?a)?[\s)\].-]*$/i.test(removed);
+  const issues = sum.wrong + sum.notFound + sum.noSource;
+  return problems !== issues || (removedSome && !issues);
+}
+
+// SPLIT NEEDED (Step 0 rule 7): the parts the chat listed (null if it listed none) and the next
+// part to ask for. Each added part is appended after a "PART n ANSWER:" line, which the calculator
+// reads as prose; null when the answer is not a split.
+function splitInfo(answer) {
+  const t = String(answer || "");
+  const i = t.search(/SPLIT NEEDED/);
+  if (i < 0) return null;
+  // Parts are listed before any answer text: stop at the first answer line or added part.
+  const ls = t.slice(i).split(/\r?\n/), end = ls.findIndex((l, j) => j > 0 && /^\s*(?:[-*•]\s*)?(?:CANDIDATE:|MEASURE:|\[|PART \d+ ANSWER:)/i.test(l));
+  const head = ls.slice(0, end < 0 ? ls.length : end).join("\n");
+  const listed = head.split("\n").slice(1).filter(l => /^\s*(?:[-*•]\s*)?(?:part\s+\d+|\d+[.)])/i.test(l)).length;
+  const named = Math.max(0, ...[...head.matchAll(/\bpart\s+(\d+)/gi)].map(m => Number(m[1])));
+  // A reply that already answers part 1 after the list starts the follow-ups at part 2.
+  const answered = end >= 0 && !/^\s*PART \d+ ANSWER:/i.test(ls[end]) ? 1 : 0;
+  return {total: Math.max(listed, named) || null, next: (t.match(/^PART \d+ ANSWER:/gm) || []).length + 1 + answered};
+}
+const splitFollowUp = n => `Do part ${n} only, in the same output format.`;
+const addPart = (answer, n, part) => `${String(answer).trimEnd()}\n\nPART ${n} ANSWER:\n${String(part).trim()}`;
+
 // Splits a markdown or plain row into cells; a row without "|" is not a row.
 function cells(line) {
   if (!line.includes("|")) return null;
@@ -1292,9 +1384,11 @@ function mayHaveAddress(line, address) {
     || /polling place|your address/i.test(line) || (a.length > 3 && line.toLowerCase().includes(a));
 }
 // `unverified`: rows the chat marked UNVERIFIED (never items); `noUrl`: rows kept whose source is
-// not a web address. Both are lines for the page to show, not save.
+// not a web address; `suspect`: rows kept that look like a primary list or an incomplete race (an
+// UNVERIFIED candidate, "A or B", "primary" in the row or its link); `writeIns`: rows whose
+// declared write-in candidates were taken off the race line. All are lines for the page to show, not save.
 function parseBallot(text, address = "") {
-  const races = [], measures = [], skipped = [], addressLines = [], unverified = [], noUrl = [];
+  const races = [], measures = [], skipped = [], addressLines = [], unverified = [], noUrl = [], suspect = [], writeIns = [];
   let section = null, sawHeading = false;
   for (const raw of String(text).split(/\r?\n/)) {
     const line = lineNorm(raw);
@@ -1324,14 +1418,21 @@ function parseBallot(text, address = "") {
     const who = section === "RACES" ? rest.slice(three ? 2 : 1) : rest.slice(0, 1);
     if (who.length && who.every(x => /^UNVERIFIED\b/i.test(x))) { unverified.push(line); continue; }
     if (!/https?:\/\//i.test(source)) noUrl.push(line);
+    let candidates = section === "RACES" ? who.join(" | ") : "";
+    if (/primary/i.test(line) || /\bUNVERIFIED\b|\sor\s/i.test(candidates)) suspect.push(line);
+    // Step 2 asks for printed names only; a declared write-in still slips in now and then.
+    if (/write-?in/i.test(candidates)) {
+      candidates = candidates.split(/\s+vs\.?\s+|\s*[;|]\s*|,(?!\s*(?:Jr|Sr|II|III|IV)\b)\s*/i).filter(x => x && !/write-?in/i.test(x)).join(" vs ");
+      writeIns.push(line);
+    }
     if (section === "RACES") {
-      races.push({office: rest[0], position: three ? rest[1] : "", candidates: rest.slice(three ? 2 : 1).join(" | "),
+      races.push({office: rest[0], position: three ? rest[1] : "", candidates,
         status: stI < 0 ? "" : c[stI].toUpperCase(), source});
     } else {
       measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
     }
   }
-  return {races, measures, skipped, addressLines, unverified, noUrl, sawHeading};
+  return {races, measures, skipped, addressLines, unverified, noUrl, suspect, writeIns, sawHeading};
 }
 
 // The calculator's profile: the axis lines plus any gray (torn) topics, so calc.js knows a
@@ -1400,6 +1501,7 @@ function chatRefused(text) {
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
+    checkMismatch, splitInfo, splitFollowUp, addPart,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};
 }
 </script>
@@ -1467,7 +1569,7 @@ Gray area: immigration levels.`},
 Do these steps in order:
 1. Find the districts for the address: congressional, state legislative, county council or commission, city, school, transit, fire, and judicial districts. Use an official lookup (the state or county election office) or the US Census geocoder (geocoding.geo.census.gov). Give the source.
 2. Find the official local voters' pamphlet or sample ballot from the county election office. The candidate list must come from an official source (certified filings, pamphlet, or certified primary results), not from memory or Wikipedia. Write the date of the list. Also find the state voters' pamphlet. Judges and statewide items are often only in the state pamphlet.
-3. For each race, find the candidates who are on the GENERAL election ballot. Use the primary results or the official candidate list. Do not list candidates who lost the primary.
+3. For each race, find the candidates who are on the GENERAL election ballot. Use the primary results or the official candidate list. Do not list candidates who lost the primary. List only candidates printed on the ballot. Leave out declared write-in candidates.
 4. Mark a race UNCONTESTED if only one candidate is on the ballot. Uncontested races are still researched and scored, so the voter can vote for the candidate or leave the race blank.
 5. CHECK: Pamphlet text can mix up the order of names and seats. For each judicial or multi-position race, confirm the position number for each candidate from a second source.
 6. If an official PDF will not open, try the same office's web pages (candidate lists, sample ballot lookup, results pages) or the state's candidate search. If you still cannot read it, say which document and stop for that part; do not guess.
@@ -1491,6 +1593,7 @@ If you are a sub-agent, write only to your assigned file and include UNVERIFIED,
 RACE: {{office, position, ALL candidates on the ballot}}
 Research every candidate, including minor ones. Do not skip a candidate because they are unlikely to win.
 If you find a candidate who is not in the race line above, write NEW CANDIDATE: name | source on its own line and do not research them.
+If a candidate has withdrawn or will not appear on the ballot, write WITHDRAWN: name | source on its own line and do not research them.
 
 For EACH candidate, search in this order. Stop at about 8 evidence items for each candidate. If the record is thin, keep going down the list.
 1. RECORD:
@@ -1669,15 +1772,15 @@ For each fact or line in the answer:
 3. For WRONG items, give the correct fact and its source.
 Also check:
 - For a ballot list: compare with the official candidate list or sample ballot. List anything missing or extra.
-- For votes on legislative bills: is it the final passage vote, with the right date and count? Votes and motions of boards, councils, commissions and courts count as RECORD on their own terms; do not remove them for not being a final-passage vote.
-- For tags: if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?, but do not change it in the corrected answer. (Skip in neutral mode.)
+- For bill votes: is it the final passage vote, with the right date and count? Board, council, commission and court votes need not be final-passage votes (rule 4).
+- For tags (not in neutral mode): if a + / - / 0 tag looks wrong for the profile's priorities, list it under PROBLEMS as TAG?; do not change it in the corrected answer.
 
 OUTPUT FORMAT:
 CHECK SUMMARY: {{n}} CONFIRMED, {{n}} WRONG, {{n}} NOT FOUND, {{n}} NO SOURCE
 PROBLEMS:
 - {{line}}: {{WRONG / NOT FOUND / NO SOURCE / MISSING / EXTRA / TAG?}} | {{correct fact and source, if any}}
 CORRECTED ANSWER:
-{{Repeat the full answer in exactly the original format, even if nothing changed. Fix WRONG lines. Delete lines you could not confirm. Then, after the answer, write one line starting 'REMOVED:' that names the removed items in plain words (no [..] tags, no table rows). For a ballot list, also add any MISSING races or measures to the RACES or MEASURES section, and keep its UNVERIFIED section.}}`}
+{{Repeat the full answer in exactly the original format, even if nothing changed. Fix WRONG lines. Delete lines you could not confirm. After it, write one line starting 'REMOVED:' that names the removed items in plain words (no [..] tags, no table rows). For a ballot list, also add any MISSING races or measures to the RACES or MEASURES section, and keep its UNVERIFIED section.}}`}
 ];
 
 // Screen readers hear status changes ("Copied", the next item) through one hidden live region.
@@ -1708,7 +1811,7 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null;
-const KIT_VERSION="v1.6.0";
+const KIT_VERSION="v1.6.1";
 const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
 // checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
@@ -1909,7 +2012,10 @@ function redLine(excluded){
   const rest=excluded.replace(/^red line:?\s*/,""), m=rest.match(/^(.*?)\s*\|?\s*(https?:\/\/\S+)$/);
   return m?{what:m[1],url:m[2]}:{what:rest,url:""};
 }
+// A withdrawn candidate (excluded "withdrew") is left out of the call like a red line.
+const WITHDREW_NOTE="Not considered: withdrew (check your official ballot)";
 function redLineNote(excluded){
+  if(excluded==="withdrew")return el("p",WITHDREW_NOTE,"hint");
   const {what,url}=redLine(excluded), p=el("p","Not considered: crossed a deal-breaker"+(what?" — "+what:""),"hint");
   if(url){const a=el("a","source");a.href=url;a.target="_blank";a.rel="noopener noreferrer";p.append(" (",a,")")}
   return p;
@@ -1941,7 +2047,7 @@ function renderCalc(out,r){
     const ul=el("ul");
     if(row.uncapped===null)ul.append(el("li","No evidence: no score."));
     else ul.append(el("li",`Score = round(50 + 50 × ${row.num.toFixed(3)} / ${row.den}) = ${row.uncapped}; could be ${row.low}–${row.high}`));
-    if(row.excluded)ul.append(el("li","Crossed a deal-breaker: left out of the call"));
+    if(row.excluded)ul.append(el("li",row.excluded==="withdrew"?"Withdrew: left out of the call":"Crossed a deal-breaker: left out of the call"));
     ul.append(el("li",`Items counted: ${row.events} (records: ${row.records}, questionnaires: ${row.questionnaires}) → ${LEVEL[row.evidence]}`));
     det.append(ul);
   });
@@ -1971,7 +2077,7 @@ function evalItem(it){
     if(r.result){
       const res=r.result, measure=r.kind==="measure";
       it.calc=[res.call?callText(res)+".":"",turnsText(res),
-        res.rows.map(x=>optionLine(x,measure)+(x.excluded?" (not considered: crossed a deal-breaker"+x.excluded.replace(/^red line/,"")+")":"")+(x.gray.length?` (not counted, torn: ${x.gray.length})`:"")).join("; ")+".",
+        res.rows.map(x=>optionLine(x,measure)+(x.excluded==="withdrew"?" ("+WITHDREW_NOTE.toLowerCase()+")":x.excluded?" (not considered: crossed a deal-breaker"+x.excluded.replace(/^red line/,"")+")":"")+(x.gray.length?` (not counted, torn: ${x.gray.length})`:"")).join("; ")+".",
         r.errors.length?`Problems noted: ${r.errors.length}.`:""].filter(Boolean).join(" ");
     }
   }else{
@@ -2004,6 +2110,10 @@ function refreshItem(it){
   u.copy.disabled=empty; u.need.hidden=!empty;
   u.dcBadge.hidden=!it.checked;
   u.dc.d.hidden=!$("f-dc").checked||!it.answer.trim()||!!it.refused;
+  // SPLIT NEEDED: ask for the next part until every listed part is in.
+  const si=splitInfo(it.answer);
+  u.split.hidden=!si||(si.total!==null&&si.next>si.total);
+  if(si){u.partCopy.textContent="Copy: do part "+si.next;u.partLab.textContent="Add the next part: paste the chat's answer for part "+si.next}
 }
 
 // ---- Double-check (Step 8) ----
@@ -2028,6 +2138,7 @@ function checkPanel(h){
     out.replaceChildren();
     if(chatRefused(t))out.append(el("p",refusedText(chatRefused(t),h.ballot),"warn"));
     else if(t.trim()){
+      if(checkMismatch(t))out.append(el("p","The checker's summary and its problem list don't match; review the corrected answer before using it.","warn"));
       out.append(cs?el("p",checkLine(cs),cs.wrong?"warn":""):el("p","No CHECK SUMMARY line found.","hint"));
       if(!fixed)out.append(el("p",'No corrected answer found. Ask the checker to "give the corrected answer in the same format", then paste its reply here.',"warn"));
       else if(!usableCorrected(fixed,h.answer()))out.append(el("p",'The checker did not repeat the answer in the original format. Ask it to "repeat the full answer in the original format".',"warn"));
@@ -2083,14 +2194,27 @@ function buildItem(it){
     checked:()=>it.checked, canUndo:()=>!!it.original, skipped:()=>it.checkSkipped, skip:()=>{it.checkSkipped=true;save();advance(it)},
   });
   dc.d.open=!it.checked&&!it.checkSkipped;
-  body.append(row,lab,ta,out,dc.d);
+  // SPLIT NEEDED: one short follow-up per part for the same chat; each pasted part is appended to the answer.
+  const split=el("div",null,"split"), partRow=el("div",null,"btn-row"), partCopy=el("button","","copy primary");
+  const partLab=el("label"), partTa=el("textarea"), addRow=el("div",null,"btn-row"), partAdd=el("button","Add this part","copy");
+  partCopy.type=partAdd.type="button"; partTa.id="part-"+(++uid); partTa.rows=4; partTa.autocomplete="off"; partLab.htmlFor=partTa.id;
+  partRow.append(partCopy); addRow.append(partAdd);
+  split.append(el("p","The chat split this into parts. Copy the follow-up into the same chat, then paste its answer below, one part at a time.","hint"),partRow,partLab,partTa,addRow);
+  partCopy.addEventListener("click",()=>copyText(splitFollowUp(splitInfo(it.answer).next),partCopy));
+  partAdd.addEventListener("click",()=>{
+    if(!partTa.value.trim())return;
+    it.answer=addPart(it.answer,splitInfo(it.answer).next,partTa.value);partTa.value="";
+    Object.assign(it,checkFields({}));ta.value=it.answer;dc.refresh();evalItem(it);refreshStages();save();
+    (split.hidden?ta:partTa).focus();
+  });
+  body.append(row,lab,ta,out,split,dc.d);
   d.append(sum,body);
   copy.addEventListener("click",()=>copyText(forChat(step,STEPS[0].text,STEPS[step].text,readState(),{[it.kind]:it.text}),copy));
   fix.addEventListener("click",()=>copyText(fixFormat(step,STEPS[step].text,readState()),fix));
   // A new or edited answer has not been checked, so its earlier check no longer applies.
   // Move on only after a paste into an unfinished item: folding while someone types or fixes a typo steals focus.
   ta.addEventListener("input",ev=>{const was=finished(it);it.answer=ta.value;Object.assign(it,checkFields({}));dc.refresh();evalItem(it);refreshStages();save();if(!was&&/^insertFrom(Paste|Drop)/.test(ev.inputType||""))advance(it)});
-  Object.assign(it.ui,{d,status:st,title,score,copy,need,fix,lab,out,dc,dcBadge});
+  Object.assign(it.ui,{d,status:st,title,score,copy,need,fix,lab,out,dc,dcBadge,split,partCopy,partLab});
   $("items").append(d);
   evalItem(it);
 }
@@ -2286,6 +2410,8 @@ function readBallot(){
   found.textContent=prose?"We couldn't read the format, so here is each line; edit or delete.":`Found ${p.races.length} races and ${p.measures.length} measures.`;
   if(p.skipped.length&&!prose)warn.append(noteBox(p.skipped.map(x=>({msg:"Not read; add it by hand if it is a race or measure:",line:x.line}))));
   if(p.noUrl.length)warn.append(noteBox(p.noUrl.map(line=>({msg:"No web address for the source; ask the chat for the full link:",line}))));
+  if(p.suspect.length)warn.append(noteBox(p.suspect.map(line=>({msg:"This line may come from a primary list or be incomplete. Check it against your official sample ballot.",line}))));
+  if(p.writeIns.length)warn.append(noteBox(p.writeIns.map(line=>({msg:"Write-in candidate left off the race line (only names printed on the ballot are researched):",line}))));
   buildLists(); save();
   if(oldItems.length){
     $("ballot-old-msg").textContent=`${oldItems.length} earlier items with answers are not on this new list. Keep them?`;
@@ -2299,6 +2425,7 @@ $("reset-yes").addEventListener("click",()=>{
   try{localStorage.removeItem(STORE);localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: nothing saved to clear */}
   items=[]; spotShown=[];
   ballotChecked=false; ballotCheckText=""; ballotOriginal=""; ballotSkipped=false; ballotDc.refresh();
+  document.querySelectorAll(".len-note").forEach(n=>n.remove());
   $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren(); $("ballot-fix-row").hidden=true; $("s3-next-item").hidden=true; oldItems=[]; $("ballot-old").hidden=true;
   writeState(defaultState()); buildLists(); render();
   $("reset-confirm").hidden=true;

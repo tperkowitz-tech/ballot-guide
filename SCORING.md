@@ -12,6 +12,7 @@ Scores are optional. The default is a neutral, side-by-side comparison with no s
 | Donors and endorsements | All together count no more than one statement per priority | Official filings (FEC, state disclosure agencies), issue-group endorsements |
 
 - **Your priorities only.** One-number left–right scores are not evidence; party counts only if you list it as a priority.
+- A line counts only when its source is a full web link; a line with only a site name or title is shown but not counted.
 - Lines about the same event count once. Topics you say you are torn on are left out of the score and listed separately.
 
 ## How a score is built
@@ -25,7 +26,7 @@ Scores are optional. The default is a neutral, side-by-side comparison with no s
 - **Toss-up:** removing one item would change the leader. The guide names that item so you can check it first.
 - **Uneven evidence:** if one side has much less evidence, the call is at most a lean.
 - **Firm calls need a record.** A clear winner, "Vote for" or "Consider leaving blank" for an unopposed candidate, or a plain YES/NO on a measure needs at least one record. Otherwise the call is a lean or "Your call".
-- **Deal-breakers** you list remove a choice from the call when they are proven by a record; the evidence is still shown.
+- **Deal-breakers** you list remove a choice from the call when they are proven by a record; the evidence is still shown. A candidate who withdrew or will not appear on the ballot is left out of the call the same way.
 - Scores measure fit with your priorities, not who is likely to win. Viability is shown separately only if you ask.
 
 ## Limits

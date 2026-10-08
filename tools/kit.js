@@ -157,11 +157,13 @@ function splitForChat(text, max) {
 // The checked question in short form: its TASK and RACE/MEASURE lines plus the OUTPUT FORMAT the
 // answer had to follow. The whole question pushed the copy past chat input limits (Google AI Mode
 // silently cuts at 8,192 characters); the check rules are in Step 8 itself, and the place is in the profile.
+// Step 3's event-id advice is for writing the answer, not checking it, so it is left out too; the
+// values-mode gray rule after it stays, so the checker does not flag correct gray tags.
 function checkQuestion(stepIndex, stepText, state, ex) {
   const full = fillStep(stepIndex, stepText, state, ex), [ask, fmt] = full.split(/^OUTPUT FORMAT[^\n]*\n/m);
   if (fmt === undefined) return full;
   return [...ask.split("\n").filter(l => /^(TASK|RACE|MEASURE):/.test(l)),
-    "(Short form: the full question is left out. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim()].join("\n");
+    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: (?=\S)|\n)/m, "")].join("\n");
 }
 
 // Copies longer than this may be cut off silently: Google AI Mode's input stops at 8,192 characters.
@@ -283,6 +285,47 @@ function checkLine(sum) {
     .filter(([n], i) => i === 0 || n).map(([n, l]) => `${n} ${l}`).join(" · ");
 }
 
+// Whether the CHECK SUMMARY counts disagree with the checker's own lists: its WRONG / NOT FOUND /
+// NO SOURCE count against the PROBLEMS lines with those labels, or a REMOVED: line that names
+// something while the summary found nothing to remove. False without a summary.
+function checkMismatch(text) {
+  const sum = checkSummary(text);
+  if (!sum) return false;
+  const ls = String(text).split(/\r?\n/).map(lineNorm);
+  const p = ls.findIndex(l => /^PROBLEMS\b/i.test(l));
+  let problems = 0;
+  if (p >= 0) {
+    for (const l of [ls[p].replace(/^PROBLEMS\s*:?/i, ""), ...ls.slice(p + 1)]) {
+      if (/^(CORRECTED ANSWER|REMOVED)\b/i.test(l)) break;
+      if (/\b(WRONG|NOT[\s_-]*FOUND|NO[\s_-]*SOURCE)\b/.test(l)) problems++;
+    }
+  }
+  const removed = ls.find(l => /^REMOVED\s*:/i.test(l));
+  // "REMOVED: (none)", "nothing removed", "n/a", "-" or nothing at all: nothing was removed.
+  const removedSome = !!removed && !/^REMOVED\s*:[\s(\[.-]*(?:(?:none|nothing)(?: removed)?|n\/?a)?[\s)\].-]*$/i.test(removed);
+  const issues = sum.wrong + sum.notFound + sum.noSource;
+  return problems !== issues || (removedSome && !issues);
+}
+
+// SPLIT NEEDED (Step 0 rule 7): the parts the chat listed (null if it listed none) and the next
+// part to ask for. Each added part is appended after a "PART n ANSWER:" line, which the calculator
+// reads as prose; null when the answer is not a split.
+function splitInfo(answer) {
+  const t = String(answer || "");
+  const i = t.search(/SPLIT NEEDED/);
+  if (i < 0) return null;
+  // Parts are listed before any answer text: stop at the first answer line or added part.
+  const ls = t.slice(i).split(/\r?\n/), end = ls.findIndex((l, j) => j > 0 && /^\s*(?:[-*•]\s*)?(?:CANDIDATE:|MEASURE:|\[|PART \d+ ANSWER:)/i.test(l));
+  const head = ls.slice(0, end < 0 ? ls.length : end).join("\n");
+  const listed = head.split("\n").slice(1).filter(l => /^\s*(?:[-*•]\s*)?(?:part\s+\d+|\d+[.)])/i.test(l)).length;
+  const named = Math.max(0, ...[...head.matchAll(/\bpart\s+(\d+)/gi)].map(m => Number(m[1])));
+  // A reply that already answers part 1 after the list starts the follow-ups at part 2.
+  const answered = end >= 0 && !/^\s*PART \d+ ANSWER:/i.test(ls[end]) ? 1 : 0;
+  return {total: Math.max(listed, named) || null, next: (t.match(/^PART \d+ ANSWER:/gm) || []).length + 1 + answered};
+}
+const splitFollowUp = n => `Do part ${n} only, in the same output format.`;
+const addPart = (answer, n, part) => `${String(answer).trimEnd()}\n\nPART ${n} ANSWER:\n${String(part).trim()}`;
+
 // Splits a markdown or plain row into cells; a row without "|" is not a row.
 function cells(line) {
   if (!line.includes("|")) return null;
@@ -312,9 +355,11 @@ function mayHaveAddress(line, address) {
     || /polling place|your address/i.test(line) || (a.length > 3 && line.toLowerCase().includes(a));
 }
 // `unverified`: rows the chat marked UNVERIFIED (never items); `noUrl`: rows kept whose source is
-// not a web address. Both are lines for the page to show, not save.
+// not a web address; `suspect`: rows kept that look like a primary list or an incomplete race (an
+// UNVERIFIED candidate, "A or B", "primary" in the row or its link); `writeIns`: rows whose
+// declared write-in candidates were taken off the race line. All are lines for the page to show, not save.
 function parseBallot(text, address = "") {
-  const races = [], measures = [], skipped = [], addressLines = [], unverified = [], noUrl = [];
+  const races = [], measures = [], skipped = [], addressLines = [], unverified = [], noUrl = [], suspect = [], writeIns = [];
   let section = null, sawHeading = false;
   for (const raw of String(text).split(/\r?\n/)) {
     const line = lineNorm(raw);
@@ -344,14 +389,21 @@ function parseBallot(text, address = "") {
     const who = section === "RACES" ? rest.slice(three ? 2 : 1) : rest.slice(0, 1);
     if (who.length && who.every(x => /^UNVERIFIED\b/i.test(x))) { unverified.push(line); continue; }
     if (!/https?:\/\//i.test(source)) noUrl.push(line);
+    let candidates = section === "RACES" ? who.join(" | ") : "";
+    if (/primary/i.test(line) || /\bUNVERIFIED\b|\sor\s/i.test(candidates)) suspect.push(line);
+    // Step 2 asks for printed names only; a declared write-in still slips in now and then.
+    if (/write-?in/i.test(candidates)) {
+      candidates = candidates.split(/\s+vs\.?\s+|\s*[;|]\s*|,(?!\s*(?:Jr|Sr|II|III|IV)\b)\s*/i).filter(x => x && !/write-?in/i.test(x)).join(" vs ");
+      writeIns.push(line);
+    }
     if (section === "RACES") {
-      races.push({office: rest[0], position: three ? rest[1] : "", candidates: rest.slice(three ? 2 : 1).join(" | "),
+      races.push({office: rest[0], position: three ? rest[1] : "", candidates,
         status: stI < 0 ? "" : c[stI].toUpperCase(), source});
     } else {
       measures.push({name: rest[0], summary: rest.slice(1).join(" | "), source});
     }
   }
-  return {races, measures, skipped, addressLines, unverified, noUrl, sawHeading};
+  return {races, measures, skipped, addressLines, unverified, noUrl, suspect, writeIns, sawHeading};
 }
 
 // The calculator's profile: the axis lines plus any gray (torn) topics, so calc.js knows a
@@ -420,5 +472,6 @@ function chatRefused(text) {
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
+    checkMismatch, splitInfo, splitFollowUp, addPart,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};
 }
