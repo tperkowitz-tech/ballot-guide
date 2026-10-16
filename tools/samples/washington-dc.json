@@ -2,7 +2,7 @@
   "place": "Washington, DC",
   "test_address_label": "John A. Wilson Building (public building)",
   "election": "2026-11-03 General",
-  "researched": "2026-10-06",
+  "researched": "2026-10-16",
   "official_office": {
     "name": "DC Board of Elections",
     "url": "https://dcboe.org/Elections/2026-Elections"
@@ -32,16 +32,16 @@
   "ballot": {
     "races": [
       {
-        "office": "Mayor of the District of Columbia",
+        "office": "Delegate to the U.S. House of Representatives from the District of Columbia",
         "position": "Rank up to 4 choices (ranked-choice voting)",
-        "candidates": "Rhonda Hamilton (Independent) | Janeese Lewis George (Democratic) | Robert L. Gross (DC Statehood Green) | write-in",
+        "candidates": "Denise Rosado (Republican) | Robert White (Democratic) | Kymone Freeman (DC Statehood Green) | write-in",
         "status": "CONTESTED",
         "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
       },
       {
-        "office": "Delegate to the U.S. House of Representatives from the District of Columbia",
+        "office": "Mayor of the District of Columbia",
         "position": "Rank up to 4 choices (ranked-choice voting)",
-        "candidates": "Denise Rosado (Republican) | Robert White (Democratic) | Kymone Freeman (DC Statehood Green) | write-in",
+        "candidates": "Rhonda Hamilton (Independent) | Janeese Lewis George (Democratic) | Robert L. Gross (DC Statehood Green) | write-in",
         "status": "CONTESTED",
         "source": "https://dcboe.org/getContentAsset/6190836f-7916-4ce3-a985-5c675ccc941e/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/Ward2478C.pdf"
       },
@@ -82,7 +82,7 @@
       },
       {
         "office": "Advisory Neighborhood Commissioner, ANC 2C03",
-        "position": "Vote for 1",
+        "position": "Vote for 1 (the Wards 2,4,7,8 sample ballot prints a placeholder ANC contest; candidates from the BOE ANC list updated Oct 14, 2026)",
         "candidates": "Thomas S. Lee | Darren Sheets | write-in",
         "status": "CONTESTED",
         "source": "https://dcboe.org/getContentAsset/5532a17e-37dc-4d52-a54b-a6ce21fdbe4b/5ebbd046-860b-4ee1-81c8-43d0e3bc446e/2026-General-CANDIDATES-07162026.pdf"
@@ -100,14 +100,15 @@
       "No State Board of Education seat for Ward 2 (Ward 1, 3, 5, 6 seats only)"
     ],
     "unverified": [
-      "Number of at-large Council seats being filled: Ballotpedia lists two seats; the printed ballot says only 'Rank up to 5 choices'.",
-      "The BOE general candidate list is a July 15, 2026 version; later withdrawals or challenges may not be reflected (the ANC list file shows a 10/5/26 withdrawal in 2E01, so it is updated in place; the main list shows no such note). Recheck the BOE site near the election.",
+      "Ballot order and contest list come from the official BOE sample ballot for Wards 2, 4, 7, 8 (Ward2478C.pdf, created Sept 13, 2026), read page by page: Delegate, Mayor, Chairman, At-Large, Attorney General, U.S. Senator, U.S. Representative, ANC, Initiative 86. The ANC line there is a placeholder (ANC-#X##); the 2C03 candidates come from the BOE ANC list, whose PDF was regenerated Oct 14, 2026 and still shows Lee and Sheets; two withdrawals on the BOE ANC list (2E01 on 10/5, 6D06 on 10/13); none for 2C03.",
+      "BOE has posted no certified ballot or withdrawal list on its 2026 Elections page as of Oct 16; the main candidate list file (named 07152026, PDF regenerated Sept 14) shows no withdrawals and matches the sample ballot. Recheck near the election.",
+      "Number of at-large Council seats being filled: the printed ballot says only 'Rank up to 5 Choices'. Wikipedia (not official) says two at-large seats are up (Bonds' retiring seat and Silverman's) and only one winner may belong to the majority party; no official source found.",
       "Initiative 86 text and fiscal statement: I read the BOE Notice of Publication that labels the same measure 'No. 85' (Dec 3, 2025 formulation) with the CFO fiscal impact statement dated Nov 26, 2025. The printed ballot summary matches, but I did not find the final certified text under the 'No. 86' number.",
       "Initiative 86 passage threshold and congressional review effects beyond the 30-day review in the text: not confirmed from an official source.",
       "Initiative 86 supporter and opponent funding totals (OCF): not found.",
       "Two sources say different things about Janeese Lewis George's housing target (Street Sense: 72,000 affordable units by 2030; GGWash questionnaire: 72,000 new homes in five years). Not used as a number in evidence rows.",
       "Voting logistics (registration, deadlines, vote centers, mail ballots) were not researched; see BOE election pages and vote.org.",
-      "Elissa Silverman's current term: the DC Council release says she fills the remainder of Kenyan McDuffie's term; 51st News (https://51st.news/elissa-silverman-wins-dc-at-large-special-election/) says it ends in January 2027. The earlier \"through Jan 2, 2029\" claim from her campaign site and BallotReady was removed. BOE certified results page was not opened."
+      "Elissa Silverman's current term: the DC Council release says she fills the remainder of Kenyan McDuffie's term; 51st News (https://51st.news/elissa-silverman-wins-dc-at-large-special-election/) says it ends in January 2027. BOE certified results page was not opened."
     ]
   },
   "gray": [],
@@ -306,8 +307,8 @@
               "sign": "0",
               "kind": "funder",
               "source": "https://www.fec.gov/data/committee/C00921502/",
-              "date": "2026-06-30",
-              "text": "FEC committee page: $826,537.33 raised and $791,773.27 spent, cash on hand $40,442.00, for 2025-10-01 to 2026-06-30; individuals $716,037.33, other committees $110,500.00, no candidate loans. Later reports may differ.",
+              "date": "2026-09-30",
+              "text": "FEC committee page: $1,009,951.68 raised and $937,089.58 spent for 2025-10-01 to 2026-09-30; cash on hand $78,540.04; individuals $836,951.68, other committees $173,000.00; debts $1,500. Replaces the June 30 figures (Oct quarterly).",
               "event": "rwhite-fec-2026"
             }
           ]
@@ -448,7 +449,8 @@
               "text": "Campaign site says she accepts only small-dollar contributions from DC residents, caps contributions at $100, and uses the Fair Elections Program (self-reported; OCF totals not found).",
               "event": "silverman-finance"
             }
-          ]
+          ],
+          "incumbent": true
         },
         {
           "name": "Oye Owolewa",
@@ -688,12 +690,12 @@
     }
   ],
   "gaps": [
-    "Mayor: no OCF totals found for Hamilton or Gross; the OCF e-filing search could not be queried, and the Lewis George row covers only public matching payments through January 2026. No prior governing record found for Hamilton or Gross.",
+    "Mayor: no OCF totals found for Hamilton or Gross; the OCF e-filing search could not be queried, and the Lewis George row covers only public matching payments through January 2026. No prior governing record found for Hamilton or Gross. No Oct 6-16 debate or forum with the three ballot candidates was found.",
     "Council votes: DC Council LIMS needs an access token for its API, so roll calls came from FastDemocracy (aggregator) and news; only one final-passage vote per Council member was verified. Other bills should be checked in LIMS.",
-    "Delegate: Freeman's FEC page shows 2025-2026 data still processing. White's or Rosado's later FEC reports (pre-general) were not checked. Rosado and Freeman have no legislative records.",
-    "At-Large: no OCF totals found for any candidate. Darrell Green has only a website summary. Moch's party leadership role came from a search snippet and is not used. Candidate questionnaires from League of Women Voters or Vote411 were not found for 2026.",
+    "Delegate: White's FEC row now covers through Sept 30, 2026 (Oct quarterly). Rosado's FEC page still shows data only through May 27; Freeman's committee page shows no 2025-2026 figures. Rosado and Freeman have no legislative records.",
+    "At-Large: no OCF totals found for any candidate. Darrell Green has only a website summary. GGWash's Oct 1 'rank Silverman #1' post is known only from a search snippet (site blocked the fetch), so it is not used as evidence. Moch's party leadership role came from a search snippet and is not used. Candidate questionnaires from League of Women Voters or Vote411 were not found for 2026.",
     "ANC 2C03: no records found for Sheets (could be a first-time candidate; not confirmed). Only GGWash questionnaire answers exist for both candidates, and GGWash is an advocacy group.",
-    "Initiative 86: funding totals for supporters and opponents not found; no independent estimate beyond the CFO statement; the final certified text under the No. 86 number was not located.",
+    "Initiative 86: funding totals for supporters and opponents not found; no independent estimate beyond the CFO statement; the final certified text under the No. 86 number was not located; no new Oct 6-16 developments found.",
     "Not researched: Chairman of the Council, Attorney General, shadow Senator and shadow Representative contests (listed on the ballot only).",
     "Sources: DC Council LIMS, OCF e-filing search and the BOE results site could not be read with the available tools; Ballotpedia pages were read with a browser user agent."
   ]
