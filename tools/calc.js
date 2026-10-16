@@ -1,7 +1,11 @@
 // Pure parse + score for the Ballot Guide score calculator. Mirrors ballot-guide/scripts/score.py
 // exactly (same formula, same rounding, same calls); tools/calc_test.js fuzzes the two for parity.
 // tools/build_kit.py inlines this file into docs/index.html.
-const KIND = {record: 3, questionnaire: 2, stated: 1, funder: 1, endorsement: 1};
+const KIND = {record: 3, questionnaire: 2, stated: 1, funder: 1, endorsement: 1}; // original weights
+// Preset scorings, as in score.py; a custom one has the same keys. "donors" weighs the pooled funder and endorsement entry.
+const SCORING = {original: {record: 3, questionnaire: 2, stated: 1, donors: 1, exclude_both_sides: false},
+  improved: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true}};
+const WEIGHTS = ["record", "questionnaire", "stated", "donors"];
 // Breaks ties within one event: the candidate's own words beat what others give or say.
 const RANK = {record: 5, questionnaire: 4, stated: 3, endorsement: 2, funder: 1};
 const AGGREGATE = ["funder", "endorsement"]; // pooled to one entry per axis
@@ -297,6 +301,53 @@ function countEvidence(text) {
 
 const isGray = ev => ev.sign === "gray" || ev.gray === true;
 
+// Same as score.py resolve_scoring(): {scoring, errors}; scoring is {name, 4 weights, exclude_both_sides}.
+function resolveScoring(s) {
+  if (s === undefined || s === null) s = "improved";
+  if (typeof s === "string" && has(SCORING, s)) return {scoring: {name: s, ...SCORING[s]}, errors: []};
+  if (!s || typeof s !== "object" || Array.isArray(s)) {
+    return {scoring: null, errors: ['scoring must be "improved", "original" or an object with record, questionnaire, stated, donors and exclude_both_sides']};
+  }
+  const errors = WEIGHTS.filter(k => !Number.isInteger(s[k]) || s[k] < 0 || s[k] > 3).map(k => `scoring weight for ${k} must be an integer 0-3`);
+  if (typeof s.exclude_both_sides !== "boolean") errors.push("scoring exclude_both_sides must be true or false");
+  if (!errors.length && !WEIGHTS.some(k => s[k])) errors.push("every scoring weight is 0, so nothing would count; set at least one above 0");
+  // Answers pool to at most one record, so with record 0 they would silently count nothing.
+  if (!errors.length && s.questionnaire && !s.record) {
+    errors.push("questionnaire answers count at most one record; with record 0 they count nothing, so set record above 0 or questionnaire to 0");
+  }
+  if (errors.length) return {scoring: null, errors};
+  return {scoring: {name: "custom", record: s.record, questionnaire: s.questionnaire, stated: s.stated, donors: s.donors,
+    exclude_both_sides: s.exclude_both_sides}, errors: []};
+}
+const kindWeights = sc => ({record: sc.record, questionnaire: sc.questionnaire, stated: sc.stated, funder: sc.donors, endorsement: sc.donors});
+// The page's name for a scoring: the Step 1 choice, with the weights spelled out for Custom.
+function scoringLabel(sc) {
+  if (sc.name === "improved") return "Improved (recommended)";
+  if (sc.name === "original") return "Original";
+  return `Custom: records ${sc.record}, questionnaire answers ${sc.questionnaire}, statements ${sc.stated}, donors and endorsements ${sc.donors}; money backing more than one candidate ${sc.exclude_both_sides ? "not counted" : "counted"}`;
+}
+const linked = ev => typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source);
+const normEvent = e => e.trim().toLowerCase().replace(/\s+/g, " ");
+const sharedEvent = ev => AGGREGATE.includes(ev.kind) && typeof ev.event === "string" && ev.event.trim() !== "";
+// Same as score.py both_sides(): normalized funder/endorsement support ids that back two or more
+// options. Opposition ids ("against-" or "against:" then the donor) never count: backing A while
+// opposing B is a signal, not hedging. Withdrawn options are skipped too; red-lined ones count.
+const OPPOSE = /^against[-:]/;
+function bothSides(options) {
+  const backs = new Map();
+  options.forEach((o, i) => {
+    if (o.withdrawn) return;
+    for (const ev of o.evidence || []) {
+      if (sharedEvent(ev) && linked(ev) && !OPPOSE.test(normEvent(ev.event))) {
+        const k = normEvent(ev.event);
+        if (!backs.has(k)) backs.set(k, new Set());
+        backs.get(k).add(i);
+      }
+    }
+  });
+  return new Set([...backs].filter(([, who]) => who.size > 1).map(([k]) => k));
+}
+
 // Same page, same key: lowercase scheme/host, drop query and fragment, strip trailing /.
 function normSource(url) {
   url = url.trim().split("#")[0].split("?")[0];
@@ -344,13 +395,14 @@ function validateRace(options, weights, isMeasure) {
 const PARTY_NAME = /\b(?!(?:The|Any|A|Block)\b)[A-Z][A-Za-z]* +Party\b/, PARTY_ENDORSE = /\bparty endorsement\b/i;
 const partyRow = t => typeof t === "string" && (PARTY_NAME.test(t) || PARTY_ENDORSE.test(t));
 // Leave out rows without a web link and party endorsements and donors not tagged on one of the
-// voter's party priorities (partyAxes; as in score.py); split out gray rows; collapse rows of one
-// event (see eventKey) to one entry per axis, keeping the strongest kind.
-function collapse(opt, partyAxes) {
-  const gray = [], groups = new Map(), warnings = [];
+// voter's party priorities (partyAxes; as in score.py); split out gray rows; leave out rows of a
+// kind weighted 0 and both-sides money (shared ids, when the scoring excludes it); collapse rows of
+// one event (see eventKey) to one entry per axis, keeping the strongest kind.
+function collapse(opt, partyAxes, sc, shared) {
+  const gray = [], groups = new Map(), warnings = [], told = new Set(), w = kindWeights(sc);
   (opt.evidence || []).forEach((ev, i) => {
     const label = ev.event || ev.text || ev.source || `${opt.name} item ${i + 1}`;
-    if (!(typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source))) {
+    if (!linked(ev)) {
       warnings.push(`${opt.name}: Not counted until it has a full link: ${label}`);
       return;
     }
@@ -359,6 +411,14 @@ function collapse(opt, partyAxes) {
       return;
     }
     if (isGray(ev)) { gray.push(ev); return; }
+    if (!w[ev.kind]) { warnings.push(`${opt.name}: Not counted (weight 0 in your scoring): ${label}`); return; }
+    if (sc.exclude_both_sides && sharedEvent(ev) && shared.has(normEvent(ev.event))) {
+      if (!told.has(normEvent(ev.event))) {
+        told.add(normEvent(ev.event));
+        warnings.push(`${opt.name}: ${ev.event} backs more than one candidate here; not counted (access money)`);
+      }
+      return;
+    }
     const key = eventKey(ev, i);
     if (!groups.has(key)) groups.set(key, {label, rows: []});
     groups.get(key).rows.push(ev);
@@ -380,25 +440,25 @@ function collapse(opt, partyAxes) {
 
 // Returns {score, low, high, total, W}; all null when no axis has any evidence. total and W
 // (the weight of axes with evidence) feed the page's "Show the math".
-function fitParts(events, weights) {
-  const num = {}, den = {}, pooled = {}, quest = {};
+function fitParts(events, weights, sc) {
+  const num = {}, den = {}, pooled = {}, quest = {}, w = kindWeights(sc);
   for (const a of Object.keys(weights)) { num[a] = 0; den[a] = 0; pooled[a] = []; quest[a] = []; }
   for (const ev of events) {
     for (const [axis, kind, s] of ev.entries) {
       if (AGGREGATE.includes(kind)) pooled[axis].push(s);
       else if (kind === "questionnaire") quest[axis].push(s);
-      else { num[axis] += KIND[kind] * s; den[axis] += KIND[kind]; }
+      else { num[axis] += w[kind] * s; den[axis] += w[kind]; }
     }
   }
   const mean = f => f.reduce((t, s) => t + s, 0) / f.length;
   for (const a of Object.keys(weights).sort()) {
-    // All answers on an axis are one entry worth at most one record (k = 3), as in score.py.
+    // All answers on an axis are one entry worth at most one record, as in score.py.
     if (quest[a].length) {
-      const k = Math.min(KIND.questionnaire * quest[a].length, KIND.record);
+      const k = Math.min(w.questionnaire * quest[a].length, w.record);
       num[a] += k * mean(quest[a]); den[a] += k;
     }
-    // All donors and endorsers on an axis count as one entry (k = 1, mean sign), as in score.py.
-    if (pooled[a].length) { num[a] += mean(pooled[a]); den[a] += 1; }
+    // All donors and endorsers on an axis count as one entry (k = donors, mean sign), as in score.py.
+    if (pooled[a].length) { num[a] += sc.donors * mean(pooled[a]); den[a] += sc.donors; }
   }
   const known = new Set(events.flatMap(ev => ev.entries.map(e => e[0])));
   if (!known.size) return {score: null, low: null, high: null, total: 0, W: 0};
@@ -418,7 +478,7 @@ function fitParts(events, weights) {
   return {score: pyRound(50 + 50 * total / wKnown), low: pyRound(50 + 50 * (totalOwn - unknown) / wAll),
     high: pyRound(50 + 50 * (totalOwn + unknown) / wAll), total, W: wKnown};
 }
-const fit = (events, weights) => fitParts(events, weights).score;
+const fit = (events, weights, sc) => fitParts(events, weights, sc).score;
 
 // Leave-one-out steps as [label, remaining events], same order as score.py steps(): each
 // record/stated event alone, then per axis all questionnaire answers and all donors/endorsers.
@@ -438,8 +498,8 @@ function steps(events) {
 
 // grayTopics: the profile lists topics the voter is torn on. Without any, a gray tag cannot
 // mean "torn", so those rows are dropped from the list too, with a warning (as in score.py).
-function summarize(opt, weights, grayTopics, partyAxes) {
-  const c = collapse(opt, partyAxes), {events, warnings} = c;
+function summarize(opt, weights, grayTopics, partyAxes, sc, shared) {
+  const c = collapse(opt, partyAxes, sc, shared), {events, warnings} = c;
   let gray = c.gray;
   if (gray.length && !grayTopics) {
     warnings.push(`${opt.name}: tagged gray, but you listed no topics you are torn on (${gray.length} not counted).`);
@@ -458,7 +518,7 @@ function summarize(opt, weights, grayTopics, partyAxes) {
   const level = !events.length ? "none"
     : cov >= 0.75 && firm >= 3 && records >= 1 && firmAxes >= 2 ? "strong"
     : cov >= 0.5 && firm >= 2 ? "moderate" : "thin";
-  const parts = fitParts(events, weights);
+  const parts = fitParts(events, weights, sc);
   const row = {name: opt.name, score: parts.score, low: parts.low, high: parts.high, evidence: level, confidence: level,
     coverage: pyRound(cov * 100) / 100, events: events.length, records, questionnaires, gray,
     excluded: opt.withdrawn ? "withdrew" : !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
@@ -473,7 +533,7 @@ function leaderOf(scores) {
 }
 
 // Returns [call, turns_on]. Leave-one-out: a call that one event can flip is a toss-up.
-function decide(rows, events, covered, eligible, measure, weights) {
+function decide(rows, events, covered, eligible, measure, weights, sc) {
   const tossUp = label => [`Toss-up (turns on: ${label})`, label];
   let wAll = 0;
   for (const a of Object.keys(weights)) wAll += weights[a];
@@ -485,7 +545,7 @@ function decide(rows, events, covered, eligible, measure, weights) {
     const m = s - 50;
     if (m === 0) return ["Toss-up", null];
     for (const [label, rest] of steps(events[0])) {
-      const s2 = fit(rest, weights);
+      const s2 = fit(rest, weights, sc);
       // null: the whole score rests on this one step.
       if (s2 === null || s2 === 50 || (s2 > 50) !== (m > 0)) return tossUp(label);
     }
@@ -510,7 +570,7 @@ function decide(rows, events, covered, eligible, measure, weights) {
   for (let j = 0; j < eligible.length; j++) {
     for (const [label, rest] of steps(events[eligible[j]])) {
       const alt = scores.slice();
-      alt[j] = fit(rest, weights);
+      alt[j] = fit(rest, weights, sc);
       // null: that option's whole score rests on this one step. That flips the call only for
       // the leader; a runner-up left with nothing cannot overtake it.
       if (alt[j] === null) { if (j === lead) return tossUp(label); continue; }
@@ -528,19 +588,22 @@ function decide(rows, events, covered, eligible, measure, weights) {
   return [clear ? name : `Lean ${name}`, null];
 }
 
-// Returns {call, turns_on, rows, warnings, errors}; errors means nothing was scored.
+// Returns {call, turns_on, rows, warnings, errors, scoring}; errors means nothing was scored.
 // partyAxes: letters of the voter's party priorities (parseWeights); party evidence counts only there.
-function scoreRace(options, weights, isMeasure, grayTopics, partyAxes) {
-  const errors = validateRace(options, weights, isMeasure);
-  if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors};
+// scoring: "improved" (default), "original" or a custom object, as score.py's "scoring" key.
+function scoreRace(options, weights, isMeasure, grayTopics, partyAxes, scoring) {
+  const {scoring: sc, errors} = resolveScoring(scoring);
+  errors.push(...validateRace(options, weights, isMeasure));
+  if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors, scoring: sc};
+  const shared = bothSides(options);
   const rows = [], events = [], covered = [], warnings = [];
   for (const o of options) {
-    const s = summarize(o, weights, grayTopics, partyAxes);
+    const s = summarize(o, weights, grayTopics, partyAxes, sc, shared);
     rows.push(s.row); events.push(s.events); covered.push(s.covered); warnings.push(...s.warnings);
   }
   const eligible = options.map((o, i) => i).filter(i => !options[i].red_line && !options[i].withdrawn);
-  const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights);
-  return {call, turns_on, rows, warnings, errors};
+  const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights, sc);
+  return {call, turns_on, rows, warnings, errors, scoring: sc};
 }
 
 // Whether the profile lists a topic the voter is torn on: text after "Gray areas:" or a
@@ -559,7 +622,7 @@ function hasGrayTopics(text) {
   return false;
 }
 
-function calculate(weightsText, researchText) {
+function calculate(weightsText, researchText, scoring) {
   const {weights, warnings, partyAxes} = parseWeights(weightsText);
   if (!Object.keys(weights).length) {
     return {warnings, errors: [{line: "", msg: "No value weights found. Paste your Step 1 profile or type A=3, B=2."}], result: null};
@@ -569,11 +632,12 @@ function calculate(weightsText, researchText) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
     return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
-  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText), partyAxes);
+  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText), partyAxes, scoring);
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
   return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, cleanMd, normLine, CLOSING_OFFER, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
+  module.exports = {pyRound, cleanMd, normLine, CLOSING_OFFER, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate,
+    resolveScoring, scoringLabel};
 }

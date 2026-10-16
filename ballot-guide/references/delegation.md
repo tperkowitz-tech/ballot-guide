@@ -50,6 +50,15 @@ do not do it; report it under BLOCKERS.
    `evidence[]` items with `axis`, `sign`, `kind`, `event`, `source`, `date`, `text`, plus a
    top-level `gray` list of the voter's torn topics (empty if none) and a `party_axes` list of
    the letters of any party priorities (party endorsements and donors count only there).
+   The coordinator adds the top-level `"scoring"` key from the voter's choice: `"improved"`
+   (the default when absent), `"original"`, or `{"record": n, "questionnaire": n, "stated": n,
+   "donors": n, "exclude_both_sides": true|false}` with whole numbers 0-3, not all 0.
+   For every `funder` and `endorsement` item, set `event` to the donor's, donor group's or
+   endorser's name (for example `"Example Realty PAC"`), written the same way under every
+   candidate: Improved scoring spots money that backs more than one candidate by that id.
+   For money or ads spent AGAINST a candidate, write the event id as `against-<donor name>`
+   (for example `[D][-][FUNDER][against-Example PAC]`); for support use the donor name.
+   Backing one candidate and opposing another is counted, never treated as both-sides money.
    A measure has one option, the YES side. In neutral mode, use a short topic name
    as the axis and sign "0" on every row (no directions); nothing is scored. Bullets
    then read `[TOPIC][0][KIND]`, for example `[Housing][0][RECORD]`.

@@ -3,7 +3,11 @@
 const assert = require("assert");
 const path = require("path");
 const {spawnSync} = require("child_process");
-const {pyRound, parseWeights, parseResearch, calculate, scoreRace} = require("./calc.js");
+const calc = require("./calc.js");
+const {pyRound, parseWeights, parseResearch, resolveScoring, scoringLabel} = calc;
+// The v2.1 cases below pin the original scoring; the scoring-options block covers the others.
+const calculate = (w, text, scoring = "original") => calc.calculate(w, text, scoring);
+const scoreRace = (opts, w, measure, gray, party, scoring = "original") => calc.scoreRace(opts, w, measure, gray, party, scoring);
 
 const rows = r => r.result.rows.map(o => [o.name, o.score, o.evidence]);
 
@@ -482,6 +486,52 @@ console.log("calc_test: all checks passed");
   console.log("calc_test: v2.1 model checks passed");
 }
 
+// Scoring options: the same cases score.py --demo asserts, plus the page's labels and the default.
+{
+  let page = 0;
+  const ev = (axis, sign, kind, extra) => ({axis, sign, kind, source: `https://example.org/s${page++}`, ...extra});
+  const recFund = [ev("A", "-", "record"), ev("A", "+", "funder")];
+  // No scoring given: improved, echoed back; donors pool as k = 2: (-3 + 2) / 8 -> 44 (original 36).
+  let r = calc.scoreRace([{name: "X", evidence: recFund}], {A: 3});
+  assert.deepStrictEqual(r.scoring, {name: "improved", record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true});
+  assert.strictEqual(r.rows[0].score, 44);
+  assert.strictEqual(scoreRace([{name: "X", evidence: recFund}], {A: 3}).rows[0].score, 36);
+  // calculate() takes the page's choice; a pasted race with one donor id under both candidates.
+  const both = "CANDIDATE: X\n- [A][+][RECORD][r1] vote | https://e.org/r1\n- [A][+][FUNDER][Example Realty PAC] gave | https://e.org/f1\n" +
+    "CANDIDATE: Y\n- [A][+][RECORD][r2] vote | https://e.org/r2\n- [A][+][FUNDER][example realty pac] gave | https://e.org/f2";
+  r = calc.calculate("A=3", both, "improved");
+  assert.deepStrictEqual(r.result.rows.map(o => o.score), [75, 75]);
+  assert.deepStrictEqual(r.warnings, ["X: Example Realty PAC backs more than one candidate here; not counted (access money)",
+    "Y: example realty pac backs more than one candidate here; not counted (access money)"]);
+  assert.deepStrictEqual(calc.calculate("A=3", both, "original").result.rows.map(o => o.score), [79, 79]);
+  // Support for X plus spending against Y (an "against-" id) both count.
+  r = calc.calculate("A=3", both.replace("[A][+][FUNDER][example realty pac]", "[A][-][FUNDER][against-Example Realty PAC]"), "improved");
+  assert.deepStrictEqual([r.result.rows.map(o => o.score), r.warnings], [[81, 56], []]);
+  // "Against Malaria Fund" is a donor name, not opposition: backing both, it is excluded.
+  const mal = both.replace(/Example Realty PAC/gi, "Against Malaria Fund");
+  assert.deepStrictEqual(calc.calculate("A=3", mal, "improved").result.rows.map(o => o.score), [75, 75]);
+  // A withdrawn candidate's donors are not both-sides money; a red-lined one's still are.
+  r = calc.calculate("A=3", both.replace("CANDIDATE: X", "CANDIDATE: X (withdrew from the race)"), "improved");
+  assert.deepStrictEqual([r.result.rows.map(o => o.score), r.warnings.filter(w => w.includes("access money"))], [[81, 81], []]);
+  r = calc.calculate("A=3", both.replace("\nCANDIDATE: Y", "\nRED LINE CROSSED: yes\nCANDIDATE: Y"), "improved");
+  assert.deepStrictEqual(r.result.rows.map(o => o.score), [75, 75]);
+  // Custom: a weight-0 kind is listed as not counted and gives no coverage.
+  const cust = w => ({record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true, ...w});
+  r = calc.calculate("A=2, B=2", "CANDIDATE: X\n- [A][+][STATED][s] said | https://e.org/s", cust({stated: 0}));
+  assert.deepStrictEqual([r.result.rows[0].score, r.result.rows[0].coverage, r.result.call], [null, 0, "Not enough evidence"]);
+  assert.deepStrictEqual(r.warnings, ["X: Not counted (weight 0 in your scoring): s"]);
+  // Invalid custom weights: a clear error and no result.
+  r = calc.calculate("A=3", both, cust({record: 0, questionnaire: 0, stated: 0, donors: 0}));
+  assert.strictEqual(r.result, null);
+  assert.ok(r.errors.some(e => e.msg.includes("every scoring weight is 0")), JSON.stringify(r.errors));
+  assert.deepStrictEqual(resolveScoring(cust({record: 0})).errors.length, 1);
+  assert.strictEqual(scoringLabel(resolveScoring().scoring), "Improved (recommended)");
+  assert.strictEqual(scoringLabel(resolveScoring("original").scoring), "Original");
+  assert.strictEqual(scoringLabel(resolveScoring(cust({stated: 0, exclude_both_sides: false})).scoring),
+    "Custom: records 3, questionnaire answers 2, statements 0, donors and endorsements 2; money backing more than one candidate counted");
+  console.log("calc_test: scoring option checks passed");
+}
+
 // Parity fuzz: the same random races through score.py (JSON round trip) and calc.js.
 {
   let seed = 12345;
@@ -508,7 +558,8 @@ console.log("calc_test: all checks passed");
           sign: rnd() < 0.01 ? "?" : pick(["+", "+", "-", "-", "0", "gray"]),
           kind: rnd() < 0.01 ? "rumor" : pick(heavy ? ["record", "questionnaire", "questionnaire", "questionnaire", "stated", "funder", "endorsement"]
             : ["record", "record", "questionnaire", "stated", "funder", "endorsement"]),
-          event: maybe(0.4, pick(["e1", "e2", "e3"])),
+          // Shared ids across options exercise the both-sides rule; case and spacing variants must match.
+          event: maybe(0.4, pick(["e1", "e2", "e3", "Example PAC", "example  pac", " EXAMPLE PAC", "against-Example PAC", "Against-example pac", "against: Example PAC", "Against Malaria Fund", "against malaria  fund", "Example PAC (against)"])),
           // Mostly real links; the rest (none, empty, a bare domain, a title) are left out with a warning.
           source: rnd() < 0.85 ? pick(["https://a.example", "https://b.example", "HTTPS://A.Example/", "https://a.example?q=1#f", " http://c.example/x"])
             : pick([undefined, "", "a.example", "AP News"]),
@@ -521,7 +572,17 @@ console.log("calc_test: all checks passed");
       options.push({name: measure ? "YES" : "O" + o, red_line: rnd() < 0.15 && pick([true, "", " bribe ", "bribe | https://c.example"]),
         withdrawn: maybe(0.1, true), evidence});
     }
-    cases.push(JSON.parse(JSON.stringify({axes, gray: rnd() < 0.5, partyAxes: letters.filter(() => rnd() < 0.3), race: {race: "R" + n, measure, options}})));
+    const base = {axes, gray: rnd() < 0.5, partyAxes: letters.filter(() => rnd() < 0.3), race: {race: "R" + n, measure, options}};
+    // Every race under every scoring option: the default (no key, improved), "improved", "original",
+    // and random custom weights 0-3 with either both-sides setting; about 1 in 10 custom slots is an
+    // invalid one instead (all 0, questionnaire without record, out of range, no switch, not an
+    // integer, an unknown name, null).
+    const w03 = () => Math.floor(rnd() * 4);
+    const custom = rnd() < 0.1 ? pick([{record: 0, questionnaire: 0, stated: 0, donors: 0, exclude_both_sides: true},
+      {record: 0, questionnaire: 1, stated: 1, donors: 1, exclude_both_sides: true}, {record: 4, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
+      {record: 3, questionnaire: 2, stated: 1, donors: 2}, {record: 3, questionnaire: 2, stated: 1, donors: 1.5, exclude_both_sides: false}, "fancy", null])
+      : {record: w03(), questionnaire: w03(), stated: w03(), donors: w03(), exclude_both_sides: rnd() < 0.5};
+    for (const scoring of [undefined, "improved", "original", custom]) cases.push(JSON.parse(JSON.stringify({...base, scoring})));
   }
   const py = spawnSync("python3", ["-c", `
 import json, sys
@@ -530,8 +591,8 @@ from score import score_race
 out = []
 for c in json.load(sys.stdin):
     try:
-        r = score_race(c["race"], c["axes"], c["gray"], c["partyAxes"])
-        out.append({k: r[k] for k in ("call", "turns_on", "options", "warnings")})
+        r = score_race(c["race"], c["axes"], c["gray"], c["partyAxes"], c.get("scoring"))
+        out.append({k: r[k] for k in ("call", "turns_on", "options", "warnings", "scoring")})
     except ValueError as e:
         out.append({"error": str(e)})
 print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")], {input: JSON.stringify(cases), encoding: "utf8", maxBuffer: 1 << 28});
@@ -540,9 +601,9 @@ print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")],
   const FIELDS = ["name", "score", "low", "high", "evidence", "confidence", "coverage", "events", "records", "questionnaires", "gray", "excluded"];
   let mismatches = 0, kinds = new Set();
   cases.forEach((c, i) => {
-    const r = scoreRace(c.race.options, c.axes, c.race.measure, c.gray, c.partyAxes);
+    const r = calc.scoreRace(c.race.options, c.axes, c.race.measure, c.gray, c.partyAxes, c.scoring);
     const got = r.errors.length ? {error: r.errors.join("; ")}
-      : JSON.parse(JSON.stringify({call: r.call, turns_on: r.turns_on, warnings: r.warnings,
+      : JSON.parse(JSON.stringify({call: r.call, turns_on: r.turns_on, warnings: r.warnings, scoring: r.scoring,
           options: r.rows.map(o => Object.fromEntries(FIELDS.map(f => [f, o[f]])))}));
     kinds.add(got.error ? "error" : got.call.replace(/ .*/, ""));
     if (!got.error && got.call.includes("(uneven evidence)")) kinds.add("uneven");
@@ -550,10 +611,13 @@ print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")],
     if (!got.error && got.options.some(o => o.excluded === "withdrew")) kinds.add("withdrawn");
     if (!got.error && got.warnings.some(w => w.includes("full link"))) kinds.add("no-link");
     if (!got.error && got.warnings.some(w => w.includes("Party evidence"))) kinds.add("party");
+    if (!got.error && got.warnings.some(w => w.includes("access money"))) kinds.add("both-sides");
+    if (!got.error && got.warnings.some(w => w.includes("weight 0"))) kinds.add("weight-0");
+    if (!got.error) kinds.add("scoring-" + got.scoring.name);
     try { assert.deepStrictEqual(got, want[i]); } catch (e) {
       if (++mismatches <= 3) console.error("parity mismatch", JSON.stringify(c), JSON.stringify(got), JSON.stringify(want[i]));
     }
   });
   assert.strictEqual(mismatches, 0, `${mismatches} parity mismatches`);
-  console.log(`calc_test: parity fuzz passed (${cases.length} races, 0 mismatches; calls seen: ${[...kinds].sort().join(", ")})`);
+  console.log(`calc_test: parity fuzz passed (${cases.length / 4} races x 4 scorings, 0 mismatches; calls seen: ${[...kinds].sort().join(", ")})`);
 }
