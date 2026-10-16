@@ -1,74 +1,61 @@
 ---
 name: ballot-guide
-description: Research US ballots, candidates' evidence (records first, then candidates' own questionnaire answers and statements, with donors and endorsements as limited signals), measures, and official election logistics with sources. Use for a full ballot guide, one race or measure, or an explainer. Neutral comparisons are the default; the existing values-match workflow is opt-in when requested with supplied values and permitted by the host.
+description: Research US ballots, candidates' evidence (records first, then candidates' own questionnaire answers and statements, with donors and endorsements as limited signals), measures, and official election logistics with sources. Use for a full ballot guide, one race or measure, or an explainer. Neutral comparison is the default; values match is opt-in when the user asks, supplies values, and the host permits it.
 ---
 
 # Ballot Guide
 
-Find the exact ballot and build a sourced guide, emphasizing deeds rather than
-campaign promises. The voter makes the choice. Read `references/rules.md` and
-`references/prompts.md` before starting; the rules govern both modes.
+Find the exact ballot and build a sourced guide that puts deeds before campaign
+promises. The voter makes the choice. Before starting, read `references/rules.md`
+(the rules, for both modes) and `references/prompts.md` (the step prompts).
 
 ## Modes and scope
 
 - **Neutral comparison (default):** no values profile, scores, rankings or calls.
-  Use this when the user wants neutral research or the host does not permit matching.
+  Use it when the user wants neutral research or the host does not permit matching.
 - **Values match (opt-in):** only when the voter asks, supplies values and the host
-  permits it. Follow the existing values workflow in `references/rules.md` and
-  use `scripts/score.py`; never substitute your own politics.
+  permits it. Follow the values-match workflow in `references/rules.md` and score
+  with `scripts/score.py`. Never substitute your own politics.
 - **Full ballot:** all applicable steps. **One race or measure:** only the relevant
-  steps. **Explainer:** legal effects, fiscal facts and strongest sourced arguments;
-  no values interview. Answer pure logistics directly from the official election office.
+  steps. **Explainer:** legal effects, fiscal facts and the strongest sourced
+  arguments; no values interview. Answer pure logistics directly from the official
+  election office.
 
 ## Workflow
 
-1. Confirm jurisdiction, election date/type and districts; prefer an official sample
-   ballot. Use an address only for the official lookup, never in outputs.
-2. Find the ballot (Step 2), checking local and state pamphlets, withdrawals,
-   primary rules and expected offices absent from this election.
+1. Confirm jurisdiction, election date and type, and districts; prefer an official
+   sample ballot. Use an address only for the official lookup, never in outputs.
+2. Find the ballot (Step 2). Check local and state pamphlets, withdrawals, primary
+   rules, and expected offices that are not on this ballot.
 3. Research every candidate (Step 3) and every measure (Step 4), including minor and
-   uncontested candidates. For 5+ candidates, research all by default; an optional
-   voter-selected fair focus rule (for example a minimum vote share) must list everyone excluded and why.
-4. Neutral mode skips Steps 1 and 5, and has no scores or calls in Step 7.
-   Values mode uses the profile, scoring and call instructions in the rules: one
-   position per value from distinct events (record 3, stated 1; questionnaire
-   answers pooled to one worth 2, or 3 for two or more; donors and endorsements pooled
-   to one entry), a score over values with evidence plus a range for the values
-   without the candidate's own evidence, coverage and an evidence level beside every score,
-   gray items left out, red-lined options excluded from the call, toss-ups that name
-   the event they turn on, and "(uneven evidence)" when coverage differs by 0.4+.
-   Party is evidence only for a party priority the voter listed.
-   Offer three scoring options: Original (the default) pools donors and endorsements to 1;
-   Evidence-based (research-informed; being tested) weighs the pool by donor type from the
-   event id (`person-`, `cause-`, `pac-`) and incumbency (at most 2) and leaves out a donor
-   backing more than one candidate in a race; Custom weights 0-3 are the voter's own choice,
-   never yours. Never call an option recommended. Pass the choice to `scripts/score.py` as
-   `"scoring"` (`"improved"` is an old alias of `"evidence"`), mark sitting officeholders
-   `"incumbent": true`, and name the option in the guide.
-   Unopposed: 60+ "Vote for" and 40 or less "Consider leaving blank or writing in"
-   need coverage 0.5+, better than thin evidence and at least one record; otherwise
-   "Your call"; no evidence "Not enough evidence". A clear contested winner or a
-   plain measure YES/NO also needs at least one record; otherwise it is a lean.
-   Viability is separate from scoring and shown only on request; the voter owns
-   tactical choices. See the rules for the existing electability treatment.
+   unopposed candidates. For races with 5 or more candidates, follow "Crowded and
+   unopposed races" in the rules.
+4. Neutral mode skips Steps 1 and 5 and has no scores or calls in Step 7. Values mode
+   follows the rules' values-match workflow, "Scoring options" and "Crowded and
+   unopposed races": offer Original (the default), Evidence-based and Custom, never
+   call one recommended, pass the choice and incumbency to `scripts/score.py`, and
+   name the option in the guide. Viability is separate from scoring and shown only on
+   request; the voter owns tactical choices.
 5. Verify (Step 6) against primary sources; worker reports are claims until checked.
-   Optionally run Step 8 on each research answer with a different model or a fresh chat; recommended for close calls.
+   Optionally run Step 8 on each research answer with a different model or a fresh
+   chat; recommended for close calls.
 6. Build the local guide (Step 7), with source links, research dates, uncertainty,
    open items and "where to look yourself". Sharing needs explicit authorization.
-   Afterwards you may offer the optional test report in Step 7; the user decides whether to submit it.
-7. Recheck disputed facts; in values mode, re-run the existing calculator after
-   user changes to signs or weights and explain which scores moved.
+   Afterwards you may offer the optional test report in Step 7; the user decides
+   whether to submit it.
+7. Recheck disputed facts. In values mode, re-run the calculator after the user
+   changes signs or weights, and explain which scores moved.
 
-Use available web, browser, PDF and script tools without assuming a vendor or
-connector. Delegate only when authorized, using bounded public-source tasks and
-excluding addresses and personal stakes. See the rules for verification coverage.
-For sub-agents, follow references/delegation.md; validate every evidence file with scripts/check_evidence.py before scoring.
+Use whatever web, browser, PDF and script tools are available; do not assume a
+vendor or connector. Delegate only when authorized, following
+`references/delegation.md`, and validate every evidence file with
+`scripts/check_evidence.py` before scoring.
 
 ## Files
 
-- `references/rules.md` — shared research rules and the original values workflow.
-- `references/prompts.md` — step prompts, with the neutral routing note.
-- `references/delegation.md` — optional tiered research with sub-agents.
-- `references/quickstart.txt` — the single-chat starter the web kit offers for free AI chats.
-- `scripts/score.py` — calculator; `python3 scripts/score.py --demo`.
-- `scripts/check_evidence.py` — checks evidence JSON before scoring; `python3 scripts/check_evidence.py --demo`.
+- `references/rules.md`: research rules for both modes, and the values-match workflow.
+- `references/prompts.md`: step prompts (Steps 0–8).
+- `references/delegation.md`: optional research with sub-agents.
+- `references/quickstart.txt`: the one-chat starter the web kit's Quick start offers.
+- `scripts/score.py`: calculator; `python3 scripts/score.py --demo`.
+- `scripts/check_evidence.py`: checks evidence JSON before scoring; `python3 scripts/check_evidence.py --demo`.

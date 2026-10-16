@@ -7,7 +7,7 @@ A web version with copy buttons and a score calculator is at https://tperkowitz-
 
 ## Quick start (one chat)
 
-The easiest way: paste this starter into one free AI chat with web search, type the races from your ballot or sample ballot, then type "next 3" until done. Type "export" and paste the answer into the web kit's Quick start (https://tperkowitz-tech.github.io/ballot-guide/#quick-start), which checks and scores each item and builds your guide; or type "guide" for a summary in the chat. To research one race at a time, use the full steps below.
+The easiest way: paste this starter into one free AI chat with web search, type the races from your ballot or sample ballot, then type "next 3" until done. Type "export" and paste the answer into the web kit's Quick start (https://tperkowitz-tech.github.io/ballot-guide/#quick-start), which checks and scores each item and builds your guide; or type "guide" for a summary in the chat. Which chats worked in testing: see [TESTED.md](TESTED.md). For Advanced (one race at a time), use the steps below.
 
 ```text
 You are my nonpartisan ballot research guide. Use web search for every fact. Work in small steps and wait for me between steps.
@@ -49,7 +49,7 @@ Start with step 1.
 
 ## How to use
 
-This kit works with any AI chat that has web search turned on, for example Google Gemini, Microsoft Copilot, Perplexity, Meta AI, Grok, DeepSeek, ChatGPT, or Claude. A local model on your own computer also works if you paste the source pages into the chat yourself.
+This kit works with an AI chat that has web search turned on. A local model on your own computer also works if you paste the source pages into the chat yourself.
 
 Two ways to use it:
 

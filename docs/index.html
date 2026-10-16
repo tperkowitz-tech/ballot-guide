@@ -6,7 +6,7 @@
 <!-- Privacy: the browser blocks every connection to other sites. tools/check.py requires this exact policy. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <title>Ballot Guide Prompt Kit</title>
-<meta name="description" content="Free copy-and-paste prompts that help any AI chat with web search build a personal, sourced voter guide scored against your own values, plus a score calculator that runs in your browser.">
+<meta name="description" content="Free copy-and-paste prompts that help an AI chat with web search build a sourced guide to your ballot: a neutral comparison by default, or scores against your own values, with a calculator that runs in your browser.">
 <style>
 /* Layout: one reading column. Each step is a numbered card (the order is real) with a copyable prompt block. */
 :root{
@@ -151,13 +151,13 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
 </header>
 
 <div class="how" id="quick-start" role="region" aria-labelledby="quick-h">
-  <h2 id="quick-h">Quick start (easiest)</h2>
+  <h2 id="quick-h">Quick start</h2>
   <ol>
     <li>Copy the starter.</li>
-    <li>Paste it into a free AI chat with web search, and type the races from your ballot or sample ballot (ChatGPT worked in testing; free accounts may limit photo uploads, so typing works best).</li>
-    <li>Type "next 3" until every item is done. If the chat gets slow, type "continue" and paste its message into a new chat.</li>
-    <li>After about every 12 items, type "export" and copy the whole answer (free chats can forget early research on a long ballot).</li>
-    <li>Paste it below and press Read export; each paste adds to the guide. This page checks, scores and builds your guide itself, with no more chat steps.</li>
+    <li>Paste it into a free AI chat with web search, and type the races from your ballot or sample ballot. (<a href="https://github.com/tperkowitz-tech/ballot-guide/blob/main/TESTED.md">Which chats worked in testing</a>.)</li>
+    <li>Type "next 3" until every item is done. If the chat gets slow, type "continue" and paste its reply into a new chat.</li>
+    <li>After about every 12 items, type "export" and copy the whole answer. Free chats can forget early research on a long ballot.</li>
+    <li>Paste it below and press Read export. Each paste adds to the guide; this page checks, scores and builds it.</li>
   </ol>
   <div class="btn-row"><button class="copy primary" type="button" id="quick-copy">Copy the starter</button></div>
   <details>
@@ -198,10 +198,10 @@ STEPS
 
 Start with step 1.</pre>
   </details>
-  <p>No street address needed: you share only your races (or your city, county and state). If you send a photo, use an unmarked ballot or sample ballot, and leave out the envelope.</p>
+  <p>No street address needed: you share only your races, or your city, county and state. If you send a photo, use an unmarked ballot or sample ballot, not the envelope.</p>
   <h3 id="export-h">Paste your export</h3>
   <textarea id="export-answer" rows="8" autocomplete="off" aria-labelledby="export-h" aria-describedby="export-hint"></textarea>
-  <p class="hint" id="export-hint">Paste one export at a time; items with the same number replace the earlier ones. This box is not saved; only the items read from it are, in this browser, without lines that may include an address.</p>
+  <p class="hint" id="export-hint">Paste one export at a time; an item with the same number replaces the earlier one. This box is not saved. Only the items read from it are saved, in this browser, without lines that may include an address.</p>
   <div class="btn-row"><button type="button" class="copy primary" id="export-read">Read export</button></div>
   <div id="export-confirm" class="warn" hidden>
     <p id="export-confirm-msg"></p>
@@ -219,18 +219,17 @@ Start with step 1.</pre>
       <div class="btn-row" id="export-check-parts"><button type="button" class="copy primary" id="export-check-copy" aria-describedby="export-check-hint">Double-check only flagged items</button></div>
     </div>
   </div>
-  <p>Prefer one chat per race, with a check after each? Use <a href="#step-kit">Advanced: research one race at a time</a> below.</p>
+  <p>Prefer one chat per race, with a check after each? Use <a href="#step-kit">Advanced (one race at a time)</a> below.</p>
 </div>
 
 <details class="advanced" id="step-kit">
-<summary><h2>Advanced: research one race at a time</h2></summary>
+<summary><h2>Advanced (one race at a time)</h2></summary>
 <div class="adv-body">
 <div class="how" role="region" aria-labelledby="start-h">
   <h2 id="start-h">Before you start</h2>
-  <p>You will need: an AI chat that can search the web (for example ChatGPT or Claude with search turned on). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. <a href="sample.html">See sample guides</a> to know what you will get.</p>
-  <p>Use Claude or Codex? The <a href="https://github.com/tperkowitz-tech/ballot-guide#install-the-skill">Ballot Guide skill</a> does the research for you, with deeper checks. This page is the no-install version for any AI chat.</p>
-  <p>As of October 2026, free Copilot needs a Microsoft sign-in, and logged-out Perplexity answers one question before asking you to sign up. Free Gemini declined or returned errors on these election questions, and Google AI Mode did not find ballot lists reliably (in one test it used a primary-election list). Logged-out ChatGPT with search is the free option that worked in testing; still check its ballot list against your official sample ballot.</p>
-  <p>Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates. Some say they store what you send, including your address in Step 2, in China (DeepSeek, for one); others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address.</p>
+  <p>You will need an AI chat that can search the web. This page writes each question; you copy it into the chat and paste the answer back here. Plan on about 5 minutes per race or measure, so do a few at a time; your progress is saved. <a href="sample.html">See sample guides</a> to know what you will get.</p>
+  <p>Use Claude or Codex? <a href="https://github.com/tperkowitz-tech/ballot-guide#install-the-skill">The skill</a> does the research for you, with deeper checks.</p>
+  <p>Step 2 asks for your address. Before you paste it into a chat, read that chat's privacy policy; see <a href="#privacy">Privacy</a>.</p>
   <p><strong>How it works</strong></p>
   <ol>
     <li>Tell the page about you.</li>
@@ -247,7 +246,7 @@ Start with step 1.</pre>
       <dt>Statement</dt><dd>What a candidate says, such as a website, an interview, or a written answer to an open-ended survey such as Vote411.</dd>
       <dt>Endorsement</dt><dd>Support from an issue group that publishes its criteria. All endorsements and donors on one priority count as one weak item.</dd>
       <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
-      <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
+      <dt>Unopposed</dt><dd>Only one candidate is running (marked UNCONTESTED in the ballot list).</dd>
       <dt>Double-check</dt><dd>A second AI chat checks the first answer against its sources.</dd>
       <dt>Score</dt><dd>A summary of the evidence found and how each piece was marked as for or against your priorities. It is not a prediction of who will win.</dd>
       <dt>Range</dt><dd>How far unknown priorities could move the score, shown as "could be low–high". A wide range means much is unknown.</dd>
@@ -259,10 +258,10 @@ Start with step 1.</pre>
   <details>
     <summary>More detail</summary>
     <div>
-<p><strong>When to use it:</strong> once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when the candidate list is final and most candidate questionnaires and donor reports are out. In the last week, do a quick re-check of close races and the candidate list, since candidates can withdraw and late donor reports and news appear. Your progress stays in this browser, so you can come back.</p>
+<p><strong>When to use it:</strong> once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when the candidate list is final and most questionnaires and donor reports are out. In the last week, re-check close races and the candidate list for withdrawals, late donor reports and news.</p>
 <p>Neutral mode: skip Step 1 and Step 5; in Steps 3 and 4 write each evidence line as [TOPIC][0][KIND] (a short topic word, no + or −); no scores or calls in Step 7.</p>
 <p><strong>How to use</strong></p>
-<p>This kit works with any AI chat that has web search turned on, for example Google Gemini, Microsoft Copilot, Perplexity, Meta AI, Grok, DeepSeek, ChatGPT, or Claude. A local model on your own computer also works if you paste the source pages into the chat yourself.</p>
+<p>This kit works with an AI chat that has web search turned on. A local model on your own computer also works if you paste the source pages into the chat yourself.</p>
 <p>Two ways to use it:</p>
 <ul>
   <li>Neutral comparison: a sourced side-by-side of every choice, with no scores. Skip Steps 1 and 5.</li>
@@ -323,7 +322,7 @@ Start with step 1.</pre>
       </fieldset>
       <fieldset aria-describedby="scoring-hint">
         <legend>Scoring</legend>
-        <p class="hint" id="scoring-hint">Original and Evidence-based count records most. Original counts all donors and endorsements on a priority together like one statement. Evidence-based weighs them by kind of money, using what research found about each signal, and ignores money that backs more than one candidate; it has not yet been checked against real results. Custom lets you set each weight, so how much records count is your choice. No study has tested any of these weightings.</p>
+        <p class="hint" id="scoring-hint">Original and Evidence-based count records most; with Custom, you decide. No study has tested any of these weightings, so none is recommended. <a href="https://github.com/tperkowitz-tech/ballot-guide/blob/main/SCORING.md">How the scores work</a>.</p>
         <label class="opt"><input type="radio" name="scoring" value="original" checked> Original (default): donors and endorsements together count like one statement</label>
         <label class="opt"><input type="radio" name="scoring" value="evidence"> Evidence-based (research-informed; being tested): individual donors and issue groups count more for newcomers, PAC money counts less for incumbents, and money that backs more than one candidate in a race is not counted</label>
         <label class="opt"><input type="radio" name="scoring" value="custom" aria-controls="custom-fields"> Custom: set each weight yourself (starts equal to Original)</label>
@@ -408,7 +407,7 @@ Start with step 1.</pre>
 MEASURES
 - Measure 1 | YES raises the library levy | source: https://example.org/pamphlet</pre>
   <textarea id="ballot-answer" rows="8" autocomplete="off" aria-describedby="ballot-answer-help ballot-answer-hint"></textarea>
-  <p class="hint" id="ballot-answer-help">If the AI says NO WEB ACCESS, turn on web search in that chat or use a different AI, then try again. Try a free chat with web search; in testing (October 2026), ChatGPT with search worked without signing in. If it lists something wrong or misses something, fix the list below with Add or Delete.</p>
+  <p class="hint" id="ballot-answer-help">If the AI says NO WEB ACCESS, turn on web search in that chat or use a different AI, then try again. If the list is wrong or missing something, fix it below with Add or Delete.</p>
   <p class="hint">If the chat says it could not open a PDF, open the link yourself and paste the text into the chat.</p>
   <p class="hint" id="ballot-answer-hint">This box is not saved, because the answer may repeat your address. Only the list of races and measures is saved.</p>
   <div class="btn-row"><button type="button" class="copy" id="ballot-read">Read the answer</button></div>
@@ -530,7 +529,7 @@ GAPS: no funder data found</textarea>
   <ul>
     <li><strong>What stays on your computer:</strong> to keep your progress, your browser saves your profile choices, your race list and the AI answers you paste, in this browser on this device only. It stays until you press <em>Start over</em> or clear this site's data in your browser settings. This page never sends it anywhere.</li>
     <li><strong>What is never saved:</strong> your address, the AI's answer that lists your ballot, and that answer's double-check reply (both may repeat your address). The Quick start export box is not saved either: only the items read from it are, and lines that may include an address are shown to you and left out.</li>
-    <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there; some services, including several free chats made by companies based in China or their affiliates, may store it outside the US. Some search-based AI tools, such as Google AI Mode, put your question in the page address, so it can be saved in your browser history. Links you open take you to other websites.</li>
+    <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there. Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates; some say they store what you send in China (DeepSeek, for one), and others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address. Some search-based AI tools, such as Google AI Mode, put your question in the page address, so it can be saved in your browser history. Links you open take you to other websites.</li>
     <li><strong>Hosting:</strong> GitHub Pages serves this page. Like any website host, GitHub receives standard information such as your IP address when the page loads. The page loads nothing from any other site: no fonts, ads or scripts. Your browser enforces this with a security policy built into the page.</li>
     <li><strong>Test report:</strong> the optional "Share how it went" panel only opens a GitHub form with the fields shown in its preview. Nothing is sent unless you submit that form on GitHub.</li>
     <li><strong>Clipboard:</strong> the page writes to your clipboard only when you press a copy button. It never reads your clipboard.</li>
@@ -539,7 +538,7 @@ GAPS: no funder data found</textarea>
 </section>
 
 <footer>
-  <p>Lessons in this kit come from building and reviewing a real 2026 guide. Typical errors were: an amendment vote read as a final vote, candidates matched to the wrong seat in pamphlet text, and an uncontested race shown as contested. A review then found ways to game the score (many weak items, empty records) and web pages that try to give the AI instructions. Steps 0, 5, and 6 now guard against each of these.</p>
+  <p>The steps guard against errors found while building and reviewing real guides: an amendment vote read as a final vote, candidates matched to the wrong seat, an unopposed race shown as contested, a score padded with weak items, and web pages that try to give the AI instructions.</p>
   <p>Dates, deadlines and places to vote: use your official state or county election website, or <a href="https://www.vote.org/">vote.org</a>.</p>
   <p>Source and issues: <a href="https://github.com/tperkowitz-tech/ballot-guide">github.com/tperkowitz-tech/ballot-guide</a>. MIT license. <a href="https://github.com/tperkowitz-tech/ballot-guide/blob/main/CREDITS.md" target="_blank" rel="noopener noreferrer">Credits</a>.</p>
 </footer>
@@ -2213,11 +2212,10 @@ const REFUSED_MSG={noweb:"The chat said it cannot search the web. Use a chat wit
   error:"The chat returned an error or declined instead of answering. Start a new chat, or try a different AI.",
   needplace:"The chat needs the place and candidates. Check the Place field in Step 1 and the race line, then copy again.",
   split:"The chat says this is too big for one answer. Copy one part at a time, or ask it to do part 1."};
-const NO_WEB_TIP=" Try a free chat with web search; in testing (October 2026), ChatGPT with search worked without signing in.";
 // A missing place or a split is fixed on this page, so it gets no try-another-chat tip. Step 2
 // (ballot) has no race line, so its missing-place message names only the Step 1 fields.
 const refusedText=(k,ballot)=>ballot&&k==="needplace"?"The chat needs the place. Check your address and the Place field in Step 1, then copy again."
-  :REFUSED_MSG[k]+(k==="needplace"||k==="split"?"":NO_WEB_TIP);
+  :REFUSED_MSG[k];
 
 const host=$("steps");
 STEPS.forEach((s,i)=>{

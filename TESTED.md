@@ -4,6 +4,16 @@ Where people have tried the ballot guide, from voluntary reports. Each row shows
 coarse location (state, and a county or city if the reporter chose to share it). No names,
 addresses, political views or votes are recorded.
 
+## Which free chats worked
+
+From the October 2026 tests in the log below:
+
+- **Logged-out ChatGPT with search** was the free option that worked. Still check its ballot list against your official sample ballot. Free accounts may limit photo uploads, so typing your races works best.
+- **Free Microsoft Copilot** needed a sign-in when we tried it (not a full test, so it has no log row).
+- **Logged-out Perplexity** answers one question, then asks you to sign up.
+- **Free Google Gemini** declined or returned errors on these election questions.
+- **Google AI Mode** did not find ballot lists reliably; in one test it used a primary-election list.
+
 ## Areas tested
 
 One row per state, generated from the report log below.

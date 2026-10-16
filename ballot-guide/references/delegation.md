@@ -1,8 +1,8 @@
 # Tiered Research
 
 An optional way to split a large ballot across several agents. Use it only when the
-user or the host allows sub-agents. Otherwise one agent does every step, in order,
-using `rules.md` and `prompts.md`. Everything in `rules.md` still applies.
+user or the host allows sub-agents; otherwise one agent does every step in order.
+Everything in `rules.md` still applies.
 
 ## Roles
 
@@ -54,16 +54,12 @@ do not do it; report it under BLOCKERS.
    The coordinator adds the top-level `"scoring"` key from the voter's choice: `"original"`
    (the default when absent), `"evidence"` (`"improved"` is an old alias), or `{"record": n, "questionnaire": n, "stated": n,
    "donors": n, "exclude_both_sides": true|false}` with whole numbers 0-3, not all 0.
-   For every `funder` and `endorsement` item, set `event` to a type and the donor's, donor
-   group's or endorser's name, written the same way under every candidate: `person-<name>`
-   for individual donors or small-dollar totals, `cause-<name>` for a group whose mission is
-   that axis's issue, `pac-<name>` for PAC, corporate or trade money (for example
-   `"pac-Example Realty PAC"`). Evidence-based scoring weighs donors by that type and spots
-   money that backs more than one candidate by that id. For money or ads spent AGAINST a
-   candidate, put `against-` first (for example `[D][-][FUNDER][against-pac-Example PAC]`).
-   Use `questionnaire` only for closed-ended answers (yes/no, multiple choice, rating scales,
-   as in Vote Smart); open-ended written answers (for example Vote411) are `stated`.
-   Backing one candidate and opposing another is counted, never treated as both-sides money.
+   For every `funder` and `endorsement` item, set `event` to the donor-name id from Step 3's
+   output format (`person-`, `cause-` or `pac-` plus the name, with `against-` first for money
+   against a candidate; for example `"pac-Example Realty PAC"`), written the same way under
+   every candidate. Evidence-based scoring weighs donors by that type and spots money that
+   backs more than one candidate by that id. Use `questionnaire` only for closed-ended
+   answers, as Step 0 defines; open-ended written answers are `stated`.
    A measure has one option, the YES side. In neutral mode, use a short topic name
    as the axis and sign "0" on every row (no directions); nothing is scored. Bullets
    then read `[TOPIC][0][KIND]`, for example `[Housing][0][RECORD]`.

@@ -1,6 +1,8 @@
 # How the scores work
 
-Scores are optional. The default is a neutral, side-by-side comparison with no scores. If you choose **values match**, each choice gets a fit score against the priorities you enter. The score is a reproducible **summary of the evidence collected and how each item was tagged**. It is not a prediction, a poll, or a measured percentage.
+Scores are optional. The default is a **neutral comparison**: facts side by side, with no scores. If you choose **values match**, each choice gets a score for how well it fits the priorities you enter. The score is a reproducible **summary of the evidence collected and how each item was tagged**. It is not a prediction, a poll, or a measured percentage.
+
+This page is the reference for scoring. The calculator code is the final word: [`score.py`](ballot-guide/scripts/score.py), mirrored exactly by the web kit's `tools/calc.js`.
 
 ## What counts as evidence
 
@@ -17,15 +19,15 @@ Scores are optional. The default is a neutral, side-by-side comparison with no s
 
 ## Scoring options
 
-You choose one in Step 1 (values match only). Under every option a firm call needs a record, and the same toss-up, range and coverage rules apply. Original and Evidence-based also count records most; under Custom, how much each kind counts is your choice. No option is recommended.
+You choose one when you set up values match. Under every option, a firm call needs a record, and the same toss-up, range and coverage rules apply. Original and Evidence-based count records most; under Custom, you decide. No option is recommended.
 
-- **Original (the default).** All donors and endorsements on a priority together count 1, like one statement, and money on both sides still counts. This was also the scoring before v1.7.0.
+- **Original (the default).** All donors and endorsements on a priority together count 1, like one statement, and money on both sides still counts.
 - **Evidence-based (research-informed; being tested).** Records, questionnaire answers and statements count as in Original. Donors and endorsements on a priority are still pooled into one entry, but its weight depends on the kind of money, which research writes into each line's event id:
   - `person-` individual donors or small-dollar totals; `cause-` a group whose mission is that priority's issue; `pac-` PAC, corporate or trade money; anything else is general.
   - For a **newcomer**, `person-` and `cause-` lines count 2 and the rest 1. For an **incumbent** (research writes "(incumbent)" after the name of a candidate who holds the office now), `pac-` lines count 0.5 and the rest 1.
   - The pool counts as much as its highest-weighted line (so never more than 2, less than one record), and its direction is the weighted average of its lines.
 
-  This is a deliberately simple rule, not a fitted model. Money that backs more than one candidate in the same race is shown but not counted, with a note ("backs more than one candidate here; not counted (can't tell the candidates apart)"). Opposing one candidate and backing the other still counts: research writes "against-" in front of the id for money spent against a candidate (for example `against-pac-Example PAC`). A candidate who withdrew is left out of this check: a donor who moves to the remaining candidate is not hedging (a candidate who crossed a deal-breaker stays in). A measure has only a YES side, so the rule never applies to it. "Improved", the name of an earlier version of this option (v1.7), now means Evidence-based, in saved web-kit progress and in the calculator.
+  This is a deliberately simple rule, not a fitted model. Money that backs more than one candidate in the same race is shown but not counted, with a note ("backs more than one candidate here; not counted (can't tell the candidates apart)"). Opposing one candidate and backing the other still counts: research writes "against-" in front of the id for money spent against a candidate (for example `against-pac-Example PAC`). A candidate who withdrew is left out of this check: a donor who moves to the remaining candidate is not hedging (a candidate who crossed a deal-breaker stays in). A measure has only a YES side, so the rule never applies to it. "Improved", an earlier name for this option, still means Evidence-based in saved web-kit progress and in the calculator.
 - **Custom.** You set each weight from 0 to 3: records, questionnaire answers, statements, and donors and endorsements, plus whether to ignore money that backs more than one candidate. It starts equal to Original. 0 means not counted: those lines are shown, marked not counted, and give no coverage. All questionnaire answers on a priority still never count more than one record. At least one weight must be above 0. This is your call; the guide does not suggest custom weights.
 
 ## What the research says
@@ -61,4 +63,4 @@ In plain terms, here is what studies have found about each kind of evidence (sou
 
 - Choosing and tagging evidence is a judgment. Every tag is shown with its source so you can challenge it.
 - Donors are a limited signal: many groups give to every likely winner. Evidence-based leaves out money that shows up on both sides of one race and counts PAC money to incumbents at half weight, but a donor who backs only the likely winner still counts.
-- The arithmetic lives in [`ballot-guide/scripts/score.py`](ballot-guide/scripts/score.py) and is mirrored exactly in the web calculator; tests check that both give the same results.
+- Tests check that `score.py` and the web calculator give the same results.
