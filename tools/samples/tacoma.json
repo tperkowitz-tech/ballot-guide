@@ -2,7 +2,7 @@
   "place": "Tacoma, Washington (Pierce County)",
   "test_address_label": "Tacoma Municipal Building (public building)",
   "election": "2026-11-03 General",
-  "researched": "2026-10-06",
+  "researched": "2026-10-16",
   "official_office": {
     "name": "Pierce County Auditor Elections",
     "url": "https://www.piercecountywa.gov/8887/Elections"
@@ -14,111 +14,225 @@
         "position": "District 6",
         "candidates": "Emily Randall (Prefers Democratic Party) | Teresa Fox (Prefers Republican Party)",
         "status": "CONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "State Representative",
         "position": "Legislative District 27, Position 1",
         "candidates": "Laurie Jinkins (Prefers Democratic Party) | Carole Sue Braaten (Prefers Republican Party)",
         "status": "CONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "State Representative",
         "position": "Legislative District 27, Position 2",
-        "candidates": "Jake Fey",
+        "candidates": "Jake Fey (Prefers Democratic Party)",
         "status": "UNCONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County Auditor",
+        "position": "countywide (nonpartisan)",
+        "candidates": "Linda Farmer | Damon Townsend",
+        "status": "CONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County Prosecuting Attorney",
+        "position": "countywide (nonpartisan)",
+        "candidates": "Coreen Schnepf | Bryan Chushcoff",
+        "status": "CONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "Supreme Court Justice",
-        "position": "Position 1 (unexpired term)",
+        "position": "Position 1 (unexpired term, two-year)",
         "candidates": "Colleen Melody | Scott Edwards",
         "status": "CONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "Supreme Court Justice",
         "position": "Position 3",
         "candidates": "David Stevens | Jaime Michelle Hawk",
         "status": "CONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "Supreme Court Justice",
         "position": "Position 4",
         "candidates": "Ian Birk | Sean O'Donnell",
         "status": "CONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "Supreme Court Justice",
-        "position": "Position 5 (unexpired term)",
+        "position": "Position 5 (unexpired term, two-year)",
         "candidates": "Theo Angelis | Dave Larson",
         "status": "CONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "Supreme Court Justice",
         "position": "Position 7",
         "candidates": "Debra L. Stephens | Todd A. Bloom",
         "status": "CONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "Court of Appeals Judge",
         "position": "Division 2, District 1, Position 2",
         "candidates": "Meng Li Che",
         "status": "UNCONTESTED",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
-        "office": "Pierce County Prosecuting Attorney",
-        "position": "countywide",
-        "candidates": "Coreen E. Schnepf | Bryan Chushcoff",
-        "status": "CONTESTED",
-        "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3391098"
+        "office": "Pierce County District Court Judge",
+        "position": "Position 1 (countywide)",
+        "candidates": "Kevin A. McCann",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
-        "office": "Pierce County Auditor",
-        "position": "countywide",
-        "candidates": "Linda Farmer | Damon Townsend",
+        "office": "Pierce County District Court Judge",
+        "position": "Position 2 (countywide)",
+        "candidates": "Claire Sussman",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County District Court Judge",
+        "position": "Position 3 (countywide)",
+        "candidates": "Lizanne Padula",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County District Court Judge",
+        "position": "Position 4 (countywide)",
+        "candidates": "Neil Horibe",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County District Court Judge",
+        "position": "Position 5 (countywide)",
+        "candidates": "Dwayne Christopher",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County District Court Judge",
+        "position": "Position 6 (countywide)",
+        "candidates": "Karl Williams",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County District Court Judge",
+        "position": "Position 7 (countywide)",
+        "candidates": "Pam Nogueira | Mike Sommerfeld",
         "status": "CONTESTED",
-        "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/689027"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Pierce County District Court Judge",
+        "position": "Position 8 (countywide)",
+        "candidates": "Sven Nelson | James Armstrong",
+        "status": "CONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "office": "Tacoma Municipal Court Judge",
-        "position": "Positions 1, 2, 3",
-        "candidates": "Dee A. Sonntag (Pos 1) | Sergio C. Flores (Pos 2) | Steven J. Krupa (Pos 3)",
-        "status": "UNVERIFIED",
-        "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3390953"
+        "position": "Position 1",
+        "candidates": "Dee Sonntag",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Tacoma Municipal Court Judge",
+        "position": "Position 2",
+        "candidates": "Sergio C. Flores",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "office": "Tacoma Municipal Court Judge",
+        "position": "Position 3",
+        "candidates": "Steven J. Krupa",
+        "status": "UNCONTESTED",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       }
     ],
     "measures": [
       {
         "name": "Initiative Measure IP26-645",
         "summary": "Official ballot title: Initiative Measure No. IP26-645 concerns state and local taxes. This measure would repeal a 9.9% tax on annual individual income over $1,000,000; prohibit taxes measured by individual income and taxes on individual income or the receipt of individual income; and define “income.” This measure would decrease funding for public K-12 education, higher education (including universities and community colleges), and human services (primarily healthcare). Should this measure be enacted into law?",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "name": "Initiative Measure IL26-001",
         "summary": "Repeals amendments to the statute listing rights of parents and guardians of public-school children and re-enacts the law as originally enacted by Initiative to the Legislature 2081 (per the pamphlet summary page).",
-        "source": "https://www.sos.wa.gov/sites/default/files/2026-10/Voters%20Pamphlet%202026%20-%20Edition%2009%20-%20Pierce.pdf"
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       },
       {
         "name": "Initiative Measure IL26-638",
-        "summary": "Statewide initiative on the November 2026 ballot (sex verification requirements for female school sports per SOS listing); official summary page not read in detail.",
-        "source": "https://www.sos.wa.gov/node/12667"
+        "summary": "Official ballot title: concerns participation in athletics at K-12 schools. Would prohibit students it defines as \"biologically male\" from competing in certain school athletic activities intended for female students only, and would require verification of biological sex by students' healthcare providers.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce County Charter Amendment No. 52 (County Council meetings)",
+        "summary": "Charter Review Commission proposal (Approved/Rejected): requires the County Council to meet at least 45 times each year and requires Council meetings that take public comment to offer remote attendance and public comment. Per official sample-ballot text.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce County Charter Amendment No. 53 (Appointed Sheriff and Termination of Elected Sheriff)",
+        "summary": "Charter Review Commission proposal (Approved/Rejected): would make the Sheriff an appointed (by the Executive, confirmed by a majority of the County Council) rather than elected office, ending the current elected term early, effective January 1, 2027. Per official sample-ballot text.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce County Charter Amendment No. 54 (Public Safety Ombuds)",
+        "summary": "Charter Review Commission proposal (Approved/Rejected): creates an executive department of Public Safety Ombuds to provide independent oversight of the Sheriff and Sheriff's Office employees. Per official sample-ballot text.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce County Charter Amendment No. 55 (Initiative Procedures)",
+        "summary": "Charter Review Commission proposal (Approved/Rejected): gives initiative sponsors 180 days to collect signatures in support of a proposed initiative. Per official sample-ballot text.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce County Charter Amendment No. 56 (Four Year Budget Outlook)",
+        "summary": "Charter Review Commission proposal (Approved/Rejected): requires the Chief Financial Officer to prepare a four-year budget outlook for the next and succeeding biennial budgets, establishing that projected expenditures will not exceed projected available funds. Per official sample-ballot text.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce County Charter Amendment No. 57 (Nondiscrimination)",
+        "summary": "Charter Review Commission proposal (Approved/Rejected): revises the prohibition on discrimination in the performance of County duties so that it may not infringe on, diminish, or impair any right secured by the U.S. or Washington State Constitution. Per official sample-ballot text.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce County Charter Amendment No. 58 (Juvenile Detention)",
+        "summary": "Charter Review Commission proposal (Approved/Rejected): creates a Juvenile Detention Advocate Office to respond to complaints, monitor conditions and comply with regulations, and subjects Juvenile Detention to an independent audit or accreditation review at least once every five years. Per official sample-ballot text.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "Pierce Transit Proposition No. 1 (Maintaining and Expanding Local Transit Service Sales and Use Tax Increase)",
+        "summary": "Would authorize an additional sales and use tax of three-tenths of one percent to maintain and improve transit service (more routes and event service, longer service hours, shorter waits, access to light rail, healthcare, schools and jobs, expanded service for people with disabilities, fare-free service for seniors and youth), effective April 1, 2027. Approved/Rejected.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
+      },
+      {
+        "name": "City of Tacoma Initiative Measure No. 1 (Safe Homes for All)",
+        "summary": "Concerns tenant safety and protection laws: landlord education and training, recognizing tenants' right to organize, requiring landlords to bargain in good faith with tenant unions, a public landlord information database, City and private enforcement with penalties and cost recovery, landlord rental licensing and fees, license revocation, anti-retaliation, and certain exemptions. Yes/No.",
+        "source": "https://www.piercecountywa.gov/DocumentCenter/View/161564/Sample-Ballot"
       }
     ],
     "unverified": [
-      "Pierce County Council district for the test address (Tacoma is split across districts) and whether that district is up in 2026; the county council seats on the 2026 ballot are Districts 1, 5 and 7 per an aggregator (The Ballot Brief), not confirmed from the county.",
-      "Pierce County Superior Court judge races, Pierce County District Court positions (an aggregator and PDC data disagree on Position 5 candidates), and Tacoma Municipal Court contests: PDC lists three Tacoma Municipal Court candidates but contested status is unconfirmed.",
-      "Pierce County charter amendments (a Pierce County page reportedly lists seven on the Nov 3, 2026 ballot) and any City of Tacoma measures or other local districts (school, fire, port): the county Elections site and local voters' pamphlet returned 403 to automated access and could not be opened.",
-      "Congressional and legislative districts came from the U.S. Census Bureau geocoder (CD 6, LD 27 as of its current boundary layers), not the VoteWA address lookup.",
-      "Pierce County Auditor candidate list rests on PDC data and an aggregator; the official county sample ballot could not be opened.",
-      "Pierce County Prosecuting Attorney candidate list (Coreen E. Schnepf, Bryan Chushcoff): from PDC registrations only (both shown on the general ballot); not confirmed on the county sample ballot.",
-      "Pierce County Auditor: PDC also lists Mitchel (Mitch) Townsend as a 2026 County Auditor candidate shown on the general ballot; not reconciled with the two names listed here."
+      "Pierce County Council district for the Municipal Building: a county Charter Review Commission page snippet (page returned 403 to automated access, seen only as a search snippet) and the Wikipedia council table both place downtown Tacoma in District 4. The official sample ballot lists County Council Districts 1, 5 and 7 only, so no council race is shown for this address; this rests on District 4 not being up in 2026 and is UNVERIFIED by the county's own GIS Council District Locator.",
+      "Congressional (6) and legislative (27) districts: from the U.S. Census Bureau geocoder run on the address, consistent with the sample ballot's LD 27 and CD 6 sections; not checked against the VoteWA address lookup.",
+      "How the ballot was matched to the address: the official Pierce County sample ballot is county-wide, so only contests that apply to the address are kept (CD 6; LD 27; county-wide offices; Supreme Court; Court of Appeals Div. 2 Dist. 1; county-wide District Court Positions 1-8; state and county charter measures; Pierce Transit Prop. 1, whose area includes Tacoma; City of Tacoma Initiative 1; Tacoma Municipal Court). Other Pierce County contests (other congressional and legislative districts, council districts, the Southeast Electoral District judge positions, and Milton, South Prairie, Fire District 14, Yelm and Auburn measures) do not apply to a Tacoma address.",
+      "Sample-ballot text was read from a text extraction of the county PDF; for District Court Position 7, the extraction lists two names (Pam Nogueira, Mike Sommerfeld) without a separate position label, so the pairing is read from layout.",
+      "Not researched: Pierce County Auditor, Court races, Tacoma and county measures other than IP26-645. No candidate withdrawals appear on the sample ballot. Mitch Townsend, listed earlier, is a Lewis County Auditor candidate (PDC), not a Pierce County candidate.",
+      "Party labels shown are as printed on the sample ballot (for example 'Prefers Democratic Party')."
     ]
   },
   "gray": [],
@@ -181,11 +295,12 @@
               "sign": "0",
               "kind": "funder",
               "source": "https://www.fec.gov/data/candidate/H4WA06117/?cycle=2026",
-              "date": "2026-07-15",
-              "text": "FEC 2026 cycle through 2026-07-15: $1,195,246.70 raised, of which $876,066.66 from individuals and $311,706.07 from other committees; $981,487.55 spent; $241,630.83 cash on hand.",
+              "date": "2026-09-30",
+              "text": "FEC 2026 cycle through 2026-09-30 (October quarterly report): $1,394,379.04 raised, of which $1,009,952.00 from individuals and $376,706.07 from other committees; $1,212,686.82 spent; $209,563.90 cash on hand.",
               "event": "randall-fec-2026"
             }
-          ]
+          ],
+          "incumbent": true
         },
         {
           "name": "Teresa Fox (Prefers Republican Party)",
@@ -284,12 +399,13 @@
               "axis": "Campaign finance",
               "sign": "0",
               "kind": "funder",
-              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3321392",
-              "date": "2026",
-              "text": "PDC 2026 campaign summary: $216,725.44 in contributions, $283,517.53 in expenditures, $134,265.11 carried forward.",
+              "source": "https://data.wa.gov/resource/3h9x-7bvm.json?id=ca-2026-3321392",
+              "date": "2026-10-16",
+              "text": "PDC 2026 campaign summary (state open-data set, queried 2026-10-16): $226,111.17 in contributions, $286,673.81 in expenditures, $134,265.11 carried forward.",
               "event": "jinkins-pdc-2026"
             }
-          ]
+          ],
+          "incumbent": true
         },
         {
           "name": "Carole Sue Braaten (Prefers Republican Party)",
@@ -376,9 +492,9 @@
               "axis": "Campaign finance",
               "sign": "0",
               "kind": "funder",
-              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3391098",
-              "date": "2026",
-              "text": "PDC 2026 campaign summary: $95,488.60 in contributions and $31,251.39 in expenditures.",
+              "source": "https://data.wa.gov/resource/3h9x-7bvm.json?id=ca-2026-3391098",
+              "date": "2026-10-16",
+              "text": "PDC 2026 campaign summary (state open-data set, queried 2026-10-16): $105,738.60 in contributions and $43,280.32 in expenditures.",
               "event": "schnepf-pdc-2026"
             }
           ]
@@ -408,9 +524,9 @@
               "axis": "Campaign finance",
               "sign": "0",
               "kind": "funder",
-              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/candidates/3391226",
-              "date": "2026",
-              "text": "PDC 2026 campaign summary: $25,706.75 in contributions and $7,767.57 in expenditures.",
+              "source": "https://data.wa.gov/resource/3h9x-7bvm.json?id=ca-2026-3391226",
+              "date": "2026-10-16",
+              "text": "PDC 2026 campaign summary (state open-data set, queried 2026-10-16): $51,212.42 in contributions and $52,998.34 in expenditures.",
               "event": "chushcoff-pdc-2026"
             }
           ]
@@ -462,18 +578,18 @@
               "axis": "Campaign finance (YES)",
               "sign": "0",
               "kind": "funder",
-              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/committees/co-2026-42237",
-              "date": "2026",
-              "text": "PDC: Vote Yes Repeal the Income Tax reports $1,586,970.00 in contributions and $269,085.14 in expenditures; Let's Go Washington (Sponsored by Brian Heywood), registered for IL26-001, IL26-638 and IL26-645, reports $3,876,110.50 in contributions and $3,613,312.13 in expenditures across all three measures.",
+              "source": "https://data.wa.gov/resource/3h9x-7bvm.json?id=co-2026-42237",
+              "date": "2026-10-16",
+              "text": "PDC (state open-data set, queried 2026-10-16): Vote Yes Repeal the Income Tax reports $1,989,245.00 in contributions and $1,579,072.00 in expenditures; Let's Go Washington (Sponsored by Brian Heywood), registered for IL26-001, IL26-638 and IL26-645, reports $3,908,180.50 in contributions and $3,917,168.54 in expenditures across all three measures.",
               "event": "IP645-finance-yes"
             },
             {
               "axis": "Campaign finance (NO)",
               "sign": "0",
               "kind": "funder",
-              "source": "https://www.pdc.wa.gov/political-disclosure-reporting-data/browse-search-data/committees/co-2026-42211",
-              "date": "2026",
-              "text": "PDC: No on 645 reports $11,522,533.97 in contributions and $429,686.81 in expenditures; Millionaire's Tax Washington (against) reports $243,799.00 in contributions and $219,039.23 in expenditures.",
+              "source": "https://data.wa.gov/resource/3h9x-7bvm.json?id=co-2026-42211",
+              "date": "2026-10-16",
+              "text": "PDC (state open-data set, queried 2026-10-16): No on 645 reports $12,269,814.62 in contributions and $7,354,424.83 in expenditures; Millionaire's Tax Washington (against) reports $243,799.00 in contributions and $219,039.23 in expenditures.",
               "event": "IP645-finance-no"
             },
             {
@@ -491,11 +607,11 @@
     }
   ],
   "gaps": [
-    "Local voters' pamphlet and sample ballot from piercecountywa.gov were blocked (HTTP 403 / Cloudflare check), so county and city items are incomplete; the state/federal list comes from the official Washington voters' pamphlet (Pierce edition).",
-    "No local measure was researched because none could be confirmed from an official source; only one measure (IP26-645) was researched, so 4 items instead of 5.",
     "Prosecutor race: no voted or decided records found for either candidate from sources I could open; both candidates' items are campaign-site statements and PDC totals. No League of Women Voters or Vote411 questionnaire was found.",
     "Teresa Fox and Carole Sue Braaten have no legislative record; Braaten has no PDC totals.",
-    "FEC figures run through 2026-07-15 (latest report in the FEC API when checked); PDC figures are the 2026 campaign summary dataset at the time checked.",
-    "Measure funding is committee-level; top donors were not listed."
+    "Measure funding is committee-level; top donors were not listed.",
+    "Official county sample ballot was read from an extracted-text copy of the PDF; the county Elections site and council-district pages returned 403 to automated access, so local measures other than the listing were not researched (only IP26-645 was, so 4 items).",
+    "FEC: Randall's figures run through 2026-09-30; the FEC page for Teresa Fox still showed the 2026-07-15 report when checked 2026-10-16 (newly filed data can lag up to 48 hours), so her row is unchanged.",
+    "PDC figures are from the state open-data campaign summary queried 2026-10-16; no Oct 6-16 debates, forums, rulings, bar ratings or new endorsements were found from sources opened for the researched items (the Supreme Court 4-4 ruling on the IP26-645 fiscal-statement wording and the Steves/Jennings endorsements predate Oct 6)."
   ]
 }

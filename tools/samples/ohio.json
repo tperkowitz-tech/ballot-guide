@@ -2,7 +2,7 @@
   "place": "Columbus, Ohio (Franklin County)",
   "test_address_label": "Ohio Statehouse (public building)",
   "election": "2026-11-03 General",
-  "researched": "2026-10-06",
+  "researched": "2026-10-16",
   "official_office": {
     "name": "Franklin County Board of Elections",
     "url": "https://vote.franklincountyohio.gov"
@@ -12,7 +12,7 @@
       {
         "office": "Governor and Lieutenant Governor",
         "position": "Full term",
-        "candidates": "Amy Acton and David Pepper (Democratic) | Don Kissick and James L. Mills (Libertarian) | Vivek Ramaswamy and Robert A. McColley (Republican). Declared write-ins (not printed): Timothy Grady/Andrea Neutzling, Heather Hill/Patrick Manley, Renea Turner/Jalen Turner, Ron Ula/Michael C. Lehnerd",
+        "candidates": "Amy Acton and David Pepper (Democratic) | Don Kissick and James L. Mills (Libertarian) | Vivek Ramaswamy and Robert A. McColley (Republican). Declared write-ins (not printed): Timothy Grady/Andrea Neutzling, Heather Hill/Patrick Manley, Renea Turner/Jalen Turner (the earlier Ula/Lehnerd write-in ticket no longer appears on the list revised October 16, 2026)",
         "status": "CONTESTED",
         "source": "https://vote.franklincountyohio.gov/getmedia/e0a4ca45-6893-45c1-8190-87696f8804b4/2026-General-Candidate-List-5"
       },
@@ -182,15 +182,16 @@
       }
     ],
     "unverified": [
+      "BALLOT LIST: rechecked 2026-10-16 against the Franklin County Board of Elections candidate list now marked 'Revised October 16, 2026' and the certified questions and issues list (still marked revised 9/4/2026). Every race and measure here is unchanged except the Governor write-in list (Ula/Lehnerd no longer listed). The Board's address-specific sample ballot tool could not be queried, so the ballot is matched to the Statehouse by the districts below, not by a sample ballot for the building.",
       "DISTRICTS: Ohio Secretary of State pages and district PDFs returned HTTP 403 to every fetch, so no official SOS lookup was opened. Districts (Congress 15, Ohio Senate 15, Ohio House 1) come from the U.S. Census Bureau geocoder run on the Statehouse's public coordinates (https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=-83.0003&y=39.9611&benchmark=Public_AR_Current&vintage=Current_Current&layers=all&format=json). The Ohio House 1 result is consistent with Rep. Jarrells' official House page (District 1, Columbus) but that page does not prove the building's district. Congressional District 15 is UNVERIFIED by an Ohio-source map: nearby points return District 3 and District 15, so the building sits in a boundary area. Confirm with the Franklin County sample ballot generator at https://vote.franklincountyohio.gov.",
       "Columbus voters in some precincts also get precinct-level liquor local-option questions (#10A through #17b on the certified list). Whether any applies to the Statehouse precinct is UNVERIFIED; the certified questions list was revised 9/4/2026 (pages marked 9/1 and 9/4), after which the Board may revise it again.",
-      "Judicial pairings: the Common Pleas General and Domestic Relations, and Court of Appeals seats are listed above as separate UNCONTESTED seats because each candidate has a different term-commencing date on the Franklin County list. No second source (campaign page or court roster) was found for these pairings. The Probate seat (Green, Junga, same date) is corroborated by Columbus Bar Association profiles for both.",
       "Write-in column: the PDF header is garbled ('DWrite-In'). Candidates with party 'N/A' and 'Yes' in that column are treated as declared write-ins. Gary Josephson (U.S. House 15) and Greg Levy (U.S. Senate, 'Other-party c') show no such flag and are listed as printed candidates; this reading is UNVERIFIED.",
-      "Whether Issue 8 or Issue 9 prevails if both pass: one news outlet (Axios, not opened, search snippet only) says the charter gives the win to the issue with more votes; the 8/24/2026 council ordinance text was not opened. UNVERIFIED.",
       "Ohio House 1 incumbent's press release on a 'Gas Tax Holiday Act' (HB 1019, House vote 78-16) could not be matched: the legislature.ohio.gov HB 1019 page shows no votes recorded. Left out of evidence.",
       "Campaign finance for Governor is secondhand (Signal Ohio and NBC4 reports of official filings); the Ohio Secretary of State finance site was blocked (HTTP 403).",
       "Passage threshold and turnout conditions for Issue 3 and Issues 8/9 were not checked in an official source.",
-      "Probate Court: Kelly Green's current title (Chief Magistrate) is supported by her Columbus Bar Association profile only; the court's staff page (probate.franklincountyohio.gov) returned HTTP 403. UNVERIFIED by the court."
+      "Probate Court: Kelly Green's current title (Chief Magistrate) is supported by her Columbus Bar Association profile only; the court's staff page (probate.franklincountyohio.gov) returned HTTP 403. UNVERIFIED by the court.",
+      "Judicial pairings: the Common Pleas General and Domestic Relations, and Court of Appeals seats are listed as separate UNCONTESTED seats because each candidate has a different term-commencing date on the Franklin County list (revised October 16, 2026). The Probate seat (Green, Junga, same date) is corroborated by Columbus Bar Association profiles for both.",
+      "Whether Issue 8 or Issue 9 prevails if both pass: ABC6 (Sept. 24, 2026) reports Issue 9's language would override conflicting provisions of Issue 8. This is a news report; the charter text was not opened, so the rule is UNVERIFIED in an official source."
     ]
   },
   "gray": [],
@@ -427,7 +428,8 @@
               "text": "Official House page lists him as the District 1 member from Columbus with a stated priority of high-paying careers, quality education and safety from firearms.",
               "event": "jarrells-bio"
             }
-          ]
+          ],
+          "incumbent": true
         },
         {
           "name": "Joel A. Greff (Republican)",
@@ -613,7 +615,7 @@
       "race": "Columbus Issues 8 and 9: charter amendments on how City Council is elected",
       "measure": true,
       "summary": "Two proposed Columbus charter amendments would both limit council voting to residents of each district; Issue 9 also adds four at-large seats over two cycles.",
-      "turns_on": "Whether a voter wants district-only voting on the existing nine seats (Issue 8), a larger 13-member council with four at-large seats and a new map (Issue 9), or one of them only; how the two interact if both pass is unresolved in the sources found.",
+      "turns_on": "Whether a voter wants district-only voting on the existing nine seats (Issue 8), a larger 13-member council with four at-large seats and a new map (Issue 9), or one of them only; whether Issue 9 overrides Issue 8 if both pass, as ABC6 reports; not confirmed in official text.",
       "yes_means": "Issue 8 (petition): only electors living in a district vote for or recall that district's council member; council stays at nine seats; ballots show citywide races plus the district race. Issue 9 (Council): the same district-only voting, plus two at-large seats elected in 2027 (seated 2028) and two more elected in 2029 (seated 2030), council growing from 9 to 11 to 13, a district map redraw in 2027 with allowed population variance rising from 1% to 7.5%, one-year district residency, and higher vote thresholds for some council actions. Sources: https://vote.franklincountyohio.gov/getmedia/a7a2dd78-e53f-4e74-933a-0ba0de9aaa4c/8-Full-OCOS-Charter-Amendment and https://vote.franklincountyohio.gov/getmedia/a3d9d75e-83ff-492a-98c4-a8cc09e1cd60/Notice-of-Election-Columbus-Charter-Amendment-2-Council",
       "no_means": "Council members continue to be elected citywide while living in one of nine districts (WOSU describes the current system as candidates who live in a district but must win a citywide majority). Source: https://www.wosu.org/politics-government/2026-03-04/columbus-voters-may-see-dueling-ballot-issues-to-change-the-city-councils-hybrid-district-system",
       "fiscal": "No official cost estimate for either amendment was found; the 8/24/2026 ordinance and fiscal documents were not opened. Cost of added council seats UNVERIFIED.",
@@ -682,6 +684,15 @@
               "date": "2026-10-06",
               "text": "No campaign-finance totals for committees supporting or opposing Issue 8 or 9 were found in the sources opened.",
               "event": "Issue8-9-finance"
+            },
+            {
+              "axis": "Council elections",
+              "sign": "0",
+              "kind": "stated",
+              "source": "https://abc6onyourside.com/news/local/issue-8-vs-issue-9-what-columbus-voters-need-to-know-before-election-day-november-ballot-amendment-city-council",
+              "date": "2026-09-24",
+              "text": "ABC6 explainer: Our City, Our Say backers say district-only voting adds accountability; Council President Hardin backs Issue 9; council staff say district systems cut housing production; if both pass, Issue 9 overrides conflicts.",
+              "event": "Issue8-9-abc6-explainer"
             }
           ]
         }
@@ -694,7 +705,8 @@
     "Kissick: no record, no finance data, and no second source beyond his campaign site found.",
     "Greff: no legislative or office record; only aggregator and campaign-homepage statements.",
     "Green and Junga: experience claims rest on Columbus Bar Association profiles supplied by the candidates, including Green's current title (the probate court's page returned HTTP 403); no bar ratings, reversals or conduct findings were checked.",
-    "Columbus Issues 8 and 9: no official fiscal estimate, no committee funding, and no confirmation of the conflict rule if both pass.",
-    "Other statewide offices and Congress, Senate and Supreme Court races are listed but not researched (scope limit of 5 items)."
+    "Columbus Issues 8 and 9: no official fiscal estimate and no committee funding found; the conflict rule if both pass rests on one news report (ABC6, Sept. 24).",
+    "Other statewide offices and Congress, Senate and Supreme Court races are listed but not researched (scope limit of 5 items).",
+    "Rechecked 2026-10-16: no new official votes, rulings, state finance filings (Ohio Secretary of State pages return 403; Ohio pre-general finance reports are not yet posted from sources opened), debates, forums or bar ratings dated October 6-16 were found for the researched items. Governor debate: none scheduled per Signal Ohio (Sept. 3), so no new debate positions."
   ]
 }
