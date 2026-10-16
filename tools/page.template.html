@@ -222,6 +222,22 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
         <div id="axes" class="fields" style="padding:0"></div>
         <div class="btn-row"><button type="button" class="copy" id="axis-add">Add priority</button></div>
       </fieldset>
+      <fieldset aria-describedby="scoring-hint">
+        <legend>Scoring</legend>
+        <p class="hint" id="scoring-hint">Improved counts donors and endorsements like one questionnaire answer (more than a single statement), and ignores money that backs both sides.</p>
+        <label class="opt"><input type="radio" name="scoring" value="improved" checked> Improved (recommended): records count most; donors and endorsements count like a questionnaire answer; money that backs more than one candidate in a race is not counted</label>
+        <label class="opt"><input type="radio" name="scoring" value="original"> Original: donors and endorsements together count like one statement</label>
+        <label class="opt"><input type="radio" name="scoring" value="custom" aria-controls="custom-fields"> Custom: set each weight yourself</label>
+        <div id="custom-fields" class="fields" style="padding:0" hidden>
+          <p class="hint" id="custom-hint">Whole numbers from 0 to 3; 0 means not counted (those lines are shown but left out). All questionnaire answers on a priority together never count more than one record.</p>
+          <div class="field"><label for="f-w-record">Records (votes, rulings, official acts)</label><input type="number" id="f-w-record" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <div class="field"><label for="f-w-questionnaire">Questionnaire answers</label><input type="number" id="f-w-questionnaire" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <div class="field"><label for="f-w-stated">Statements (campaign site, interviews)</label><input type="number" id="f-w-stated" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <div class="field"><label for="f-w-donors">Donors and endorsements (all on a priority together)</label><input type="number" id="f-w-donors" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <label class="opt"><input type="checkbox" id="f-w-both"> Do not count money or endorsements that back more than one candidate in the same race</label>
+          <p class="hint warn" id="custom-bad" aria-live="polite" hidden></p>
+        </div>
+      </fieldset>
       <div class="field">
         <label for="f-gray">Topics where you are torn (optional)</label>
         <textarea id="f-gray" rows="3" placeholder="e.g. drug policy" aria-describedby="f-gray-hint"></textarea>
@@ -466,7 +482,7 @@ const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.te
 const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
-let lastAxes=null, lastScoring=null;
+let lastAxes=null, lastScoring=null, lastCalcScoring=null;
 const KIT_VERSION="__KIT_VERSION__";
 const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
@@ -557,6 +573,10 @@ function readState(){
   st.axes=[...$("axes").children].map(r=>{const [n,m]=r.querySelectorAll("input");return {name:n.value,meaning:m.value,weight:Number(r.querySelector("select").value)}});
   st.gray=$("f-gray").value; st.red=$("f-red").value; st.stakes=$("f-stakes").value;
   st.viability=$("f-viability").checked;
+  st.scoring=document.querySelector('input[name=scoring]:checked').value;
+  // An empty box is not a 0: it stays invalid (NaN) until filled, so the calculator says so.
+  const wt=id=>{const v=$(id).value.trim();return v===""?NaN:Number(v)};
+  st.custom={record:wt("f-w-record"),questionnaire:wt("f-w-questionnaire"),stated:wt("f-w-stated"),donors:wt("f-w-donors"),exclude_both_sides:$("f-w-both").checked};
   st.minShare=$("f-share").value; st.minMoney=$("f-money").value; st.includeOffice=$("f-office").checked; st.always=$("f-always").value;
   st.doubleCheck=$("f-dc").checked;
   return st;
@@ -570,6 +590,11 @@ function writeState(st){
   (Array.isArray(st.axes)&&st.axes.length?st.axes:defaultState().axes).slice(0,6).forEach(a=>addAxis({name:String(a.name||""),meaning:String(a.meaning||""),weight:[1,2,3].includes(a.weight)?a.weight:2}));
   $("f-gray").value=st.gray||""; $("f-red").value=st.red||""; $("f-stakes").value=st.stakes||"";
   $("f-viability").checked=!!st.viability;
+  document.querySelector(`input[name=scoring][value=${["original","custom"].includes(st.scoring)?st.scoring:"improved"}]`).checked=true;
+  // Saved data is untrusted: anything but a whole number 0-3 loads as the Improved weight.
+  const c=st.custom&&typeof st.custom==="object"?st.custom:{}, d=defaultState().custom;
+  for(const k of ["record","questionnaire","stated","donors"])$("f-w-"+k).value=String([0,1,2,3].includes(c[k])?c[k]:d[k]);
+  $("f-w-both").checked=typeof c.exclude_both_sides==="boolean"?c.exclude_both_sides:d.exclude_both_sides;
   $("f-share").value=st.minShare||""; $("f-money").value=st.minMoney||""; $("f-office").checked=!!st.includeOffice; $("f-always").value=st.always||"";
   $("f-dc").checked=st.doubleCheck!==false;
 }
@@ -582,6 +607,11 @@ function fillWeights(st){
 function render(){
   const st=readState(), neutral=st.mode!=="values";
   $("values-only").hidden=neutral;
+  $("custom-fields").hidden=st.scoring!=="custom";
+  const scoringErr=st.scoring==="custom"?resolveScoring(st.custom).errors:[];
+  // Written only when it changes, so the live region speaks once per new problem, not per keystroke.
+  const bad=$("custom-bad"), badMsg=scoringErr.length?"Fix the weights: "+scoringErr.join("; ")+".":"";
+  bad.hidden=!badMsg; if(bad.textContent!==badMsg)bad.textContent=badMsg;
   $("focus-fields").hidden=st.crowded!=="focus";
   const rows=[...$("axes").children], ls=letters(rows.length);
   rows.forEach((r,i)=>{
@@ -602,15 +632,16 @@ function render(){
   $("s1-status").textContent=(neutral?"Neutral comparison":"Values match")+" · election "+(st.date||"date not set")+(st.address.trim()?" · address entered (used only in Step 2)":"");
   $("ballot-noaddr").hidden=!!st.address.trim();
   $("f-place-bad").hidden=!st.place.trim()||!!safePlace(st);
-  // Re-score pasted answers only when the mode, the weights or the gray topics change, not on every keystroke.
-  const scoring=neutral?"neutral":calcProfile(st);
+  // Re-score pasted answers only when the mode, the weights, the gray topics or the scoring change, not on every keystroke.
+  const scoring=neutral?"neutral":calcProfile(st)+"\n"+JSON.stringify(scoringOf(st));
   if(scoring!==lastScoring){lastScoring=scoring;items.forEach(evalItem)}
   else items.forEach(refreshItem); // the double-check option shows or hides each item's panel
   showBallotCheck();
   // Refill only when the axes change, so edits typed into the calculator survive other keystrokes.
-  const axes=calcProfile(st);
+  const axes=calcProfile(st), calcScoring=JSON.stringify(scoringOf(st));
   if(!neutral&&axes!==lastAxes)fillWeights(st);
-  lastAxes=neutral?null:axes;
+  else if(calcScoring!==lastCalcScoring)runCalc(); // a new scoring re-runs the calculator, keeping its pasted text
+  lastAxes=neutral?null:axes; lastCalcScoring=calcScoring;
   refreshStages();
   save();
 }
@@ -676,7 +707,8 @@ function redLineNote(excluded){
   if(url){const a=el("a","source");a.href=url;a.target="_blank";a.rel="noopener noreferrer";p.append(" (",a,")")}
   return p;
 }
-function runCalc(){renderCalc($("calc-out"),calculate($("calc-weights").value,$("calc-research").value))}
+const zeroWeight=sc=>[sc.record,sc.questionnaire,sc.stated,sc.donors].includes(0);
+function runCalc(){renderCalc($("calc-out"),calculate($("calc-weights").value,$("calc-research").value,scoringOf(readState())))}
 function renderCalc(out,r){
   out.replaceChildren();
   const notes=[...r.warnings.map(w=>({msg:w,line:""})),...r.errors];
@@ -695,9 +727,10 @@ function renderCalc(out,r){
     }
     out.append(box);
   });
-  const det=el("details",null,"math"); det.append(el("summary","Show the math"));
+  const det=el("details",null,"math"), sc=res.scoring; det.append(el("summary","Show the math"));
+  det.append(el("p","Scoring: "+scoringLabel(sc)+"."));
   det.append(el("p","Weights: "+Object.entries(r.weights).map(([k,v])=>k+"="+v).join(", ")+"."));
-  det.append(el("p","Each priority gets a position from its evidence: records count 3, statements 1, all questionnaire answers on a priority together count 2 (one answer) or 3 (two or more, never more than one record), and all donors and endorsements on a priority together count as one statement (their average direction), plus a neutral starting weight of 3. Lines with the same source count once unless they have different event ids. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
+  det.append(el("p",`Each priority gets a position from its evidence: records count ${sc.record}, statements ${sc.stated}, all questionnaire answers on a priority together count ${sc.questionnaire} per answer up to ${sc.record} (never more than one record), and all donors and endorsements on a priority together count ${sc.donors} (their average direction), plus a neutral starting weight of 3.`+(zeroWeight(sc)?" A kind weighted 0 is not counted; its lines are listed above.":"")+(sc.exclude_both_sides?" A donor or endorser that backs more than one candidate in the race is not counted (access money).":"")+" Lines with the same source count once unless they have different event ids. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
   res.rows.forEach(row=>{
     det.append(el("p",row.name+":"));
     const ul=el("ul");
@@ -726,7 +759,7 @@ function evalItem(it){
     it.status="problem";
     out.append(noteBox([{msg:refusedText(it.refused),line:""}]));
   }else if(st.mode==="values"){
-    const r=calculate(calcProfile(st),text);
+    const r=calculate(calcProfile(st),text,scoringOf(st));
     renderCalc(out,r);
     it.status=r.result&&!r.errors.length?"scored":"problem";
     if(r.result)it.call="Call: "+r.result.call;

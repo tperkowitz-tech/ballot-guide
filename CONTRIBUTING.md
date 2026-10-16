@@ -13,7 +13,8 @@ The Python calculator is `ballot-guide/scripts/score.py`; the browser calculator
 is `tools/calc.js`. Keep their behavior in lockstep and run both calculator tests.
 `node tools/calc_test.js` includes a parity fuzz that runs 4000 random races (all five
 evidence kinds, ranges and calls, including uneven evidence) through both calculators
-and fails on any mismatch.
+under every scoring option (default, Improved, Original, random Custom weights and invalid
+ones) and fails on any mismatch.
 
 `ballot-guide/scripts/check_evidence.py` checks research JSON before scoring
 (see `ballot-guide/references/delegation.md`); `tools/check.py` runs its

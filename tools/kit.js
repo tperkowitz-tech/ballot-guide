@@ -14,14 +14,18 @@ const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
 const DOUBLE_CHECK_STEP = 8;
 // Browser: calc.js is inlined before this file and defines these. Node: load it.
-const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount, CLOSING_OFFER: offerLine} =
-  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence, CLOSING_OFFER};
+const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount, CLOSING_OFFER: offerLine,
+  resolveScoring: scoringResolve, scoringLabel: labelScoring} =
+  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence, CLOSING_OFFER, resolveScoring, scoringLabel};
 
 function defaultState() {
   return {
     mode: "neutral", address: "", place: "", date: "",
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
+    // Values mode: "improved" (recommended), "original" or "custom" with the weights below, in
+    // the shape score.py's "scoring" key takes.
+    scoring: "improved", custom: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
     doubleCheck: true,
   };
@@ -80,6 +84,14 @@ function placeFromAddress(address) {
   return safePlace({place}) ? place : "";
 }
 
+// The calculator's scoring for the Step 1 choice: a preset name or the custom weights object.
+const scoringOf = state => state.scoring === "custom" ? state.custom : state.scoring === "original" ? "original" : "improved";
+// One line naming the scoring, for the profile (Steps 5 and 7 read it) and the calculator.
+function scoringText(state) {
+  const r = scoringResolve(scoringOf(state));
+  return r.scoring ? labelScoring(r.scoring) : "Custom (weights not valid yet: " + r.errors.join("; ") + ")";
+}
+
 // The address identifies a person, so it is included only when asked for (the ballot lookup).
 function buildProfile(state, withAddress) {
   const values = state.mode === "values";
@@ -91,7 +103,7 @@ function buildProfile(state, withAddress) {
     `Mode: ${values ? "Values match" : "Neutral comparison"}`];
   if (!values) out.push(NEUTRAL_LINE);
   if (values) {
-    out.push("Value axes:", ...axisLines(state));
+    out.push("Value axes:", ...axisLines(state), `Scoring: ${scoringText(state)}`);
     for (const [label, text] of [["Gray areas:", state.gray], ["Red lines:", state.red], ["Personal stakes:", state.stakes]]) {
       const ls = lines(text);
       if (ls.length) out.push(label, ...ls.map(l => "- " + l));
@@ -118,6 +130,8 @@ function fillStep(stepIndex, stepText, state, extras) {
     text = text.replace(/^For each item, choose the axis letter.*\n(?:(?:[-+0]|gray) = .*\n)+/m, NEUTRAL_EVIDENCE + "\n")
       .replace(/^For each fact, give an axis letter.*\n/m, NEUTRAL_EVIDENCE + "\n")
       .split("[{{axis}}][{{+ / - / 0 / gray}}]").join("[{{TOPIC}}][0]")
+      .split("[B][-][FUNDER][Example Realty PAC]").join("[Housing][0][FUNDER][Example Realty PAC]")
+      .split("[D][-][FUNDER][against-Example PAC]").join("[Housing][0][FUNDER][against-Example PAC]")
       .replace(" Use gray for topics the profile lists as torn/gray areas.", "");
   }
   if (neutral && stepIndex === 6) {
@@ -157,13 +171,13 @@ function splitForChat(text, max) {
 // The checked question in short form: its TASK and RACE/MEASURE lines plus the OUTPUT FORMAT the
 // answer had to follow. The whole question pushed the copy past chat input limits (Google AI Mode
 // silently cuts at 8,192 characters); the check rules are in Step 8 itself, and the place is in the profile.
-// Step 3's event-id advice is for writing the answer, not checking it, so it is left out too; the
+// Step 3's event-id advice (donor names included) is for writing the answer, not checking it, so it is left out too; the
 // values-mode gray rule after it stays, so the checker does not flag correct gray tags.
 function checkQuestion(stepIndex, stepText, state, ex) {
   const full = fillStep(stepIndex, stepText, state, ex), [ask, fmt] = full.split(/^OUTPUT FORMAT[^\n]*\n/m);
   if (fmt === undefined) return full;
   return [...ask.split("\n").filter(l => /^(TASK|RACE|MEASURE):/.test(l)),
-    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: (?=\S)|\n)/m, "")].join("\n");
+    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: On FUNDER and ENDORSEMENT lines[^\n]*?is recognized\.)?(?: For money or ads spent AGAINST[^\n]*?against-Example PAC\]\.)?(?: (?=\S)|\n)/m, "")].join("\n");
 }
 
 // Copies longer than this may be cut off silently: Google AI Mode's input stops at 8,192 characters.
@@ -470,7 +484,7 @@ function chatRefused(text) {
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
+  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, scoringOf, scoringText, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
     checkMismatch, splitInfo, splitFollowUp, addPart,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};

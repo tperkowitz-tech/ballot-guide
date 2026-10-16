@@ -14,6 +14,7 @@ Ballot Guide was shaped by other people's work. None of the projects, writers or
 
 - Poole, K. T. (2007). "Changing minds? Not in Congress!" *Public Choice* 131: legislators' voting positions stay stable over their careers.
 - Bonica, A. (2014). "Mapping the Ideological Marketplace." *American Journal of Political Science* 58(2); and Bonica, A. (2018). "Inferring Roll-Call Scores from Campaign Contributions Using Supervised Machine Learning." *AJPS* 62(4): donor networks predict later votes.
+- Fouirnaies, A., and A. B. Hall (2014). "The Financial Incumbency Advantage: Causes and Consequences." *Journal of Politics* 76(3): access-oriented money flows to incumbents and likely winners. (The guide's rule of leaving out money that backs both candidates is its own heuristic.)
 - Bonica, A., and M. J. Woodruff (2015). "A Common-Space Measure of State Supreme Court Ideology." *Journal of Law, Economics, and Organization* 31(3).
 - Thomson, R., et al. (2017). "The Fulfillment of Parties' Election Pledges." *AJPS* 61(3): how often governing parties keep promises.
 - Ansolabehere, S., J. M. Snyder Jr., and C. Stewart III (2001). "Candidate Positioning in U.S. House Elections." *AJPS* 45(1): uses a candidate questionnaire (NPAT) to measure candidates' positions.

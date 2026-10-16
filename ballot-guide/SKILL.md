@@ -33,11 +33,15 @@ campaign promises. The voter makes the choice. Read `references/rules.md` and
    Values mode uses the profile, scoring and call instructions in the rules: one
    position per value from distinct events (record 3, stated 1; questionnaire
    answers pooled to one worth 2, or 3 for two or more; donors and endorsements pooled
-   to one worth 1), a score over values with evidence plus a range for the values
+   to one entry), a score over values with evidence plus a range for the values
    without the candidate's own evidence, coverage and an evidence level beside every score,
    gray items left out, red-lined options excluded from the call, toss-ups that name
    the event they turn on, and "(uneven evidence)" when coverage differs by 0.4+.
    Party is evidence only for a party priority the voter listed.
+   Offer three scoring options and recommend Improved (the default: pooled donors and
+   endorsements worth 2, and a donor backing more than one candidate in a race is left
+   out); Original pools them to 1; Custom weights 0-3 are the voter's own choice, never yours.
+   Pass the choice to `scripts/score.py` as `"scoring"` and name it in the guide.
    Unopposed: 60+ "Vote for" and 40 or less "Consider leaving blank or writing in"
    need coverage 0.5+, better than thin evidence and at least one record; otherwise
    "Your call"; no evidence "Not enough evidence". A clear contested winner or a

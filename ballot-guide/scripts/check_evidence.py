@@ -1,7 +1,7 @@
 """Check research evidence JSON before scoring it with score.py.
 
-Accepts a full score.py input ({"axes": ..., "races": [...]}) or a bare {"races": [...]}
-from one worker. ERRORs would make the score wrong or leak private data; WARNs need a
+Accepts a full score.py input ({"axes": ..., "scoring": ..., "races": [...]}) or a bare
+{"races": [...]} from one worker; a "scoring" key is checked the way score.py reads it. ERRORs would make the score wrong or leak private data; WARNs need a
 human look but may be fine. Exit 0 when there are no ERRORs (or no WARNs either, with
 --strict), else 1.
 
@@ -12,7 +12,7 @@ import re
 import sys
 from urllib.parse import urlsplit
 
-from score import KIND, collapse, is_gray, norm_source
+from score import KIND, collapse, is_gray, norm_source, resolve_scoring
 
 SIGNS = ("+", "-", "0", "gray")
 FIELDS = ("event", "axis", "sign", "kind", "source", "date", "text")
@@ -61,6 +61,7 @@ def check(data):
     else:
         errors += [f"file: weight for {a} must be an integer 1-3 (found {w!r})"
                    for a, w in axes.items() if type(w) is not int or not 1 <= w <= 3]
+    errors += [f"file: {m}" for m in resolve_scoring(data.get("scoring"))[1]]
     for r, race in enumerate(data["races"]):
         if not isinstance(race, dict):
             errors.append(f"race #{r}: not an object")
@@ -174,6 +175,11 @@ def demo():
     assert "exactly one option" in e[0], e
     e, _ = check({"axes": {"A": 3}, "races": [{"race": "R", "options": [{"evidence": []}]}]})
     assert "no name" in e[0], e
+    # The scoring key: presets and custom weights pass; a bad one is an ERROR, as in score.py.
+    for sc in ("improved", "original", {"record": 3, "questionnaire": 1, "stated": 0, "donors": 3, "exclude_both_sides": False}):
+        assert check({**base([ok]), "scoring": sc}) == ([], []), sc
+    e, _ = check({**base([ok]), "scoring": {"record": 0, "questionnaire": 0, "stated": 0, "donors": 0, "exclude_both_sides": True}})
+    assert e == ["file: every scoring weight is 0, so nothing would count; set at least one above 0"], e
     e, _ = check({"axes": {"A": 4}, "races": []})
     assert "integer 1-3" in e[0], e
     # Wrong JSON types are ERRORs, never a traceback.

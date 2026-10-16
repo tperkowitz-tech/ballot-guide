@@ -239,6 +239,22 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
         <div id="axes" class="fields" style="padding:0"></div>
         <div class="btn-row"><button type="button" class="copy" id="axis-add">Add priority</button></div>
       </fieldset>
+      <fieldset aria-describedby="scoring-hint">
+        <legend>Scoring</legend>
+        <p class="hint" id="scoring-hint">Improved counts donors and endorsements like one questionnaire answer (more than a single statement), and ignores money that backs both sides.</p>
+        <label class="opt"><input type="radio" name="scoring" value="improved" checked> Improved (recommended): records count most; donors and endorsements count like a questionnaire answer; money that backs more than one candidate in a race is not counted</label>
+        <label class="opt"><input type="radio" name="scoring" value="original"> Original: donors and endorsements together count like one statement</label>
+        <label class="opt"><input type="radio" name="scoring" value="custom" aria-controls="custom-fields"> Custom: set each weight yourself</label>
+        <div id="custom-fields" class="fields" style="padding:0" hidden>
+          <p class="hint" id="custom-hint">Whole numbers from 0 to 3; 0 means not counted (those lines are shown but left out). All questionnaire answers on a priority together never count more than one record.</p>
+          <div class="field"><label for="f-w-record">Records (votes, rulings, official acts)</label><input type="number" id="f-w-record" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <div class="field"><label for="f-w-questionnaire">Questionnaire answers</label><input type="number" id="f-w-questionnaire" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <div class="field"><label for="f-w-stated">Statements (campaign site, interviews)</label><input type="number" id="f-w-stated" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <div class="field"><label for="f-w-donors">Donors and endorsements (all on a priority together)</label><input type="number" id="f-w-donors" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
+          <label class="opt"><input type="checkbox" id="f-w-both"> Do not count money or endorsements that back more than one candidate in the same race</label>
+          <p class="hint warn" id="custom-bad" aria-live="polite" hidden></p>
+        </div>
+      </fieldset>
       <div class="field">
         <label for="f-gray">Topics where you are torn (optional)</label>
         <textarea id="f-gray" rows="3" placeholder="e.g. drug policy" aria-describedby="f-gray-hint"></textarea>
@@ -449,7 +465,11 @@ GAPS: no funder data found</textarea>
 // Pure parse + score for the Ballot Guide score calculator. Mirrors ballot-guide/scripts/score.py
 // exactly (same formula, same rounding, same calls); tools/calc_test.js fuzzes the two for parity.
 // tools/build_kit.py inlines this file into docs/index.html.
-const KIND = {record: 3, questionnaire: 2, stated: 1, funder: 1, endorsement: 1};
+const KIND = {record: 3, questionnaire: 2, stated: 1, funder: 1, endorsement: 1}; // original weights
+// Preset scorings, as in score.py; a custom one has the same keys. "donors" weighs the pooled funder and endorsement entry.
+const SCORING = {original: {record: 3, questionnaire: 2, stated: 1, donors: 1, exclude_both_sides: false},
+  improved: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true}};
+const WEIGHTS = ["record", "questionnaire", "stated", "donors"];
 // Breaks ties within one event: the candidate's own words beat what others give or say.
 const RANK = {record: 5, questionnaire: 4, stated: 3, endorsement: 2, funder: 1};
 const AGGREGATE = ["funder", "endorsement"]; // pooled to one entry per axis
@@ -745,6 +765,53 @@ function countEvidence(text) {
 
 const isGray = ev => ev.sign === "gray" || ev.gray === true;
 
+// Same as score.py resolve_scoring(): {scoring, errors}; scoring is {name, 4 weights, exclude_both_sides}.
+function resolveScoring(s) {
+  if (s === undefined || s === null) s = "improved";
+  if (typeof s === "string" && has(SCORING, s)) return {scoring: {name: s, ...SCORING[s]}, errors: []};
+  if (!s || typeof s !== "object" || Array.isArray(s)) {
+    return {scoring: null, errors: ['scoring must be "improved", "original" or an object with record, questionnaire, stated, donors and exclude_both_sides']};
+  }
+  const errors = WEIGHTS.filter(k => !Number.isInteger(s[k]) || s[k] < 0 || s[k] > 3).map(k => `scoring weight for ${k} must be an integer 0-3`);
+  if (typeof s.exclude_both_sides !== "boolean") errors.push("scoring exclude_both_sides must be true or false");
+  if (!errors.length && !WEIGHTS.some(k => s[k])) errors.push("every scoring weight is 0, so nothing would count; set at least one above 0");
+  // Answers pool to at most one record, so with record 0 they would silently count nothing.
+  if (!errors.length && s.questionnaire && !s.record) {
+    errors.push("questionnaire answers count at most one record; with record 0 they count nothing, so set record above 0 or questionnaire to 0");
+  }
+  if (errors.length) return {scoring: null, errors};
+  return {scoring: {name: "custom", record: s.record, questionnaire: s.questionnaire, stated: s.stated, donors: s.donors,
+    exclude_both_sides: s.exclude_both_sides}, errors: []};
+}
+const kindWeights = sc => ({record: sc.record, questionnaire: sc.questionnaire, stated: sc.stated, funder: sc.donors, endorsement: sc.donors});
+// The page's name for a scoring: the Step 1 choice, with the weights spelled out for Custom.
+function scoringLabel(sc) {
+  if (sc.name === "improved") return "Improved (recommended)";
+  if (sc.name === "original") return "Original";
+  return `Custom: records ${sc.record}, questionnaire answers ${sc.questionnaire}, statements ${sc.stated}, donors and endorsements ${sc.donors}; money backing more than one candidate ${sc.exclude_both_sides ? "not counted" : "counted"}`;
+}
+const linked = ev => typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source);
+const normEvent = e => e.trim().toLowerCase().replace(/\s+/g, " ");
+const sharedEvent = ev => AGGREGATE.includes(ev.kind) && typeof ev.event === "string" && ev.event.trim() !== "";
+// Same as score.py both_sides(): normalized funder/endorsement support ids that back two or more
+// options. Opposition ids ("against-" or "against:" then the donor) never count: backing A while
+// opposing B is a signal, not hedging. Withdrawn options are skipped too; red-lined ones count.
+const OPPOSE = /^against[-:]/;
+function bothSides(options) {
+  const backs = new Map();
+  options.forEach((o, i) => {
+    if (o.withdrawn) return;
+    for (const ev of o.evidence || []) {
+      if (sharedEvent(ev) && linked(ev) && !OPPOSE.test(normEvent(ev.event))) {
+        const k = normEvent(ev.event);
+        if (!backs.has(k)) backs.set(k, new Set());
+        backs.get(k).add(i);
+      }
+    }
+  });
+  return new Set([...backs].filter(([, who]) => who.size > 1).map(([k]) => k));
+}
+
 // Same page, same key: lowercase scheme/host, drop query and fragment, strip trailing /.
 function normSource(url) {
   url = url.trim().split("#")[0].split("?")[0];
@@ -792,13 +859,14 @@ function validateRace(options, weights, isMeasure) {
 const PARTY_NAME = /\b(?!(?:The|Any|A|Block)\b)[A-Z][A-Za-z]* +Party\b/, PARTY_ENDORSE = /\bparty endorsement\b/i;
 const partyRow = t => typeof t === "string" && (PARTY_NAME.test(t) || PARTY_ENDORSE.test(t));
 // Leave out rows without a web link and party endorsements and donors not tagged on one of the
-// voter's party priorities (partyAxes; as in score.py); split out gray rows; collapse rows of one
-// event (see eventKey) to one entry per axis, keeping the strongest kind.
-function collapse(opt, partyAxes) {
-  const gray = [], groups = new Map(), warnings = [];
+// voter's party priorities (partyAxes; as in score.py); split out gray rows; leave out rows of a
+// kind weighted 0 and both-sides money (shared ids, when the scoring excludes it); collapse rows of
+// one event (see eventKey) to one entry per axis, keeping the strongest kind.
+function collapse(opt, partyAxes, sc, shared) {
+  const gray = [], groups = new Map(), warnings = [], told = new Set(), w = kindWeights(sc);
   (opt.evidence || []).forEach((ev, i) => {
     const label = ev.event || ev.text || ev.source || `${opt.name} item ${i + 1}`;
-    if (!(typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source))) {
+    if (!linked(ev)) {
       warnings.push(`${opt.name}: Not counted until it has a full link: ${label}`);
       return;
     }
@@ -807,6 +875,14 @@ function collapse(opt, partyAxes) {
       return;
     }
     if (isGray(ev)) { gray.push(ev); return; }
+    if (!w[ev.kind]) { warnings.push(`${opt.name}: Not counted (weight 0 in your scoring): ${label}`); return; }
+    if (sc.exclude_both_sides && sharedEvent(ev) && shared.has(normEvent(ev.event))) {
+      if (!told.has(normEvent(ev.event))) {
+        told.add(normEvent(ev.event));
+        warnings.push(`${opt.name}: ${ev.event} backs more than one candidate here; not counted (access money)`);
+      }
+      return;
+    }
     const key = eventKey(ev, i);
     if (!groups.has(key)) groups.set(key, {label, rows: []});
     groups.get(key).rows.push(ev);
@@ -828,25 +904,25 @@ function collapse(opt, partyAxes) {
 
 // Returns {score, low, high, total, W}; all null when no axis has any evidence. total and W
 // (the weight of axes with evidence) feed the page's "Show the math".
-function fitParts(events, weights) {
-  const num = {}, den = {}, pooled = {}, quest = {};
+function fitParts(events, weights, sc) {
+  const num = {}, den = {}, pooled = {}, quest = {}, w = kindWeights(sc);
   for (const a of Object.keys(weights)) { num[a] = 0; den[a] = 0; pooled[a] = []; quest[a] = []; }
   for (const ev of events) {
     for (const [axis, kind, s] of ev.entries) {
       if (AGGREGATE.includes(kind)) pooled[axis].push(s);
       else if (kind === "questionnaire") quest[axis].push(s);
-      else { num[axis] += KIND[kind] * s; den[axis] += KIND[kind]; }
+      else { num[axis] += w[kind] * s; den[axis] += w[kind]; }
     }
   }
   const mean = f => f.reduce((t, s) => t + s, 0) / f.length;
   for (const a of Object.keys(weights).sort()) {
-    // All answers on an axis are one entry worth at most one record (k = 3), as in score.py.
+    // All answers on an axis are one entry worth at most one record, as in score.py.
     if (quest[a].length) {
-      const k = Math.min(KIND.questionnaire * quest[a].length, KIND.record);
+      const k = Math.min(w.questionnaire * quest[a].length, w.record);
       num[a] += k * mean(quest[a]); den[a] += k;
     }
-    // All donors and endorsers on an axis count as one entry (k = 1, mean sign), as in score.py.
-    if (pooled[a].length) { num[a] += mean(pooled[a]); den[a] += 1; }
+    // All donors and endorsers on an axis count as one entry (k = donors, mean sign), as in score.py.
+    if (pooled[a].length) { num[a] += sc.donors * mean(pooled[a]); den[a] += sc.donors; }
   }
   const known = new Set(events.flatMap(ev => ev.entries.map(e => e[0])));
   if (!known.size) return {score: null, low: null, high: null, total: 0, W: 0};
@@ -866,7 +942,7 @@ function fitParts(events, weights) {
   return {score: pyRound(50 + 50 * total / wKnown), low: pyRound(50 + 50 * (totalOwn - unknown) / wAll),
     high: pyRound(50 + 50 * (totalOwn + unknown) / wAll), total, W: wKnown};
 }
-const fit = (events, weights) => fitParts(events, weights).score;
+const fit = (events, weights, sc) => fitParts(events, weights, sc).score;
 
 // Leave-one-out steps as [label, remaining events], same order as score.py steps(): each
 // record/stated event alone, then per axis all questionnaire answers and all donors/endorsers.
@@ -886,8 +962,8 @@ function steps(events) {
 
 // grayTopics: the profile lists topics the voter is torn on. Without any, a gray tag cannot
 // mean "torn", so those rows are dropped from the list too, with a warning (as in score.py).
-function summarize(opt, weights, grayTopics, partyAxes) {
-  const c = collapse(opt, partyAxes), {events, warnings} = c;
+function summarize(opt, weights, grayTopics, partyAxes, sc, shared) {
+  const c = collapse(opt, partyAxes, sc, shared), {events, warnings} = c;
   let gray = c.gray;
   if (gray.length && !grayTopics) {
     warnings.push(`${opt.name}: tagged gray, but you listed no topics you are torn on (${gray.length} not counted).`);
@@ -906,7 +982,7 @@ function summarize(opt, weights, grayTopics, partyAxes) {
   const level = !events.length ? "none"
     : cov >= 0.75 && firm >= 3 && records >= 1 && firmAxes >= 2 ? "strong"
     : cov >= 0.5 && firm >= 2 ? "moderate" : "thin";
-  const parts = fitParts(events, weights);
+  const parts = fitParts(events, weights, sc);
   const row = {name: opt.name, score: parts.score, low: parts.low, high: parts.high, evidence: level, confidence: level,
     coverage: pyRound(cov * 100) / 100, events: events.length, records, questionnaires, gray,
     excluded: opt.withdrawn ? "withdrew" : !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
@@ -921,7 +997,7 @@ function leaderOf(scores) {
 }
 
 // Returns [call, turns_on]. Leave-one-out: a call that one event can flip is a toss-up.
-function decide(rows, events, covered, eligible, measure, weights) {
+function decide(rows, events, covered, eligible, measure, weights, sc) {
   const tossUp = label => [`Toss-up (turns on: ${label})`, label];
   let wAll = 0;
   for (const a of Object.keys(weights)) wAll += weights[a];
@@ -933,7 +1009,7 @@ function decide(rows, events, covered, eligible, measure, weights) {
     const m = s - 50;
     if (m === 0) return ["Toss-up", null];
     for (const [label, rest] of steps(events[0])) {
-      const s2 = fit(rest, weights);
+      const s2 = fit(rest, weights, sc);
       // null: the whole score rests on this one step.
       if (s2 === null || s2 === 50 || (s2 > 50) !== (m > 0)) return tossUp(label);
     }
@@ -958,7 +1034,7 @@ function decide(rows, events, covered, eligible, measure, weights) {
   for (let j = 0; j < eligible.length; j++) {
     for (const [label, rest] of steps(events[eligible[j]])) {
       const alt = scores.slice();
-      alt[j] = fit(rest, weights);
+      alt[j] = fit(rest, weights, sc);
       // null: that option's whole score rests on this one step. That flips the call only for
       // the leader; a runner-up left with nothing cannot overtake it.
       if (alt[j] === null) { if (j === lead) return tossUp(label); continue; }
@@ -976,19 +1052,22 @@ function decide(rows, events, covered, eligible, measure, weights) {
   return [clear ? name : `Lean ${name}`, null];
 }
 
-// Returns {call, turns_on, rows, warnings, errors}; errors means nothing was scored.
+// Returns {call, turns_on, rows, warnings, errors, scoring}; errors means nothing was scored.
 // partyAxes: letters of the voter's party priorities (parseWeights); party evidence counts only there.
-function scoreRace(options, weights, isMeasure, grayTopics, partyAxes) {
-  const errors = validateRace(options, weights, isMeasure);
-  if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors};
+// scoring: "improved" (default), "original" or a custom object, as score.py's "scoring" key.
+function scoreRace(options, weights, isMeasure, grayTopics, partyAxes, scoring) {
+  const {scoring: sc, errors} = resolveScoring(scoring);
+  errors.push(...validateRace(options, weights, isMeasure));
+  if (errors.length) return {call: null, turns_on: null, rows: [], warnings: [], errors, scoring: sc};
+  const shared = bothSides(options);
   const rows = [], events = [], covered = [], warnings = [];
   for (const o of options) {
-    const s = summarize(o, weights, grayTopics, partyAxes);
+    const s = summarize(o, weights, grayTopics, partyAxes, sc, shared);
     rows.push(s.row); events.push(s.events); covered.push(s.covered); warnings.push(...s.warnings);
   }
   const eligible = options.map((o, i) => i).filter(i => !options[i].red_line && !options[i].withdrawn);
-  const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights);
-  return {call, turns_on, rows, warnings, errors};
+  const [call, turns_on] = decide(rows, events, covered, eligible, !!isMeasure, weights, sc);
+  return {call, turns_on, rows, warnings, errors, scoring: sc};
 }
 
 // Whether the profile lists a topic the voter is torn on: text after "Gray areas:" or a
@@ -1007,7 +1086,7 @@ function hasGrayTopics(text) {
   return false;
 }
 
-function calculate(weightsText, researchText) {
+function calculate(weightsText, researchText, scoring) {
   const {weights, warnings, partyAxes} = parseWeights(weightsText);
   if (!Object.keys(weights).length) {
     return {warnings, errors: [{line: "", msg: "No value weights found. Paste your Step 1 profile or type A=3, B=2."}], result: null};
@@ -1017,13 +1096,14 @@ function calculate(weightsText, researchText) {
     p.errors.push({line: "", msg: "No CANDIDATE: or MEASURE: line found. Paste one Step 3 or Step 4 output."});
     return {warnings: warnings.concat(p.warnings), errors: p.errors, result: null};
   }
-  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText), partyAxes);
+  const res = scoreRace(p.options, weights, p.kind === "measure", hasGrayTopics(weightsText), partyAxes, scoring);
   const errors = p.errors.concat(res.errors.map(msg => ({line: "", msg})));
   return {warnings: warnings.concat(p.warnings, res.warnings), errors, kind: p.kind, name: p.name, weights, result: res.errors.length ? null : res};
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {pyRound, cleanMd, normLine, CLOSING_OFFER, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate};
+  module.exports = {pyRound, cleanMd, normLine, CLOSING_OFFER, parseWeights, parseResearch, countEvidence, scoreRace, hasGrayTopics, calculate,
+    resolveScoring, scoringLabel};
 }
 </script>
 <script>
@@ -1043,14 +1123,18 @@ const ADDRESS_WITHHELD = "Address: withheld (not needed for this step)";
 const BALLOT_STEP = 2; // the only step that needs the street address
 const DOUBLE_CHECK_STEP = 8;
 // Browser: calc.js is inlined before this file and defines these. Node: load it.
-const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount, CLOSING_OFFER: offerLine} =
-  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence, CLOSING_OFFER};
+const {normLine: lineNorm, cleanMd: mdPlain, countEvidence: evidenceCount, CLOSING_OFFER: offerLine,
+  resolveScoring: scoringResolve, scoringLabel: labelScoring} =
+  typeof require === "function" ? require("./calc.js") : {normLine, cleanMd, countEvidence, CLOSING_OFFER, resolveScoring, scoringLabel};
 
 function defaultState() {
   return {
     mode: "neutral", address: "", place: "", date: "",
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
+    // Values mode: "improved" (recommended), "original" or "custom" with the weights below, in
+    // the shape score.py's "scoring" key takes.
+    scoring: "improved", custom: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
     doubleCheck: true,
   };
@@ -1109,6 +1193,14 @@ function placeFromAddress(address) {
   return safePlace({place}) ? place : "";
 }
 
+// The calculator's scoring for the Step 1 choice: a preset name or the custom weights object.
+const scoringOf = state => state.scoring === "custom" ? state.custom : state.scoring === "original" ? "original" : "improved";
+// One line naming the scoring, for the profile (Steps 5 and 7 read it) and the calculator.
+function scoringText(state) {
+  const r = scoringResolve(scoringOf(state));
+  return r.scoring ? labelScoring(r.scoring) : "Custom (weights not valid yet: " + r.errors.join("; ") + ")";
+}
+
 // The address identifies a person, so it is included only when asked for (the ballot lookup).
 function buildProfile(state, withAddress) {
   const values = state.mode === "values";
@@ -1120,7 +1212,7 @@ function buildProfile(state, withAddress) {
     `Mode: ${values ? "Values match" : "Neutral comparison"}`];
   if (!values) out.push(NEUTRAL_LINE);
   if (values) {
-    out.push("Value axes:", ...axisLines(state));
+    out.push("Value axes:", ...axisLines(state), `Scoring: ${scoringText(state)}`);
     for (const [label, text] of [["Gray areas:", state.gray], ["Red lines:", state.red], ["Personal stakes:", state.stakes]]) {
       const ls = lines(text);
       if (ls.length) out.push(label, ...ls.map(l => "- " + l));
@@ -1147,6 +1239,8 @@ function fillStep(stepIndex, stepText, state, extras) {
     text = text.replace(/^For each item, choose the axis letter.*\n(?:(?:[-+0]|gray) = .*\n)+/m, NEUTRAL_EVIDENCE + "\n")
       .replace(/^For each fact, give an axis letter.*\n/m, NEUTRAL_EVIDENCE + "\n")
       .split("[{{axis}}][{{+ / - / 0 / gray}}]").join("[{{TOPIC}}][0]")
+      .split("[B][-][FUNDER][Example Realty PAC]").join("[Housing][0][FUNDER][Example Realty PAC]")
+      .split("[D][-][FUNDER][against-Example PAC]").join("[Housing][0][FUNDER][against-Example PAC]")
       .replace(" Use gray for topics the profile lists as torn/gray areas.", "");
   }
   if (neutral && stepIndex === 6) {
@@ -1186,13 +1280,13 @@ function splitForChat(text, max) {
 // The checked question in short form: its TASK and RACE/MEASURE lines plus the OUTPUT FORMAT the
 // answer had to follow. The whole question pushed the copy past chat input limits (Google AI Mode
 // silently cuts at 8,192 characters); the check rules are in Step 8 itself, and the place is in the profile.
-// Step 3's event-id advice is for writing the answer, not checking it, so it is left out too; the
+// Step 3's event-id advice (donor names included) is for writing the answer, not checking it, so it is left out too; the
 // values-mode gray rule after it stays, so the checker does not flag correct gray tags.
 function checkQuestion(stepIndex, stepText, state, ex) {
   const full = fillStep(stepIndex, stepText, state, ex), [ask, fmt] = full.split(/^OUTPUT FORMAT[^\n]*\n/m);
   if (fmt === undefined) return full;
   return [...ask.split("\n").filter(l => /^(TASK|RACE|MEASURE):/.test(l)),
-    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: (?=\S)|\n)/m, "")].join("\n");
+    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: On FUNDER and ENDORSEMENT lines[^\n]*?is recognized\.)?(?: For money or ads spent AGAINST[^\n]*?against-Example PAC\]\.)?(?: (?=\S)|\n)/m, "")].join("\n");
 }
 
 // Copies longer than this may be cut off silently: Google AI Mode's input stops at 8,192 characters.
@@ -1499,7 +1593,7 @@ function chatRefused(text) {
 }
 
 if (typeof module === "object" && module.exports) {
-  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
+  module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, scoringOf, scoringText, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
     checkMismatch, splitInfo, splitFollowUp, addPart,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};
@@ -1517,7 +1611,7 @@ const STEPS = [
    STATED = other campaign words: website, interview, speech. One position on one topic from one dated source = one item.
    FUNDER = who gave money or spent money for or against (campaign-finance data).
    ENDORSEMENT = an endorsement by an issue group that publishes its criteria.
-   RECORD is strongest, then QUESTIONNAIRE, then STATED. All QUESTIONNAIRE items on one value together count no more than one RECORD. All FUNDER and ENDORSEMENT items on one value together count as one weak item.
+   RECORD is strongest, then QUESTIONNAIRE, then STATED. All QUESTIONNAIRE items on one value together count no more than one RECORD. All FUNDER and ENDORSEMENT items on one value together count as one pooled item.
 4. For a vote on a legislative bill, use the FINAL PASSAGE vote. Do not use amendment or procedural votes. Write the vote date and the yea-nay count. Votes and motions of boards, councils, commissions and courts count as RECORD on their own terms.
 5. Write short sentences. Use the exact output format that the step gives. Do not add other text.
 6. Do not give your own political opinion. Compare evidence only to the VALUES PROFILE.
@@ -1536,6 +1630,9 @@ A | {{name}} | {{meaning}} | weight {{1-3}}
 B | {{name}} | {{meaning}} | weight {{1-3}}
 C | {{name}} | {{meaning}} | weight {{1-3}}
 D | {{name}} | {{meaning}} | weight {{1-3}}
+
+Scoring: {{Improved (recommended) / Original / Custom: records 0-3, questionnaire answers 0-3, statements 0-3, donors and endorsements 0-3; money backing more than one candidate counted or not counted}} (default: Improved)
+Improved counts donors and endorsements like one questionnaire answer (more than a single statement), and ignores money that backs both sides. Original counts all donors and endorsements on a value together like one statement. Custom is your own choice; 0 means not counted.
 
 Gray areas. Topics where you are MIXED. Evidence on these topics is tagged gray and left out of the score, not + or -.
 - {{topic, and why you are mixed}}
@@ -1623,7 +1720,7 @@ OUTPUT FORMAT (repeat for each candidate):
 CANDIDATE: {{name}} | {{current job/office}}
 - [{{axis}}][{{+ / - / 0 / gray}}][RECORD / QUESTIONNAIRE / STATED / FUNDER / ENDORSEMENT][{{optional event id}}] {{date}}: {{fact}} | {{URL}}
 - ...
-Use the same event id when two lines describe the same vote, ruling, donation or statement. Give distinct facts from the same page different event ids; lines with the same source and no event id count once. Use gray for topics the profile lists as torn/gray areas.
+Use the same event id when two lines describe the same vote, ruling, donation or statement. Give distinct facts from the same page different event ids; lines with the same source and no event id count once. On FUNDER and ENDORSEMENT lines, the event id is the donor's, donor group's or endorser's name, for example [B][-][FUNDER][Example Realty PAC], so the same donor under two candidates is recognized. For money or ads spent AGAINST a candidate, write the event id as against-<donor name>, for example [D][-][FUNDER][against-Example PAC]. Use gray for topics the profile lists as torn/gray areas.
 RED LINE CROSSED: {{yes: which | URL, or no}}
 GAPS: {{what you could not find}}`},
 
@@ -1667,9 +1764,14 @@ The arithmetic is fixed. Choosing and tagging evidence is a judgment; every tag 
 FOR EACH OPTION (candidate, or YES for a measure):
 1. Leave out gray items. List them under the option.
 2. Lines with the same event id are one event. Lines with no event id and the same URL are one event (ignore letter case in the domain, anything after ? or #, and a final /). Lines with neither and the same fact text are one event (ignore case, spacing and the date). On each axis keep its strongest kind (RECORD, then QUESTIONNAIRE, then STATED, then ENDORSEMENT, then FUNDER). If lines of that kind disagree, use 0 and say so.
-3. Sign s: + = 1, 0 = 0, - = -1. Kind weight k: RECORD = 3, QUESTIONNAIRE = 2, STATED = 1.
-4. All QUESTIONNAIRE events on a value together count as ONE item: k = 2 for one answer, 3 for two or more (never more than one RECORD), s = the average of their signs.
-   All FUNDER and ENDORSEMENT events on a value together count as ONE item: k = 1, s = the average of their signs.
+3. Sign s: + = 1, 0 = 0, - = -1. Kind weights come from the Scoring line in the VALUES PROFILE (no line: Improved):
+   Improved (recommended): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 2; money backing more than one candidate not counted.
+   Original: RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 1; all money counted.
+   Custom: the weights the line gives (records, questionnaire answers, statements, donors and endorsements) and whether money backing more than one candidate is counted.
+   DONORS weighs all FUNDER and ENDORSEMENT events on a value together. A kind with weight 0 is not counted: leave its lines out and list them as not counted.
+   When money backing more than one candidate is not counted: a FUNDER or ENDORSEMENT event id (ignore case and spacing) that appears under two or more candidates in the same race is left out for each of them, unless the id is an opposition id, "against-" or "against:" followed by the donor (spending against a candidate always counts), or the candidate withdrew; list it as "{{donor}} backs more than one candidate here; not counted (access money)". A measure has one option, so this never applies to it.
+4. All QUESTIONNAIRE events on a value together count as ONE item: k = the number of answers x the QUESTIONNAIRE weight, but never more than the RECORD weight (with the Improved weights: 2 for one answer, 3 for two or more); s = the average of their signs.
+   All FUNDER and ENDORSEMENT events on a value together count as ONE item: k = DONORS, s = the average of their signs.
    For each value: position p = (sum of k x s) / (sum of k + 3).
 5. KNOWN values have at least one event of any kind. UNKNOWN values have none.
    SCORE = round( 50 + 50 x (sum of weight x p over KNOWN values) / (sum of KNOWN weights) ). Round a half to the even number.
@@ -1735,7 +1837,7 @@ If RESULT is FAIL: fix the outputs, run Step 5 again, then run this step again.`
 STRUCTURE:
 1. Title: "{{City}} Ballot Guide {{year}}", the address districts, and the election date.
 2. Values: the axes from the VALUES PROFILE, in a short list.
-3. Method: 5 sentences. Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements together count no more than one statement. Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
+3. Method: 6 sentences. First, one sentence naming the scoring from the VALUES PROFILE's Scoring line (Improved if there is none), for example "Scoring: Improved (recommended)." Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements on one value together count as one item, weighted by that scoring (Improved: like one questionnaire answer, and money that backs more than one candidate in a race is not counted; Original: like one statement). Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
 4. Summary table: | Race | Best match | Score (range) | Coverage | Evidence |. Put measures first, then federal, state, county, city, and judges.
 5. Uncontested races: a short section for each, with the score, range and the call (vote, your call, or consider leaving blank). Then one line: offices NOT on this ballot that the voter may expect.
 6. One section for each race or measure:
@@ -1810,8 +1912,8 @@ const el=(tag,text,cls)=>{const e=document.createElement(tag);if(text!=null)e.te
 const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
-let lastAxes=null, lastScoring=null;
-const KIT_VERSION="v1.6.1";
+let lastAxes=null, lastScoring=null, lastCalcScoring=null;
+const KIT_VERSION="v1.7.0";
 const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
 // checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
@@ -1901,6 +2003,10 @@ function readState(){
   st.axes=[...$("axes").children].map(r=>{const [n,m]=r.querySelectorAll("input");return {name:n.value,meaning:m.value,weight:Number(r.querySelector("select").value)}});
   st.gray=$("f-gray").value; st.red=$("f-red").value; st.stakes=$("f-stakes").value;
   st.viability=$("f-viability").checked;
+  st.scoring=document.querySelector('input[name=scoring]:checked').value;
+  // An empty box is not a 0: it stays invalid (NaN) until filled, so the calculator says so.
+  const wt=id=>{const v=$(id).value.trim();return v===""?NaN:Number(v)};
+  st.custom={record:wt("f-w-record"),questionnaire:wt("f-w-questionnaire"),stated:wt("f-w-stated"),donors:wt("f-w-donors"),exclude_both_sides:$("f-w-both").checked};
   st.minShare=$("f-share").value; st.minMoney=$("f-money").value; st.includeOffice=$("f-office").checked; st.always=$("f-always").value;
   st.doubleCheck=$("f-dc").checked;
   return st;
@@ -1914,6 +2020,11 @@ function writeState(st){
   (Array.isArray(st.axes)&&st.axes.length?st.axes:defaultState().axes).slice(0,6).forEach(a=>addAxis({name:String(a.name||""),meaning:String(a.meaning||""),weight:[1,2,3].includes(a.weight)?a.weight:2}));
   $("f-gray").value=st.gray||""; $("f-red").value=st.red||""; $("f-stakes").value=st.stakes||"";
   $("f-viability").checked=!!st.viability;
+  document.querySelector(`input[name=scoring][value=${["original","custom"].includes(st.scoring)?st.scoring:"improved"}]`).checked=true;
+  // Saved data is untrusted: anything but a whole number 0-3 loads as the Improved weight.
+  const c=st.custom&&typeof st.custom==="object"?st.custom:{}, d=defaultState().custom;
+  for(const k of ["record","questionnaire","stated","donors"])$("f-w-"+k).value=String([0,1,2,3].includes(c[k])?c[k]:d[k]);
+  $("f-w-both").checked=typeof c.exclude_both_sides==="boolean"?c.exclude_both_sides:d.exclude_both_sides;
   $("f-share").value=st.minShare||""; $("f-money").value=st.minMoney||""; $("f-office").checked=!!st.includeOffice; $("f-always").value=st.always||"";
   $("f-dc").checked=st.doubleCheck!==false;
 }
@@ -1926,6 +2037,11 @@ function fillWeights(st){
 function render(){
   const st=readState(), neutral=st.mode!=="values";
   $("values-only").hidden=neutral;
+  $("custom-fields").hidden=st.scoring!=="custom";
+  const scoringErr=st.scoring==="custom"?resolveScoring(st.custom).errors:[];
+  // Written only when it changes, so the live region speaks once per new problem, not per keystroke.
+  const bad=$("custom-bad"), badMsg=scoringErr.length?"Fix the weights: "+scoringErr.join("; ")+".":"";
+  bad.hidden=!badMsg; if(bad.textContent!==badMsg)bad.textContent=badMsg;
   $("focus-fields").hidden=st.crowded!=="focus";
   const rows=[...$("axes").children], ls=letters(rows.length);
   rows.forEach((r,i)=>{
@@ -1946,15 +2062,16 @@ function render(){
   $("s1-status").textContent=(neutral?"Neutral comparison":"Values match")+" · election "+(st.date||"date not set")+(st.address.trim()?" · address entered (used only in Step 2)":"");
   $("ballot-noaddr").hidden=!!st.address.trim();
   $("f-place-bad").hidden=!st.place.trim()||!!safePlace(st);
-  // Re-score pasted answers only when the mode, the weights or the gray topics change, not on every keystroke.
-  const scoring=neutral?"neutral":calcProfile(st);
+  // Re-score pasted answers only when the mode, the weights, the gray topics or the scoring change, not on every keystroke.
+  const scoring=neutral?"neutral":calcProfile(st)+"\n"+JSON.stringify(scoringOf(st));
   if(scoring!==lastScoring){lastScoring=scoring;items.forEach(evalItem)}
   else items.forEach(refreshItem); // the double-check option shows or hides each item's panel
   showBallotCheck();
   // Refill only when the axes change, so edits typed into the calculator survive other keystrokes.
-  const axes=calcProfile(st);
+  const axes=calcProfile(st), calcScoring=JSON.stringify(scoringOf(st));
   if(!neutral&&axes!==lastAxes)fillWeights(st);
-  lastAxes=neutral?null:axes;
+  else if(calcScoring!==lastCalcScoring)runCalc(); // a new scoring re-runs the calculator, keeping its pasted text
+  lastAxes=neutral?null:axes; lastCalcScoring=calcScoring;
   refreshStages();
   save();
 }
@@ -2020,7 +2137,8 @@ function redLineNote(excluded){
   if(url){const a=el("a","source");a.href=url;a.target="_blank";a.rel="noopener noreferrer";p.append(" (",a,")")}
   return p;
 }
-function runCalc(){renderCalc($("calc-out"),calculate($("calc-weights").value,$("calc-research").value))}
+const zeroWeight=sc=>[sc.record,sc.questionnaire,sc.stated,sc.donors].includes(0);
+function runCalc(){renderCalc($("calc-out"),calculate($("calc-weights").value,$("calc-research").value,scoringOf(readState())))}
 function renderCalc(out,r){
   out.replaceChildren();
   const notes=[...r.warnings.map(w=>({msg:w,line:""})),...r.errors];
@@ -2039,9 +2157,10 @@ function renderCalc(out,r){
     }
     out.append(box);
   });
-  const det=el("details",null,"math"); det.append(el("summary","Show the math"));
+  const det=el("details",null,"math"), sc=res.scoring; det.append(el("summary","Show the math"));
+  det.append(el("p","Scoring: "+scoringLabel(sc)+"."));
   det.append(el("p","Weights: "+Object.entries(r.weights).map(([k,v])=>k+"="+v).join(", ")+"."));
-  det.append(el("p","Each priority gets a position from its evidence: records count 3, statements 1, all questionnaire answers on a priority together count 2 (one answer) or 3 (two or more, never more than one record), and all donors and endorsements on a priority together count as one statement (their average direction), plus a neutral starting weight of 3. Lines with the same source count once unless they have different event ids. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
+  det.append(el("p",`Each priority gets a position from its evidence: records count ${sc.record}, statements ${sc.stated}, all questionnaire answers on a priority together count ${sc.questionnaire} per answer up to ${sc.record} (never more than one record), and all donors and endorsements on a priority together count ${sc.donors} (their average direction), plus a neutral starting weight of 3.`+(zeroWeight(sc)?" A kind weighted 0 is not counted; its lines are listed above.":"")+(sc.exclude_both_sides?" A donor or endorser that backs more than one candidate in the race is not counted (access money).":"")+" Lines with the same source count once unless they have different event ids. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
   res.rows.forEach(row=>{
     det.append(el("p",row.name+":"));
     const ul=el("ul");
@@ -2070,7 +2189,7 @@ function evalItem(it){
     it.status="problem";
     out.append(noteBox([{msg:refusedText(it.refused),line:""}]));
   }else if(st.mode==="values"){
-    const r=calculate(calcProfile(st),text);
+    const r=calculate(calcProfile(st),text,scoringOf(st));
     renderCalc(out,r);
     it.status=r.result&&!r.errors.length?"scored":"problem";
     if(r.result)it.call="Call: "+r.result.call;

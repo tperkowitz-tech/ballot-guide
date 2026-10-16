@@ -480,3 +480,31 @@ console.log("kit_test: v1.6.0 checks passed");
   assert.strictEqual(splitInfo("CANDIDATE: A"), null);
   console.log("kit_test: v1.6.1 checks passed");
 }
+
+// v1.7.0: the Step 1 scoring choice reaches the profile (Steps 5 and 7 read it) and the calculator,
+// and never the neutral profile or the calculator's weights.
+{
+  const {scoringOf, scoringText} = require("./kit.js");
+  const {calculate} = require("./calc.js");
+  const st = {...defaultState(), mode: "values"};
+  assert.strictEqual(scoringOf(st), "improved");
+  assert.ok(buildProfile(st).includes("\nScoring: Improved (recommended)\n"));
+  assert.ok(!buildProfile(defaultState()).includes("Scoring:"));
+  assert.ok(!calcProfile(st).includes("Scoring"));
+  assert.ok(buildProfile({...st, scoring: "original"}).includes("\nScoring: Original\n"));
+  const custom = {...st, scoring: "custom", custom: {record: 3, questionnaire: 1, stated: 0, donors: 3, exclude_both_sides: false}};
+  assert.strictEqual(scoringOf(custom), custom.custom);
+  assert.strictEqual(scoringText(custom), "Custom: records 3, questionnaire answers 1, statements 0, donors and endorsements 3; money backing more than one candidate counted");
+  // An all-zero (or emptied) custom choice says so instead of scoring with a silent default.
+  const zero = {...custom, custom: {record: 0, questionnaire: 0, stated: 0, donors: 0, exclude_both_sides: true}};
+  assert.ok(scoringText(zero).startsWith("Custom (weights not valid yet: every scoring weight is 0"), scoringText(zero));
+  assert.strictEqual(calculate("A=3", "CANDIDATE: X\n- [A][+][RECORD] v | https://e.org/1", scoringOf(zero)).result, null);
+  assert.ok(!parseWeights(buildProfile(custom)).warnings.length, "the scoring line never reads as a weight");
+  // Step 3 asks for donor-name event ids; neutral mode gets the example in its [TOPIC][0] form.
+  const md = require("fs").readFileSync(require("path").join(__dirname, "..", "ballot-guide", "references", "prompts.md"), "utf8");
+  const step3 = [...md.matchAll(/^## Step (\d)[^\n]*\n[\s\S]*?```text\n([\s\S]*?)\n```/gm)].map(m => m[2])[3];
+  assert.ok(fillStep(3, step3, st).includes("[B][-][FUNDER][Example Realty PAC]"));
+  assert.ok(fillStep(3, step3, defaultState()).includes("[Housing][0][FUNDER][Example Realty PAC]"));
+  assert.ok(fillStep(3, step3, defaultState()).includes("[Housing][0][FUNDER][against-Example PAC]"));
+  console.log("kit_test: v1.7.0 scoring checks passed");
+}

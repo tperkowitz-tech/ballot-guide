@@ -236,7 +236,10 @@ def load_profiles():
     return data
 
 
-def profile_race(race, prof):
+SCORING_NOTE = "Scoring: Improved (recommended)."
+
+
+def profile_race(race, prof, scoring="improved"):
     """score.py input for one profile: each row's lean on a profile axis becomes a row on that
     axis, flipped when the profile leans to the "-" pole; rows with no such lean are left out."""
     opts = [{"name": o["name"], "evidence": [
@@ -245,7 +248,7 @@ def profile_race(race, prof):
         for ev in o.get("evidence", []) for a, (d, _) in prof["axes"].items() if a in ev.get("lean", {})]}
         for o in race["options"]]
     return score_race({"race": race["race"], "measure": bool(race.get("measure")), "options": opts},
-                      {a: w for a, (_, w) in prof["axes"].items()})
+                      {a: w for a, (_, w) in prof["axes"].items()}, scoring=scoring)
 
 
 def profile_table(race, profiles):
@@ -260,7 +263,7 @@ def profile_table(race, profiles):
         rows.append(f'<tr><th scope="row">{e(prof["name"])}</th><td>{e(res["call"])}{note}</td>{cells}</tr>')
     return (f'<div class="scroll"><table><caption>Values match by profile: {e(race["race"])}</caption><thead><tr><th scope="col">Profile</th>'
             f'<th scope="col">Call</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
-            "<p class=\"muted\">How each example profile would score this, from the same evidence. "
+            f"<p class=\"muted\">{SCORING_NOTE} How each example profile would score this, from the same evidence. "
             "Your own priorities may differ.</p>")
 
 
@@ -279,6 +282,7 @@ def self_test():
     zero = profile_race({"race": "Z", "options": [{"name": "X", "evidence": [{**ev, "lean": {"U": "0"}}]}]}, minus)
     assert zero["options"][0]["score"] == 50, zero  # a "0" lean is mixed evidence and counts
     assert "<caption>Values match by profile: R</caption>" in profile_table(race, {"profiles": [plus]})
+    assert SCORING_NOTE in profile_table(race, {"profiles": [plus]})
     print("build_sample self-test OK")
 
 

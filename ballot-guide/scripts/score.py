@@ -1,7 +1,10 @@
-"""Score ballot options against a user's weighted value axes (scoring model v2.1).
+"""Score ballot options against a user's weighted value axes (scoring model v2.2).
 
 Input JSON:
   {"axes": {"A": 3, "B": 2, ...},          # axis letter -> integer weight 1-3
+   "scoring": optional "improved" (default) | "original"
+              | {"record": n, "questionnaire": n, "stated": n, "donors": n,  # integers 0-3
+                 "exclude_both_sides": bool},
    "gray": optional [str],                 # the profile's gray-area (torn) topics
    "party_axes": optional [str],           # letters of the voter's party priorities
    "races": [{"race": str,
@@ -30,7 +33,15 @@ else the same normalized source) count once per axis. Per
 axis, all funder and endorsement events together count as one entry (k = 1, sign = their
 mean), so donors and endorsers never outweigh one statement, and all questionnaire answers
 together count as one entry (k = 2 for one answer, 3 for more, sign = their mean), so
-answers never outweigh one record. The score averages only the axes that have evidence;
+answers never outweigh one record. That is the "original" scoring (v2.1). "improved" (the
+default) counts the pooled donors and endorsements as k = 2 and drops both-sides money: a
+funder or endorsement support event id (case and spacing ignored; an opposition id, "against-" or
+"against:" then the donor, never counts) that appears, with a link, under two or more options of one
+race that did not withdraw is left out of every option's math with a warning. That is this
+guide's own heuristic: money on both sides reads as buying access, not backing a position. A custom object sets each
+kind weight (0 = not counted; those rows are skipped with a warning), pools questionnaire
+answers to min(n x questionnaire, record) and donors to k = donors, and turns the both-sides rule
+on or off. Every race result echoes the "scoring" used. The score averages only the axes that have evidence;
 the low/high range treats axes without the candidate's own evidence as unknown and shows
 how far they could move it, so having no record never reads as a neutral 50. A measure has exactly one
 option: the YES side. Mirrored exactly by tools/calc.js; tools/calc_test.js checks parity.
@@ -41,7 +52,11 @@ import json
 import re
 import sys
 
-KIND = {"record": 3, "questionnaire": 2, "stated": 1, "funder": 1, "endorsement": 1}
+KIND = {"record": 3, "questionnaire": 2, "stated": 1, "funder": 1, "endorsement": 1}  # original weights
+# Preset scorings; a custom one has the same keys. "donors" weighs the pooled funder and endorsement entry.
+SCORING = {"original": {"record": 3, "questionnaire": 2, "stated": 1, "donors": 1, "exclude_both_sides": False},
+           "improved": {"record": 3, "questionnaire": 2, "stated": 1, "donors": 2, "exclude_both_sides": True}}
+WEIGHTS = ("record", "questionnaire", "stated", "donors")
 # Breaks ties within one event: the candidate's own words beat what others give or say.
 RANK = {"record": 5, "questionnaire": 4, "stated": 3, "endorsement": 2, "funder": 1}
 AGGREGATE = ("funder", "endorsement")  # pooled to one entry per axis
@@ -49,6 +64,63 @@ SOLO = ("record", "stated")  # counted per event; questionnaire answers pool per
 OWN = ("record", "questionnaire", "stated")  # the candidate's own evidence; counts toward coverage
 SIGN = {"+": 1, "0": 0, "-": -1}
 K0 = 3  # neutral prior worth one record, so one item cannot pin an axis at 100
+
+
+def resolve_scoring(s):
+    """Return (scoring, errors): a preset name or custom object -> {"name", 4 weights, "exclude_both_sides"}."""
+    if s is None:
+        s = "improved"
+    if isinstance(s, str) and s in SCORING:
+        return {"name": s, **SCORING[s]}, []
+    if not isinstance(s, dict):
+        return None, ['scoring must be "improved", "original" or an object with record, questionnaire, '
+                      'stated, donors and exclude_both_sides']
+    errs = [f"scoring weight for {k} must be an integer 0-3" for k in WEIGHTS
+            if type(s.get(k)) is not int or not 0 <= s[k] <= 3]
+    if type(s.get("exclude_both_sides")) is not bool:
+        errs.append("scoring exclude_both_sides must be true or false")
+    if not errs and not any(s[k] for k in WEIGHTS):
+        errs.append("every scoring weight is 0, so nothing would count; set at least one above 0")
+    # Answers pool to at most one record, so with record 0 they would silently count nothing.
+    if not errs and s["questionnaire"] and not s["record"]:
+        errs.append("questionnaire answers count at most one record; with record 0 they count nothing, "
+                    "so set record above 0 or questionnaire to 0")
+    if errs:
+        return None, errs
+    return {"name": "custom", **{k: s[k] for k in WEIGHTS}, "exclude_both_sides": s["exclude_both_sides"]}, []
+
+
+def kind_weights(sc):
+    return {"record": sc["record"], "questionnaire": sc["questionnaire"], "stated": sc["stated"],
+            "funder": sc["donors"], "endorsement": sc["donors"]}
+
+
+def linked(ev):
+    src = ev.get("source")
+    return isinstance(src, str) and bool(re.match(r"\s*https?://", src, re.I))
+
+
+def norm_event(event):
+    return re.sub(r"\s+", " ", event.strip().lower())
+
+
+OPPOSE = re.compile(r"against[-:]")  # an opposition id: "against-Example PAC" ("Against Malaria Fund" is support)
+
+
+def both_sides(opts):
+    """Normalized funder/endorsement support ids that back two or more options of one race.
+    Spending against a candidate ("against-<donor>") never counts here: backing A while
+    opposing B is a strong signal, not hedging. Nor does a withdrawn option: moving to the
+    remaining candidate after one drops out is not hedging. Red-lined options still count."""
+    backs = {}
+    for i, o in enumerate(opts):
+        if o.get("withdrawn"):
+            continue
+        for ev in o.get("evidence", []):
+            if ev.get("kind") in AGGREGATE and isinstance(ev.get("event"), str) and ev["event"].strip() and linked(ev) \
+                    and not OPPOSE.match(norm_event(ev["event"])):
+                backs.setdefault(norm_event(ev["event"]), set()).add(i)
+    return {e for e, who in backs.items() if len(who) > 1}
 
 
 def is_gray(ev):
@@ -111,14 +183,16 @@ def party_row(text):
     return isinstance(text, str) and bool(PARTY_NAME.search(text) or PARTY_ENDORSE.search(text))
 
 
-def collapse(opt, party_axes=()):
+def collapse(opt, party_axes=(), sc=None, shared=()):
     """Leave out rows without a web link and party endorsements and donors not tagged on one of
-    the voter's party priorities; split out gray rows; collapse rows of one event to one entry per axis."""
-    name, gray, groups, warnings = opt.get("name"), [], {}, []
+    the voter's party priorities; split out gray rows; leave out rows of a kind weighted 0 and
+    both-sides money (shared event ids, when the scoring excludes it); collapse rows of one
+    event to one entry per axis."""
+    name, gray, groups, warnings, told = opt.get("name"), [], {}, [], set()
+    w = kind_weights(sc or SCORING["improved"])
     for i, ev in enumerate(opt.get("evidence", [])):
         label = ev.get("event") or ev.get("text") or ev.get("source") or f"{name} item {i + 1}"
-        src = ev.get("source")
-        if not (isinstance(src, str) and re.match(r"\s*https?://", src, re.I)):
+        if not linked(ev):
             warnings.append(f"{name}: Not counted until it has a full link: {label}")
             continue
         if ev.get("kind") in AGGREGATE and party_row(ev.get("text")) and ev.get("axis") not in party_axes:
@@ -126,6 +200,15 @@ def collapse(opt, party_axes=()):
             continue
         if is_gray(ev):
             gray.append(ev)
+            continue
+        if not w[ev["kind"]]:
+            warnings.append(f"{name}: Not counted (weight 0 in your scoring): {label}")
+            continue
+        if sc and sc["exclude_both_sides"] and ev["kind"] in AGGREGATE and isinstance(ev.get("event"), str) \
+                and ev["event"].strip() and norm_event(ev["event"]) in shared:
+            if norm_event(ev["event"]) not in told:
+                told.add(norm_event(ev["event"]))
+                warnings.append(f"{name}: {ev['event']} backs more than one candidate here; not counted (access money)")
             continue
         key = event_key(ev, i)
         if key not in groups:
@@ -145,8 +228,9 @@ def collapse(opt, party_axes=()):
     return events, gray, warnings
 
 
-def fit(events, axes):
+def fit(events, axes, sc):
     """Return (score, low, high), or (None, None, None) when no axis has any evidence."""
+    w = kind_weights(sc)
     num = {a: 0 for a in axes}
     den = {a: 0 for a in axes}
     pooled = {a: [] for a in axes}
@@ -158,20 +242,20 @@ def fit(events, axes):
             elif kind == "questionnaire":
                 quest[axis].append(s)
             else:
-                num[axis] += KIND[kind] * s
-                den[axis] += KIND[kind]
+                num[axis] += w[kind] * s
+                den[axis] += w[kind]
     for a in sorted(axes):
-        # All answers on an axis are one entry worth at most one record (k = 3), so a
-        # stack of answers never outweighs what the candidate did.
+        # All answers on an axis are one entry worth at most one record, so a stack of
+        # answers never outweighs what the candidate did.
         if quest[a]:
-            k = min(KIND["questionnaire"] * len(quest[a]), KIND["record"])
+            k = min(w["questionnaire"] * len(quest[a]), w["record"])
             num[a] += k * (sum(quest[a]) / len(quest[a]))
             den[a] += k
-        # All donors and endorsers on an axis count as one entry (k = 1, mean sign), so a
-        # flood of them never outweighs one statement.
+        # All donors and endorsers on an axis count as one entry (k = donors, mean sign), so a
+        # flood of them never outweighs one record.
         if pooled[a]:
-            num[a] += sum(pooled[a]) / len(pooled[a])
-            den[a] += 1
+            num[a] += sc["donors"] * (sum(pooled[a]) / len(pooled[a]))
+            den[a] += sc["donors"]
     known = {a for ev in events for a, _, _ in ev["entries"]}
     if not known:
         return None, None, None
@@ -207,8 +291,8 @@ def steps(events):
     return out
 
 
-def summarize(opt, axes, gray_topics=False, party_axes=()):
-    events, gray, warnings = collapse(opt, party_axes)
+def summarize(opt, axes, gray_topics, party_axes, sc, shared):
+    events, gray, warnings = collapse(opt, party_axes, sc, shared)
     # Without torn topics in the profile a gray tag cannot mean "torn": drop it, say so.
     if gray and not gray_topics:
         warnings.append(f"{opt.get('name')}: tagged gray, but you listed no topics you are torn on ({len(gray)} not counted).")
@@ -224,7 +308,7 @@ def summarize(opt, axes, gray_topics=False, party_axes=()):
     level = ("none" if not events
              else "strong" if cov >= 0.75 and firm >= 3 and records >= 1 and len(firm_axes) >= 2
              else "moderate" if cov >= 0.5 and firm >= 2 else "thin")
-    score, low, high = fit(events, axes)
+    score, low, high = fit(events, axes, sc)
     row = {"name": opt.get("name"), "score": score, "low": low, "high": high,
            "evidence": level, "confidence": level, "coverage": round(cov * 100) / 100,
            "events": len(events), "records": records, "questionnaires": quest, "gray": gray,
@@ -243,7 +327,7 @@ def leader(scores):
     return scores.index(top) if scores.count(top) == 1 else None
 
 
-def decide(rows, events, covered, eligible, measure, axes):
+def decide(rows, events, covered, eligible, measure, axes, sc):
     """Return (call, turns_on). Leave-one-out: a call that one event can flip is a toss-up."""
     w_all = sum(axes.values())
     half = [2 * c >= w_all for c in covered]  # coverage >= 0.5, in exact integers
@@ -259,7 +343,7 @@ def decide(rows, events, covered, eligible, measure, axes):
         if m == 0:
             return "Toss-up", None
         for label, rest in steps(events[0]):
-            s2 = fit(rest, axes)[0]
+            s2 = fit(rest, axes, sc)[0]
             # None: the whole score rests on this one step.
             if s2 is None or s2 == 50 or (s2 > 50) != (m > 0):
                 return f"Toss-up (turns on: {label})", label
@@ -288,7 +372,7 @@ def decide(rows, events, covered, eligible, measure, axes):
     for j, i in enumerate(eligible):
         for label, rest in steps(events[i]):
             alt = scores.copy()
-            alt[j] = fit(rest, axes)[0]
+            alt[j] = fit(rest, axes, sc)[0]
             # None: that option's whole score rests on this one step. That flips the call
             # only for the leader; a runner-up left with nothing cannot overtake it.
             if alt[j] is None:
@@ -311,34 +395,39 @@ def decide(rows, events, covered, eligible, measure, axes):
     return (name if clear else f"Lean {name}"), None
 
 
-def score_race(race, axes, gray_topics=False, party_axes=()):
-    errs = validate(race, axes)
+def score_race(race, axes, gray_topics=False, party_axes=(), scoring=None):
+    sc, errs = resolve_scoring(scoring)
+    errs += validate(race, axes)
     if errs:
         raise ValueError("; ".join(errs))
     opts = race["options"]
+    shared = both_sides(opts)
     rows, events, covered, warnings = [], [], [], []
     for o in opts:
-        row, evs, cov, warn = summarize(o, axes, gray_topics, party_axes)
+        row, evs, cov, warn = summarize(o, axes, gray_topics, party_axes, sc, shared)
         rows.append(row), events.append(evs), covered.append(cov), warnings.extend(warn)
     eligible = [i for i, o in enumerate(opts) if not o.get("red_line") and not o.get("withdrawn")]
     measure = bool(race.get("measure"))
-    call, turns_on = decide(rows, events, covered, eligible, measure, axes)
+    call, turns_on = decide(rows, events, covered, eligible, measure, axes, sc)
     return {"race": race.get("race"), "call": call, "turns_on": turns_on,
-            "options": rows, "warnings": warnings}
+            "options": rows, "warnings": warnings, "scoring": sc}
 
 
 def score(data):
     out = []
     for race in data["races"]:
         try:
-            out.append(score_race(race, data["axes"], bool(data.get("gray")), data.get("party_axes") or []))
+            out.append(score_race(race, data["axes"], bool(data.get("gray")), data.get("party_axes") or [],
+                                  data.get("scoring")))
         except ValueError as e:
             raise ValueError(f"{race.get('race')}: {e}") from e
     return out
 
 
 def demo():
-    one = lambda axes, opts, measure=False, gray=False: score_race({"race": "R", "measure": measure, "options": opts}, axes, gray)
+    # The v2.1 assertions below pin the original scoring; the improved and custom ones follow them.
+    one = lambda axes, opts, measure=False, gray=False, scoring="original": score_race(
+        {"race": "R", "measure": measure, "options": opts}, axes, gray, scoring=scoring)
     # Every row gets its own page unless a test names one; rows without a link are not counted.
     pages = iter(range(10 ** 6))
     ev = lambda axis, sign, kind, **kw: {"axis": axis, "sign": sign, "kind": kind,
@@ -361,7 +450,7 @@ def demo():
     r = one({"A": 3}, [{"name": "X", "evidence": pe}])
     assert r["options"][0]["score"] == 75 and r["warnings"] == \
         ["X: Party evidence is used only if you list party as a priority: Endorsed by the Ohio Example Party"], r
-    r = score_race({"race": "R", "options": [{"name": "X", "evidence": pe}]}, {"A": 3}, party_axes=["A"])
+    r = score_race({"race": "R", "options": [{"name": "X", "evidence": pe}]}, {"A": 3}, party_axes=["A"], scoring="original")
     assert r["options"][0]["score"] == 79 and r["warnings"] == [], r  # (3 + 1) / (3 + 1 + 3)
     # Only on a party axis: the same row tagged on another axis is left out.
     r = score_race({"race": "R", "options": [{"name": "X", "evidence": pe}]}, {"A": 3, "B": 1}, party_axes=["B"])
@@ -529,7 +618,58 @@ def demo():
     assert (r["call"], r["options"][0]["evidence"]) == ("Lean YES", "moderate"), r
     st = [ev(a, "-", "stated", event=f"s{a}{i}") for a in "AB" for i in range(3)]
     assert one({"A": 1, "B": 1}, [{"name": "YES", "evidence": st}], measure=True)["call"] == "Lean NO"
-    print(json.dumps(one({"A": 3, "B": 2}, [{"name": "X", "evidence": x}, {"name": "Y", "evidence": y[:2]}]), indent=2))
+    # Scoring options. No "scoring" means improved, and every result echoes what was used.
+    rec_fund = [ev("A", "-", "record"), ev("A", "+", "funder")]
+    r = score_race({"race": "R", "options": [{"name": "X", "evidence": rec_fund}]}, {"A": 3})
+    assert r["scoring"] == {"name": "improved", "record": 3, "questionnaire": 2, "stated": 1, "donors": 2,
+                            "exclude_both_sides": True}, r
+    # Improved pools donors and endorsements as k = 2: (-3 + 2) / (3 + 2 + 3) -> 43.75 -> 44 (original: 36).
+    assert r["options"][0]["score"] == 44, r
+    assert score({"axes": {"A": 3}, "scoring": "original", "races": [{"race": "R", "options": [
+        {"name": "X", "evidence": rec_fund}]}]})[0]["options"][0]["score"] == 36
+    # Both-sides money: one donor event id under two candidates (case and spacing ignored) is
+    # shown in a warning and left out of both; original counts it.
+    pac = lambda n, e: [ev("A", "+", "record", event=f"r{n}"), ev("A", "+", "funder", event=e)]
+    two = [{"name": "X", "evidence": pac(1, "Example Realty PAC")}, {"name": "Y", "evidence": pac(2, "example  realty pac")}]
+    r = one({"A": 3}, two, scoring="improved")
+    assert [o["score"] for o in r["options"]] == [75, 75], r  # record alone: 3 / (3 + 3)
+    assert r["warnings"] == ["X: Example Realty PAC backs more than one candidate here; not counted (access money)",
+                             "Y: example  realty pac backs more than one candidate here; not counted (access money)"], r
+    assert [o["score"] for o in one({"A": 3}, two)["options"]] == [79, 79]  # original: (3 + 1) / (3 + 1 + 3)
+    # Backing X while spending against Y is a signal, not hedging: both rows count.
+    vs = [{"name": "X", "evidence": pac(1, "Example PAC")}, {"name": "Y", "evidence": [ev("A", "+", "record", event="r2"),
+          ev("A", "-", "funder", event="against-Example PAC")]}]
+    r = one({"A": 3}, vs, scoring="improved")
+    assert ([o["score"] for o in r["options"]], r["warnings"]) == ([81, 56], []), r  # (3 + 2) / 8; (3 - 2) / 8
+    # Only "against-" / "against:" marks opposition: a donor named "Against ..." backing both is excluded.
+    mal = [{"name": "X", "evidence": pac(1, "Against Malaria Fund")}, {"name": "Y", "evidence": pac(2, "against malaria fund")}]
+    assert [o["score"] for o in one({"A": 3}, mal, scoring="improved")["options"]] == [75, 75]
+    # A withdrawn candidate's donors are not both-sides money; a red-lined candidate's still are.
+    gone = lambda flag: [{"name": "X", **flag, "evidence": pac(1, "Example PAC")}, {"name": "Y", "evidence": pac(2, "Example PAC")}]
+    r = one({"A": 3}, gone({"withdrawn": True}), scoring="improved")
+    assert ([o["score"] for o in r["options"]], r["warnings"]) == ([81, 81], []), r
+    assert [o["score"] for o in one({"A": 3}, gone({"red_line": True}), scoring="improved")["options"]] == [75, 75]
+    # Custom: weight 0 rows are listed as not counted and give no coverage; questionnaire answers
+    # pool to min(n x questionnaire, record); the both-sides checkbox switches the rule.
+    cust = lambda **w: {"record": 3, "questionnaire": 2, "stated": 1, "donors": 2, "exclude_both_sides": True, **w}
+    r = one(eq4, [{"name": "X", "evidence": [ev("A", "+", "stated", event="s")]}], scoring=cust(stated=0))
+    assert (r["options"][0]["score"], r["options"][0]["coverage"], r["call"]) == (None, 0, "Not enough evidence"), r
+    assert r["warnings"] == ["X: Not counted (weight 0 in your scoring): s"], r
+    assert one({"A": 1}, [{"name": "X", "evidence": [q("A", 0), q("A", 1)]}], scoring=cust(questionnaire=1))["options"][0]["score"] == 70
+    assert one({"A": 1}, [{"name": "X", "evidence": [q("A", 0)]}], scoring=cust(record=1, questionnaire=3))["options"][0]["score"] == 62
+    assert [o["score"] for o in one({"A": 3}, two, scoring=cust(exclude_both_sides=False))["options"]] == [81, 81]  # (3 + 2) / 8
+    assert one({"A": 3}, two, scoring=cust(donors=0))["warnings"][0] == "X: Not counted (weight 0 in your scoring): Example Realty PAC"
+    # Bad scoring input is a clear error, never a silent default.
+    for bad, msg in [(cust(record=0, questionnaire=0, stated=0, donors=0), "every scoring weight is 0"),
+                     (cust(record=4), "record must be an integer 0-3"), (cust(donors=True), "donors must be an integer 0-3"),
+                     (cust(record=0), "with record 0"), ({"record": 3}, "exclude_both_sides must be"), ("fancy", "scoring must be")]:
+        try:
+            one({"A": 1}, [{"name": "X", "evidence": []}], scoring=bad)
+            raise AssertionError(f"expected ValueError for {bad}")
+        except ValueError as err:
+            assert msg in str(err), (bad, err)
+    print(json.dumps(one({"A": 3, "B": 2}, [{"name": "X", "evidence": x}, {"name": "Y", "evidence": y[:2]}],
+                         scoring="improved"), indent=2))
     print("self-check OK")
 
 
