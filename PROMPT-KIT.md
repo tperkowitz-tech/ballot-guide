@@ -69,8 +69,8 @@ B | {{name}} | {{meaning}} | weight {{1-3}}
 C | {{name}} | {{meaning}} | weight {{1-3}}
 D | {{name}} | {{meaning}} | weight {{1-3}}
 
-Scoring: {{Improved (recommended) / Original / Custom: records 0-3, questionnaire answers 0-3, statements 0-3, donors and endorsements 0-3; money backing more than one candidate counted or not counted}} (default: Improved)
-Improved counts donors and endorsements like one questionnaire answer (more than a single statement), and ignores money that backs both sides. Original counts all donors and endorsements on a value together like one statement. Custom is your own choice; 0 means not counted.
+Scoring: {{Original (default) / Improved (proposed; under review) / Custom: records 0-3, questionnaire answers 0-3, statements 0-3, donors and endorsements 0-3; money backing more than one candidate counted or not counted}} (default: Original)
+Original counts all donors and endorsements on a value together like one statement. Improved, proposed and under review against the research, counts them like one questionnaire answer (more than a single statement), and ignores money that backs both sides. Custom is your own choice; 0 means not counted.
 
 Gray areas. Topics where you are MIXED. Evidence on these topics is tagged gray and left out of the score, not + or -.
 - {{topic, and why you are mixed}}
@@ -222,13 +222,13 @@ The arithmetic is fixed. Choosing and tagging evidence is a judgment; every tag 
 FOR EACH OPTION (candidate, or YES for a measure):
 1. Leave out gray items. List them under the option.
 2. Lines with the same event id are one event. Lines with no event id and the same URL are one event (ignore letter case in the domain, anything after ? or #, and a final /). Lines with neither and the same fact text are one event (ignore case, spacing and the date). On each axis keep its strongest kind (RECORD, then QUESTIONNAIRE, then STATED, then ENDORSEMENT, then FUNDER). If lines of that kind disagree, use 0 and say so.
-3. Sign s: + = 1, 0 = 0, - = -1. Kind weights come from the Scoring line in the VALUES PROFILE (no line: Improved):
-   Improved (recommended): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 2; money backing more than one candidate not counted.
-   Original: RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 1; all money counted.
+3. Sign s: + = 1, 0 = 0, - = -1. Kind weights come from the Scoring line in the VALUES PROFILE (no line: Original):
+   Original (default): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 1; all money counted.
+   Improved (proposed; under review): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 2; money backing more than one candidate not counted.
    Custom: the weights the line gives (records, questionnaire answers, statements, donors and endorsements) and whether money backing more than one candidate is counted.
    DONORS weighs all FUNDER and ENDORSEMENT events on a value together. A kind with weight 0 is not counted: leave its lines out and list them as not counted.
    When money backing more than one candidate is not counted: a FUNDER or ENDORSEMENT event id (ignore case and spacing) that appears under two or more candidates in the same race is left out for each of them, unless the id is an opposition id, "against-" or "against:" followed by the donor (spending against a candidate always counts), or the candidate withdrew; list it as "{{donor}} backs more than one candidate here; not counted (access money)". A measure has one option, so this never applies to it.
-4. All QUESTIONNAIRE events on a value together count as ONE item: k = the number of answers x the QUESTIONNAIRE weight, but never more than the RECORD weight (with the Improved weights: 2 for one answer, 3 for two or more); s = the average of their signs.
+4. All QUESTIONNAIRE events on a value together count as ONE item: k = the number of answers x the QUESTIONNAIRE weight, but never more than the RECORD weight (with the Original or Improved weights: 2 for one answer, 3 for two or more); s = the average of their signs.
    All FUNDER and ENDORSEMENT events on a value together count as ONE item: k = DONORS, s = the average of their signs.
    For each value: position p = (sum of k x s) / (sum of k + 3).
 5. KNOWN values have at least one event of any kind. UNKNOWN values have none.
@@ -305,7 +305,7 @@ TASK: Write the voter guide in Markdown. Use only the facts and scores given. Do
 STRUCTURE:
 1. Title: "{{City}} Ballot Guide {{year}}", the address districts, and the election date.
 2. Values: the axes from the VALUES PROFILE, in a short list.
-3. Method: 6 sentences. First, one sentence naming the scoring from the VALUES PROFILE's Scoring line (Improved if there is none), for example "Scoring: Improved (recommended)." Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements on one value together count as one item, weighted by that scoring (Improved: like one questionnaire answer, and money that backs more than one candidate in a race is not counted; Original: like one statement). Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
+3. Method: 6 sentences. First, one sentence naming the scoring from the VALUES PROFILE's Scoring line (Original if there is none), for example "Scoring: Original (default)." Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements on one value together count as one item, weighted by that scoring (Improved: like one questionnaire answer, and money that backs more than one candidate in a race is not counted; Original: like one statement). Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
 4. Summary table: | Race | Best match | Score (range) | Coverage | Evidence |. Put measures first, then federal, state, county, city, and judges.
 5. Uncontested races: a short section for each, with the score, range and the call (vote, your call, or consider leaving blank). Then one line: offices NOT on this ballot that the voter may expect.
 6. One section for each race or measure:

@@ -491,11 +491,13 @@ console.log("calc_test: all checks passed");
   let page = 0;
   const ev = (axis, sign, kind, extra) => ({axis, sign, kind, source: `https://example.org/s${page++}`, ...extra});
   const recFund = [ev("A", "-", "record"), ev("A", "+", "funder")];
-  // No scoring given: improved, echoed back; donors pool as k = 2: (-3 + 2) / 8 -> 44 (original 36).
+  // No scoring given: original (the v1.6.1 behavior), echoed back; donors pool as k = 1: (-3 + 1) / 7 -> 36.
   let r = calc.scoreRace([{name: "X", evidence: recFund}], {A: 3});
-  assert.deepStrictEqual(r.scoring, {name: "improved", record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true});
-  assert.strictEqual(r.rows[0].score, 44);
-  assert.strictEqual(scoreRace([{name: "X", evidence: recFund}], {A: 3}).rows[0].score, 36);
+  assert.deepStrictEqual(r.scoring, {name: "original", record: 3, questionnaire: 2, stated: 1, donors: 1, exclude_both_sides: false});
+  assert.strictEqual(r.rows[0].score, 36);
+  assert.strictEqual(calc.calculate("A=3", "CANDIDATE: X\n- [A][-][RECORD][r] vote | https://e.org/r\n- [A][+][FUNDER][f] gave | https://e.org/f").result.rows[0].score, 36);
+  // Improved pools donors as k = 2: (-3 + 2) / 8 -> 44.
+  assert.strictEqual(scoreRace([{name: "X", evidence: recFund}], {A: 3}, false, false, [], "improved").rows[0].score, 44);
   // calculate() takes the page's choice; a pasted race with one donor id under both candidates.
   const both = "CANDIDATE: X\n- [A][+][RECORD][r1] vote | https://e.org/r1\n- [A][+][FUNDER][Example Realty PAC] gave | https://e.org/f1\n" +
     "CANDIDATE: Y\n- [A][+][RECORD][r2] vote | https://e.org/r2\n- [A][+][FUNDER][example realty pac] gave | https://e.org/f2";
@@ -525,8 +527,8 @@ console.log("calc_test: all checks passed");
   assert.strictEqual(r.result, null);
   assert.ok(r.errors.some(e => e.msg.includes("every scoring weight is 0")), JSON.stringify(r.errors));
   assert.deepStrictEqual(resolveScoring(cust({record: 0})).errors.length, 1);
-  assert.strictEqual(scoringLabel(resolveScoring().scoring), "Improved (recommended)");
-  assert.strictEqual(scoringLabel(resolveScoring("original").scoring), "Original");
+  assert.strictEqual(scoringLabel(resolveScoring().scoring), "Original (default)");
+  assert.strictEqual(scoringLabel(resolveScoring("improved").scoring), "Improved (proposed; under review)");
   assert.strictEqual(scoringLabel(resolveScoring(cust({stated: 0, exclude_both_sides: false})).scoring),
     "Custom: records 3, questionnaire answers 2, statements 0, donors and endorsements 2; money backing more than one candidate counted");
   console.log("calc_test: scoring option checks passed");
@@ -573,7 +575,7 @@ console.log("calc_test: all checks passed");
         withdrawn: maybe(0.1, true), evidence});
     }
     const base = {axes, gray: rnd() < 0.5, partyAxes: letters.filter(() => rnd() < 0.3), race: {race: "R" + n, measure, options}};
-    // Every race under every scoring option: the default (no key, improved), "improved", "original",
+    // Every race under every scoring option: the default (no key, original), "improved", "original",
     // and random custom weights 0-3 with either both-sides setting; about 1 in 10 custom slots is an
     // invalid one instead (all 0, questionnaire without record, out of range, no switch, not an
     // integer, an unknown name, null).

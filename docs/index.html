@@ -241,9 +241,9 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       </fieldset>
       <fieldset aria-describedby="scoring-hint">
         <legend>Scoring</legend>
-        <p class="hint" id="scoring-hint">Improved counts donors and endorsements like one questionnaire answer (more than a single statement), and ignores money that backs both sides.</p>
-        <label class="opt"><input type="radio" name="scoring" value="improved" checked> Improved (recommended): records count most; donors and endorsements count like a questionnaire answer; money that backs more than one candidate in a race is not counted</label>
-        <label class="opt"><input type="radio" name="scoring" value="original"> Original: donors and endorsements together count like one statement</label>
+        <p class="hint" id="scoring-hint">Original counts donors and endorsements like one statement. Improved (proposed, under review against the research) counts them like one questionnaire answer and ignores money that backs both sides. Custom lets you set each weight.</p>
+        <label class="opt"><input type="radio" name="scoring" value="original" checked> Original (default): donors and endorsements together count like one statement</label>
+        <label class="opt"><input type="radio" name="scoring" value="improved"> Improved (proposed; under review): records count most; donors and endorsements count like a questionnaire answer; money that backs more than one candidate in a race is not counted</label>
         <label class="opt"><input type="radio" name="scoring" value="custom" aria-controls="custom-fields"> Custom: set each weight yourself</label>
         <div id="custom-fields" class="fields" style="padding:0" hidden>
           <p class="hint" id="custom-hint">Whole numbers from 0 to 3; 0 means not counted (those lines are shown but left out). All questionnaire answers on a priority together never count more than one record.</p>
@@ -767,7 +767,7 @@ const isGray = ev => ev.sign === "gray" || ev.gray === true;
 
 // Same as score.py resolve_scoring(): {scoring, errors}; scoring is {name, 4 weights, exclude_both_sides}.
 function resolveScoring(s) {
-  if (s === undefined || s === null) s = "improved";
+  if (s === undefined || s === null) s = "original";
   if (typeof s === "string" && has(SCORING, s)) return {scoring: {name: s, ...SCORING[s]}, errors: []};
   if (!s || typeof s !== "object" || Array.isArray(s)) {
     return {scoring: null, errors: ['scoring must be "improved", "original" or an object with record, questionnaire, stated, donors and exclude_both_sides']};
@@ -786,8 +786,8 @@ function resolveScoring(s) {
 const kindWeights = sc => ({record: sc.record, questionnaire: sc.questionnaire, stated: sc.stated, funder: sc.donors, endorsement: sc.donors});
 // The page's name for a scoring: the Step 1 choice, with the weights spelled out for Custom.
 function scoringLabel(sc) {
-  if (sc.name === "improved") return "Improved (recommended)";
-  if (sc.name === "original") return "Original";
+  if (sc.name === "original") return "Original (default)";
+  if (sc.name === "improved") return "Improved (proposed; under review)";
   return `Custom: records ${sc.record}, questionnaire answers ${sc.questionnaire}, statements ${sc.stated}, donors and endorsements ${sc.donors}; money backing more than one candidate ${sc.exclude_both_sides ? "not counted" : "counted"}`;
 }
 const linked = ev => typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source);
@@ -1054,7 +1054,7 @@ function decide(rows, events, covered, eligible, measure, weights, sc) {
 
 // Returns {call, turns_on, rows, warnings, errors, scoring}; errors means nothing was scored.
 // partyAxes: letters of the voter's party priorities (parseWeights); party evidence counts only there.
-// scoring: "improved" (default), "original" or a custom object, as score.py's "scoring" key.
+// scoring: "original" (default), "improved" or a custom object, as score.py's "scoring" key.
 function scoreRace(options, weights, isMeasure, grayTopics, partyAxes, scoring) {
   const {scoring: sc, errors} = resolveScoring(scoring);
   errors.push(...validateRace(options, weights, isMeasure));
@@ -1132,9 +1132,9 @@ function defaultState() {
     mode: "neutral", address: "", place: "", date: "",
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
-    // Values mode: "improved" (recommended), "original" or "custom" with the weights below, in
-    // the shape score.py's "scoring" key takes.
-    scoring: "improved", custom: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
+    // Values mode: "original" (default), "improved" (proposed, under review) or "custom" with the
+    // weights below, in the shape score.py's "scoring" key takes.
+    scoring: "original", custom: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
     doubleCheck: true,
   };
@@ -1194,7 +1194,7 @@ function placeFromAddress(address) {
 }
 
 // The calculator's scoring for the Step 1 choice: a preset name or the custom weights object.
-const scoringOf = state => state.scoring === "custom" ? state.custom : state.scoring === "original" ? "original" : "improved";
+const scoringOf = state => state.scoring === "custom" ? state.custom : state.scoring === "improved" ? "improved" : "original";
 // One line naming the scoring, for the profile (Steps 5 and 7 read it) and the calculator.
 function scoringText(state) {
   const r = scoringResolve(scoringOf(state));
@@ -1631,8 +1631,8 @@ B | {{name}} | {{meaning}} | weight {{1-3}}
 C | {{name}} | {{meaning}} | weight {{1-3}}
 D | {{name}} | {{meaning}} | weight {{1-3}}
 
-Scoring: {{Improved (recommended) / Original / Custom: records 0-3, questionnaire answers 0-3, statements 0-3, donors and endorsements 0-3; money backing more than one candidate counted or not counted}} (default: Improved)
-Improved counts donors and endorsements like one questionnaire answer (more than a single statement), and ignores money that backs both sides. Original counts all donors and endorsements on a value together like one statement. Custom is your own choice; 0 means not counted.
+Scoring: {{Original (default) / Improved (proposed; under review) / Custom: records 0-3, questionnaire answers 0-3, statements 0-3, donors and endorsements 0-3; money backing more than one candidate counted or not counted}} (default: Original)
+Original counts all donors and endorsements on a value together like one statement. Improved, proposed and under review against the research, counts them like one questionnaire answer (more than a single statement), and ignores money that backs both sides. Custom is your own choice; 0 means not counted.
 
 Gray areas. Topics where you are MIXED. Evidence on these topics is tagged gray and left out of the score, not + or -.
 - {{topic, and why you are mixed}}
@@ -1764,13 +1764,13 @@ The arithmetic is fixed. Choosing and tagging evidence is a judgment; every tag 
 FOR EACH OPTION (candidate, or YES for a measure):
 1. Leave out gray items. List them under the option.
 2. Lines with the same event id are one event. Lines with no event id and the same URL are one event (ignore letter case in the domain, anything after ? or #, and a final /). Lines with neither and the same fact text are one event (ignore case, spacing and the date). On each axis keep its strongest kind (RECORD, then QUESTIONNAIRE, then STATED, then ENDORSEMENT, then FUNDER). If lines of that kind disagree, use 0 and say so.
-3. Sign s: + = 1, 0 = 0, - = -1. Kind weights come from the Scoring line in the VALUES PROFILE (no line: Improved):
-   Improved (recommended): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 2; money backing more than one candidate not counted.
-   Original: RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 1; all money counted.
+3. Sign s: + = 1, 0 = 0, - = -1. Kind weights come from the Scoring line in the VALUES PROFILE (no line: Original):
+   Original (default): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 1; all money counted.
+   Improved (proposed; under review): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 2; money backing more than one candidate not counted.
    Custom: the weights the line gives (records, questionnaire answers, statements, donors and endorsements) and whether money backing more than one candidate is counted.
    DONORS weighs all FUNDER and ENDORSEMENT events on a value together. A kind with weight 0 is not counted: leave its lines out and list them as not counted.
    When money backing more than one candidate is not counted: a FUNDER or ENDORSEMENT event id (ignore case and spacing) that appears under two or more candidates in the same race is left out for each of them, unless the id is an opposition id, "against-" or "against:" followed by the donor (spending against a candidate always counts), or the candidate withdrew; list it as "{{donor}} backs more than one candidate here; not counted (access money)". A measure has one option, so this never applies to it.
-4. All QUESTIONNAIRE events on a value together count as ONE item: k = the number of answers x the QUESTIONNAIRE weight, but never more than the RECORD weight (with the Improved weights: 2 for one answer, 3 for two or more); s = the average of their signs.
+4. All QUESTIONNAIRE events on a value together count as ONE item: k = the number of answers x the QUESTIONNAIRE weight, but never more than the RECORD weight (with the Original or Improved weights: 2 for one answer, 3 for two or more); s = the average of their signs.
    All FUNDER and ENDORSEMENT events on a value together count as ONE item: k = DONORS, s = the average of their signs.
    For each value: position p = (sum of k x s) / (sum of k + 3).
 5. KNOWN values have at least one event of any kind. UNKNOWN values have none.
@@ -1837,7 +1837,7 @@ If RESULT is FAIL: fix the outputs, run Step 5 again, then run this step again.`
 STRUCTURE:
 1. Title: "{{City}} Ballot Guide {{year}}", the address districts, and the election date.
 2. Values: the axes from the VALUES PROFILE, in a short list.
-3. Method: 6 sentences. First, one sentence naming the scoring from the VALUES PROFILE's Scoring line (Improved if there is none), for example "Scoring: Improved (recommended)." Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements on one value together count as one item, weighted by that scoring (Improved: like one questionnaire answer, and money that backs more than one candidate in a race is not counted; Original: like one statement). Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
+3. Method: 6 sentences. First, one sentence naming the scoring from the VALUES PROFILE's Scoring line (Original if there is none), for example "Scoring: Original (default)." Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements on one value together count as one item, weighted by that scoring (Improved: like one questionnaire answer, and money that backs more than one candidate in a race is not counted; Original: like one statement). Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
 4. Summary table: | Race | Best match | Score (range) | Coverage | Evidence |. Put measures first, then federal, state, county, city, and judges.
 5. Uncontested races: a short section for each, with the score, range and the call (vote, your call, or consider leaving blank). Then one line: offices NOT on this ballot that the voter may expect.
 6. One section for each race or measure:
@@ -1913,7 +1913,7 @@ const STORE="ballot-guide-kit-v2", OLD_STORE="ballot-guide-kit-v1";
 const extras={race:"",measure:""};
 const cards=[];
 let lastAxes=null, lastScoring=null, lastCalcScoring=null;
-const KIT_VERSION="v1.7.0";
+const KIT_VERSION="v1.7.1";
 const copied={6:false,7:false}; // Step 6/7 copy clicks, for the test report only; not saved
 // Guided-flow checklist: {kind:"race"|"measure", text, note, answer, status, calc, ui, plus the
 // checkFields below}. The raw Step 2 answer and its checker reply are never saved (they may echo
@@ -2020,8 +2020,8 @@ function writeState(st){
   (Array.isArray(st.axes)&&st.axes.length?st.axes:defaultState().axes).slice(0,6).forEach(a=>addAxis({name:String(a.name||""),meaning:String(a.meaning||""),weight:[1,2,3].includes(a.weight)?a.weight:2}));
   $("f-gray").value=st.gray||""; $("f-red").value=st.red||""; $("f-stakes").value=st.stakes||"";
   $("f-viability").checked=!!st.viability;
-  document.querySelector(`input[name=scoring][value=${["original","custom"].includes(st.scoring)?st.scoring:"improved"}]`).checked=true;
-  // Saved data is untrusted: anything but a whole number 0-3 loads as the Improved weight.
+  document.querySelector(`input[name=scoring][value=${["improved","custom"].includes(st.scoring)?st.scoring:"original"}]`).checked=true;
+  // Saved data is untrusted: anything but a whole number 0-3 loads as the Custom starting weight.
   const c=st.custom&&typeof st.custom==="object"?st.custom:{}, d=defaultState().custom;
   for(const k of ["record","questionnaire","stated","donors"])$("f-w-"+k).value=String([0,1,2,3].includes(c[k])?c[k]:d[k]);
   $("f-w-both").checked=typeof c.exclude_both_sides==="boolean"?c.exclude_both_sides:d.exclude_both_sides;
