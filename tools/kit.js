@@ -23,9 +23,9 @@ function defaultState() {
     mode: "neutral", address: "", place: "", date: "",
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
-    // Values mode: "improved" (recommended), "original" or "custom" with the weights below, in
-    // the shape score.py's "scoring" key takes.
-    scoring: "improved", custom: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
+    // Values mode: "original" (default), "improved" (proposed, under review) or "custom" with the
+    // weights below, in the shape score.py's "scoring" key takes.
+    scoring: "original", custom: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
     doubleCheck: true,
   };
@@ -85,7 +85,7 @@ function placeFromAddress(address) {
 }
 
 // The calculator's scoring for the Step 1 choice: a preset name or the custom weights object.
-const scoringOf = state => state.scoring === "custom" ? state.custom : state.scoring === "original" ? "original" : "improved";
+const scoringOf = state => state.scoring === "custom" ? state.custom : state.scoring === "improved" ? "improved" : "original";
 // One line naming the scoring, for the profile (Steps 5 and 7 read it) and the calculator.
 function scoringText(state) {
   const r = scoringResolve(scoringOf(state));

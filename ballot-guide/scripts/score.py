@@ -2,7 +2,7 @@
 
 Input JSON:
   {"axes": {"A": 3, "B": 2, ...},          # axis letter -> integer weight 1-3
-   "scoring": optional "improved" (default) | "original"
+   "scoring": optional "original" (default) | "improved"
               | {"record": n, "questionnaire": n, "stated": n, "donors": n,  # integers 0-3
                  "exclude_both_sides": bool},
    "gray": optional [str],                 # the profile's gray-area (torn) topics
@@ -33,8 +33,8 @@ else the same normalized source) count once per axis. Per
 axis, all funder and endorsement events together count as one entry (k = 1, sign = their
 mean), so donors and endorsers never outweigh one statement, and all questionnaire answers
 together count as one entry (k = 2 for one answer, 3 for more, sign = their mean), so
-answers never outweigh one record. That is the "original" scoring (v2.1). "improved" (the
-default) counts the pooled donors and endorsements as k = 2 and drops both-sides money: a
+answers never outweigh one record. That is the "original" scoring (v2.1), the default.
+"improved" (proposed, under review against the research) counts the pooled donors and endorsements as k = 2 and drops both-sides money: a
 funder or endorsement support event id (case and spacing ignored; an opposition id, "against-" or
 "against:" then the donor, never counts) that appears, with a link, under two or more options of one
 race that did not withdraw is left out of every option's math with a warning. That is this
@@ -69,7 +69,7 @@ K0 = 3  # neutral prior worth one record, so one item cannot pin an axis at 100
 def resolve_scoring(s):
     """Return (scoring, errors): a preset name or custom object -> {"name", 4 weights, "exclude_both_sides"}."""
     if s is None:
-        s = "improved"
+        s = "original"
     if isinstance(s, str) and s in SCORING:
         return {"name": s, **SCORING[s]}, []
     if not isinstance(s, dict):
@@ -189,7 +189,7 @@ def collapse(opt, party_axes=(), sc=None, shared=()):
     both-sides money (shared event ids, when the scoring excludes it); collapse rows of one
     event to one entry per axis."""
     name, gray, groups, warnings, told = opt.get("name"), [], {}, [], set()
-    w = kind_weights(sc or SCORING["improved"])
+    w = kind_weights(sc or SCORING["original"])
     for i, ev in enumerate(opt.get("evidence", [])):
         label = ev.get("event") or ev.get("text") or ev.get("source") or f"{name} item {i + 1}"
         if not linked(ev):
@@ -618,15 +618,18 @@ def demo():
     assert (r["call"], r["options"][0]["evidence"]) == ("Lean YES", "moderate"), r
     st = [ev(a, "-", "stated", event=f"s{a}{i}") for a in "AB" for i in range(3)]
     assert one({"A": 1, "B": 1}, [{"name": "YES", "evidence": st}], measure=True)["call"] == "Lean NO"
-    # Scoring options. No "scoring" means improved, and every result echoes what was used.
+    # Scoring options. No "scoring" means original (the v1.6.1 behavior), and every result echoes what was used.
     rec_fund = [ev("A", "-", "record"), ev("A", "+", "funder")]
     r = score_race({"race": "R", "options": [{"name": "X", "evidence": rec_fund}]}, {"A": 3})
-    assert r["scoring"] == {"name": "improved", "record": 3, "questionnaire": 2, "stated": 1, "donors": 2,
-                            "exclude_both_sides": True}, r
-    # Improved pools donors and endorsements as k = 2: (-3 + 2) / (3 + 2 + 3) -> 43.75 -> 44 (original: 36).
-    assert r["options"][0]["score"] == 44, r
-    assert score({"axes": {"A": 3}, "scoring": "original", "races": [{"race": "R", "options": [
+    assert r["scoring"] == {"name": "original", "record": 3, "questionnaire": 2, "stated": 1, "donors": 1,
+                            "exclude_both_sides": False}, r
+    # Original pools donors and endorsements as k = 1: (-3 + 1) / (3 + 1 + 3) -> 35.7 -> 36.
+    assert r["options"][0]["score"] == 36, r
+    assert score({"axes": {"A": 3}, "races": [{"race": "R", "options": [
         {"name": "X", "evidence": rec_fund}]}]})[0]["options"][0]["score"] == 36
+    # Improved pools them as k = 2: (-3 + 2) / (3 + 2 + 3) -> 43.75 -> 44.
+    assert score({"axes": {"A": 3}, "scoring": "improved", "races": [{"race": "R", "options": [
+        {"name": "X", "evidence": rec_fund}]}]})[0]["options"][0]["score"] == 44
     # Both-sides money: one donor event id under two candidates (case and spacing ignored) is
     # shown in a warning and left out of both; original counts it.
     pac = lambda n, e: [ev("A", "+", "record", event=f"r{n}"), ev("A", "+", "funder", event=e)]

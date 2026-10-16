@@ -236,10 +236,10 @@ def load_profiles():
     return data
 
 
-SCORING_NOTE = "Scoring: Improved (recommended)."
+SCORING_NOTE = "Scoring: Original (default)."
 
 
-def profile_race(race, prof, scoring="improved"):
+def profile_race(race, prof, scoring=None):
     """score.py input for one profile: each row's lean on a profile axis becomes a row on that
     axis, flipped when the profile leans to the "-" pole; rows with no such lean are left out."""
     opts = [{"name": o["name"], "evidence": [

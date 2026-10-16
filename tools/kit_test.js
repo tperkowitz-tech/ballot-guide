@@ -487,11 +487,14 @@ console.log("kit_test: v1.6.0 checks passed");
   const {scoringOf, scoringText} = require("./kit.js");
   const {calculate} = require("./calc.js");
   const st = {...defaultState(), mode: "values"};
-  assert.strictEqual(scoringOf(st), "improved");
-  assert.ok(buildProfile(st).includes("\nScoring: Improved (recommended)\n"));
+  assert.strictEqual(scoringOf(st), "original");
+  assert.ok(buildProfile(st).includes("\nScoring: Original (default)\n"));
   assert.ok(!buildProfile(defaultState()).includes("Scoring:"));
   assert.ok(!calcProfile(st).includes("Scoring"));
-  assert.ok(buildProfile({...st, scoring: "original"}).includes("\nScoring: Original\n"));
+  assert.ok(buildProfile({...st, scoring: "improved"}).includes("\nScoring: Improved (proposed; under review)\n"));
+  // Unknown saved values fall back to the default; a saved "improved" stays the voter's choice.
+  assert.strictEqual(scoringOf({...st, scoring: "fancy"}), "original");
+  assert.strictEqual(scoringOf({...st, scoring: "improved"}), "improved");
   const custom = {...st, scoring: "custom", custom: {record: 3, questionnaire: 1, stated: 0, donors: 3, exclude_both_sides: false}};
   assert.strictEqual(scoringOf(custom), custom.custom);
   assert.strictEqual(scoringText(custom), "Custom: records 3, questionnaire answers 1, statements 0, donors and endorsements 3; money backing more than one candidate counted");

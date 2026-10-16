@@ -303,7 +303,7 @@ const isGray = ev => ev.sign === "gray" || ev.gray === true;
 
 // Same as score.py resolve_scoring(): {scoring, errors}; scoring is {name, 4 weights, exclude_both_sides}.
 function resolveScoring(s) {
-  if (s === undefined || s === null) s = "improved";
+  if (s === undefined || s === null) s = "original";
   if (typeof s === "string" && has(SCORING, s)) return {scoring: {name: s, ...SCORING[s]}, errors: []};
   if (!s || typeof s !== "object" || Array.isArray(s)) {
     return {scoring: null, errors: ['scoring must be "improved", "original" or an object with record, questionnaire, stated, donors and exclude_both_sides']};
@@ -322,8 +322,8 @@ function resolveScoring(s) {
 const kindWeights = sc => ({record: sc.record, questionnaire: sc.questionnaire, stated: sc.stated, funder: sc.donors, endorsement: sc.donors});
 // The page's name for a scoring: the Step 1 choice, with the weights spelled out for Custom.
 function scoringLabel(sc) {
-  if (sc.name === "improved") return "Improved (recommended)";
-  if (sc.name === "original") return "Original";
+  if (sc.name === "original") return "Original (default)";
+  if (sc.name === "improved") return "Improved (proposed; under review)";
   return `Custom: records ${sc.record}, questionnaire answers ${sc.questionnaire}, statements ${sc.stated}, donors and endorsements ${sc.donors}; money backing more than one candidate ${sc.exclude_both_sides ? "not counted" : "counted"}`;
 }
 const linked = ev => typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source);
@@ -590,7 +590,7 @@ function decide(rows, events, covered, eligible, measure, weights, sc) {
 
 // Returns {call, turns_on, rows, warnings, errors, scoring}; errors means nothing was scored.
 // partyAxes: letters of the voter's party priorities (parseWeights); party evidence counts only there.
-// scoring: "improved" (default), "original" or a custom object, as score.py's "scoring" key.
+// scoring: "original" (default), "improved" or a custom object, as score.py's "scoring" key.
 function scoreRace(options, weights, isMeasure, grayTopics, partyAxes, scoring) {
   const {scoring: sc, errors} = resolveScoring(scoring);
   errors.push(...validateRace(options, weights, isMeasure));
