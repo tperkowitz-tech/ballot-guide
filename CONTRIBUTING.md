@@ -1,53 +1,57 @@
 # Contributing
 
-The installable skill lives in `ballot-guide/`. Edit its entrypoint in
-`ballot-guide/SKILL.md`, shared step prompts in `ballot-guide/references/prompts.md`,
-and shared research rules in `ballot-guide/references/rules.md`.
-Keep examples fictional; include neutral and paired contrasting examples rather
-than a contributor's address, political views, or personal stakes.
+A short guide for maintainers. Run `python3 tools/check.py` before every pull request; it must print `checks passed`. CI runs the same command.
 
-The optional double-check (Step 8) has a second AI chat check each answer against
-its sources. It is recommended, not required.
+## Where things live
 
-The Python calculator is `ballot-guide/scripts/score.py`; the browser calculator
-is `tools/calc.js`. Keep their behavior in lockstep and run both calculator tests.
-`node tools/calc_test.js` includes a parity fuzz that runs 4000 random races (all five
-evidence kinds, ranges and calls, including uneven evidence, donor-type event ids and
-incumbent markers) through both calculators under every scoring option (default,
-Evidence-based, its legacy alias "improved", Original, random Custom weights and invalid
-ones) and fails on any mismatch.
+Edit the source, then rebuild. Never edit a generated file by hand: `tools/check.py` fails when one is stale.
 
-`ballot-guide/scripts/check_evidence.py` checks research JSON before scoring
-(see `ballot-guide/references/delegation.md`); `tools/check.py` runs its
-`--demo` self-test.
+| Source | What it is | Generated from it |
+|---|---|---|
+| `ballot-guide/SKILL.md` | The skill's entry point | `dist/ballot-guide.skill` (with the rest of `ballot-guide/`, via `tools/package.py`) |
+| `ballot-guide/references/rules.md` | Research and values-match rules the skill follows | (skill only) |
+| `ballot-guide/references/prompts.md` | Steps 0–8, the prompts every version uses | `docs/index.html`, `PROMPT-KIT.md` (via `tools/build_kit.py`) |
+| `ballot-guide/references/quickstart.txt` | The Quick start starter, tuned in live tests | `docs/index.html`, `PROMPT-KIT.md` |
+| `ballot-guide/references/delegation.md` | Optional research with sub-agents | (skill only) |
+| `ballot-guide/scripts/score.py` | Python calculator | (used by the skill and `tools/build_sample.py`) |
+| `ballot-guide/scripts/check_evidence.py` | Checks research JSON before scoring | (used by the skill and `tools/build_sample.py`) |
+| `tools/page.template.html`, `tools/kit.js`, `tools/calc.js` | Web kit page, its text helpers, browser calculator | `docs/index.html` |
+| `tools/build_kit.py` (the `HOW_*` text) | "How to use" text for the page and the prompt kit | `docs/index.html`, `PROMPT-KIT.md` |
+| `tools/samples/<slug>.json`, `tools/profiles.json` | Sample research and example values profiles | `docs/samples/<slug>.html`, `docs/sample.html` (via `tools/build_sample.py`) |
+| `TESTED.md` report log | Test reports | The "Areas tested" table (via `tools/tested_summary.py`) |
+| `VERSION` | Kit version | The web kit's test-report link |
 
-Regenerate and check the web/chat kit before opening a pull request:
+Published links (release notes, social posts) use these anchors, so don't rename them: the README heading "Install the skill" (`#install-the-skill`), the web kit's `id="quick-start"`, `id="privacy"` and `id="step-kit"`, and PROMPT-KIT's "Quick start (one chat)" heading (`#quick-start-one-chat`, set in `tools/build_kit.py`).
 
-```bash
-python3 tools/build_kit.py
-python3 tools/check.py
-python3 tools/package.py
-```
+Each fact has one home. Scoring details: `SCORING.md`. Which chats worked: `TESTED.md`. Web kit privacy: the page's Privacy section. Install steps: `README.md`. Link to these instead of repeating them.
 
-`tools/page.template.html` and `tools/kit.js` supply the web interface.
-Do not edit generated `docs/index.html` or `PROMPT-KIT.md` directly.
-The public README stays voter-first; scoring details belong in `SCORING.md`,
-which must match `score.py` and `calc.js`. The README screenshot is `docs/img/web-kit.jpg`.
-The deterministic archive is `dist/ballot-guide.skill`, with top-level `ballot-guide/SKILL.md`.
-Inspect the archive before attaching it to an explicitly authorized release.
-After checks pass and the PR is merged, check out merged `main`, rebuild the
-archive, and publish the authorized release (for example `v1.2.0`) targeting that
-commit, with `dist/ballot-guide.skill` attached.
-Generated archives and `dist/` are ignored by Git.
+## Change a prompt
 
-Test reports arrive as issues labeled `tested` (form: `.github/ISSUE_TEMPLATE/test-report.yml`).
-To add one to `TESTED.md`, copy only the coarse fields (date, state, area if given or
-"(withheld)", election, tool, mode, result, a short note, version). Never copy names,
-addresses, political views, votes or other personal details; drop the area if it is
-smaller than a city. Then run `python3 tools/tested_summary.py` to refresh the "Areas tested"
-table (`tools/check.py` fails if it is stale). The kit version lives in `VERSION`; `tools/build_kit.py` puts it in
-the web kit's test-report link, so bump it with each release and rebuild.
+1. Edit `ballot-guide/references/prompts.md`. Keep each step's heading, italic "when" line and `text` block shape: `tools/build_kit.py` parses them.
+2. Some prompt wording is load-bearing. `tools/kit.js` rewrites parts of Steps 3, 4, 6 and 7 for neutral mode, the parsers read tokens such as `UNCONTESTED`, `CONTESTED` and `[A][+][RECORD]`, and `tools/kit_test.js` asserts on some exact text.
+3. If the change affects scoring, update `score.py` and `calc.js` together, then `SCORING.md`. `node tools/calc_test.js` fuzzes both calculators for parity under every scoring option.
+4. Change `quickstart.txt` only after testing it in a live free chat.
+5. Run `python3 tools/build_kit.py`, then `python3 tools/check.py`.
 
-Before committing, check `git var GIT_AUTHOR_IDENT` and
-`git var GIT_COMMITTER_IDENT`. Use your GitHub noreply email; keep personal email
-and hostnames out of commits. Independent review must pass before publishing.
+## Add a sample
+
+1. Add `tools/samples/<slug>.json` (lowercase, hyphens). The input shape is documented at the top of `tools/build_sample.py`. Use a public building address, never a home address.
+2. It must pass `ballot-guide/scripts/check_evidence.py` with no errors.
+3. Run `python3 tools/build_sample.py`, then `python3 tools/check.py`.
+
+## Add a test report
+
+Reports arrive as issues labeled `tested`. Copy only the coarse fields into the `TESTED.md` log: date, state, area (or "(withheld)"; drop it if smaller than a city), election, tool, mode, result, a short note, version. Never copy names, addresses, political views or votes. Then run `python3 tools/tested_summary.py`.
+
+## Release
+
+1. Bump `VERSION` and run `python3 tools/build_kit.py`.
+2. Run `python3 tools/check.py` and `python3 tools/package.py`. Inspect `dist/ballot-guide.skill`; `ballot-guide/SKILL.md` must be at its top level.
+3. After review passes and the PR is merged, check out merged `main`, rebuild the archive, and publish the release (for example `v2.1.0`) on that commit with `dist/ballot-guide.skill` attached. Publish only when the owner authorizes it. `dist/` is ignored by Git.
+
+## Review and fact-check
+
+- Every change gets an independent review before it merges or publishes.
+- Every factual claim in the prompts, rules and docs needs a source. Research claims go in `CREDITS.md` with a DOI or link; don't overstate what a study found.
+- Keep examples fictional and balanced: use paired, contrasting example voters, never a contributor's address, views or personal stakes.
+- Before committing, check `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT`. Use your GitHub noreply email; keep personal email and hostnames out of commits. `tools/check.py` also scans publishable files for personal strings.

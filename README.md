@@ -1,64 +1,50 @@
 # Ballot Guide
 
-**An AI skill that builds your own sourced guide to any US ballot.** Ask your AI assistant to research your ballot, and it finds the exact races and measures, checks what candidates have *done* before what they say, fact-checks ballot measures, and links every claim to a source you can open. Free, open source, and not affiliated with any campaign or election office.
+**Build your own sourced guide to any US ballot with an AI assistant.** It finds the exact races and measures on your ballot, checks what candidates have *done* before what they say, fact-checks ballot measures, and links every claim to a source you can open. Free, open source, and not affiliated with any campaign or election office.
 
-No AI app with skills? The same steps work in any AI chat through the [web kit](https://tperkowitz-tech.github.io/ballot-guide/) or the plain-text [prompt kit](PROMPT-KIT.md).
+[See sample guides](https://tperkowitz-tech.github.io/ballot-guide/sample.html) built with it on real ballots.
 
-[See sample guides](https://tperkowitz-tech.github.io/ballot-guide/sample.html) researched with this tool on real ballots.
+There are three ways to use it: the skill, Quick start, and Advanced (one race at a time).
 
 ## Install the skill
 
-| You use | How |
+For Claude apps, Claude Code and Codex. The skill runs every step for you and checks its own research files before scoring.
+
+| You use | How to install |
 |---|---|
 | Claude apps | Download `ballot-guide.skill` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest) and upload it in Claude's Skills settings |
 | Claude Code | Unzip the release file into `~/.claude/skills/` |
 | Codex | Copy the [`ballot-guide/`](ballot-guide/) folder to `~/.agents/skills/`, then restart Codex |
 
-Then ask, for example: *"Research my ballot for the November election"*, *"Compare the candidates for county sheriff"*, or *"Explain Measure 3"*. In Codex, start with `Use $ballot-guide to research my ballot.` The assistant asks for your address only to look up your ballot, and leaves it out of the guide.
+Then ask, for example, *"Research my ballot for the November election"* or *"Explain Measure 3"*. In Codex, start with `Use $ballot-guide to research my ballot.` If your app supports helpers and you allow it, the skill can [split the research across several AI helpers](ballot-guide/references/delegation.md).
 
-What the skill does that the web and prompt kits can't:
-- Runs every step for you, opening sources itself when your app has web search, instead of you copying and pasting.
-- Comes with a checker for its research files that catches missing sources, malformed entries and street addresses before scoring or building the guide.
-- When you allow it, in apps that support helpers, can split the research across several AI helpers and have a stronger one check their work ([how](ballot-guide/references/delegation.md)).
+## Quick start (any free AI chat)
 
-## No skills? Use any AI chat
+Copy the starter from the [web kit](https://tperkowitz-tech.github.io/ballot-guide/#quick-start) into one AI chat with web search, type the races on your ballot, and type "next 3" until done. Then paste the chat's "export" back into the web kit, which checks each item, scores it if you gave priorities, and builds your guide table. The page has the full steps. ([Plain-text starter](PROMPT-KIT.md#quick-start-one-chat).)
 
-**Quick start (the main free path):** about 5 actions, in one free AI chat and the [web kit](https://tperkowitz-tech.github.io/ballot-guide/#quick-start).
+## Advanced (one race at a time)
 
-1. Copy the starter from the web kit's Quick start (or the [plain text](PROMPT-KIT.md#quick-start-one-chat)).
-2. Paste it into a free AI chat with web search and type the races from your ballot or sample ballot (ChatGPT worked in testing; free accounts may limit photo uploads, so typing works best). The chat asks whether you want a neutral comparison or a match to your priorities.
-3. Type "next 3" until every item is done. If the chat gets slow, type "continue" to move to a fresh chat.
-4. After about every 12 items, type "export" (free chats can forget early research on a long ballot).
-5. Paste each export into the web kit's Quick start; each paste adds to the guide. The page checks each item, scores it if you gave priorities, and builds your guide table, with no more chat steps. One button copies a double-check of only the items it flagged.
+A separate chat and an optional double-check for each race or measure. Open "Advanced (one race at a time)" in the [web kit](https://tperkowitz-tech.github.io/ballot-guide/#step-kit), or use the plain-text [prompt kit](PROMPT-KIT.md). Plan on about 5 minutes per item; the web kit saves your progress.
 
-**Advanced:** to research one race at a time, with a separate chat and double-check per item, open "Advanced: research one race at a time" on the same page, or use the plain-text [prompt kit](PROMPT-KIT.md).
-
-[![The Ballot Guide web kit](docs/img/web-kit.jpg)](https://tperkowitz-tech.github.io/ballot-guide/)
-
-In testing (October 2026), logged-out ChatGPT with search was the free option that worked; still check its ballot list against your official sample ballot. Free Copilot needs a sign-in, logged-out Perplexity stops after one question, free Gemini declined or returned errors on these election questions, and Google AI Mode did not find ballot lists reliably (in one test it used a primary-election list). See [where it's been tested](TESTED.md).
-
-With the step-by-step kit, plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time. The web kit saves your progress.
-
-## When to use it
-
-Once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Election Day), when candidate lists are final and most questionnaires and donor reports are out. In the final week, re-check close races and the candidate list for withdrawals, late donor reports and news. Avoid waiting until Election Day: there is no time left to check sources.
+Which free chats worked in testing: see [TESTED.md](TESTED.md).
 
 ## Privacy
 
-- **The skill** runs inside your AI app. Your address is used only to look up your ballot and is left out of the guide; the app's own privacy policy covers your conversation.
-- **The web kit** keeps your progress only in your own browser. It collects nothing about you, uses no cookies or tracking, and loads nothing from other sites; GitHub, which hosts it, sees visitors' IP addresses like any website host. Your address goes only into the step-by-step kit's question that looks up your ballot (and its optional double-check), which you paste into an AI chat yourself; the Quick start needs no address, and lines of a pasted export that may include one are never saved. Press "Start over" to erase everything saved. Full details are in the [web kit's privacy section](https://tperkowitz-tech.github.io/ballot-guide/#privacy).
-- **Any AI chat** may keep what you send it. Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates. Some say they store what you send in China (DeepSeek, for one); others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address.
+The web kit collects nothing, uses no cookies or tracking, and keeps your progress only in your browser; "Start over" erases it. Your address is used only to look up your ballot and never appears in the guide. Anything you paste into an AI chat is covered by that chat's privacy policy. Details: the [web kit's Privacy section](https://tperkowitz-tech.github.io/ballot-guide/#privacy).
 
 ## Good to know
 
-- Neutral comparison by default; if you choose scores, they reflect only the priorities you enter, and every piece of evidence is shown. The default (Original) scoring counts all donors and endorsements on a priority together like one statement. You can instead pick Evidence-based, a research-informed option still being tested that weighs donors by kind of money and ignores money that backs both sides, or set your own weights. No study has tested any weighting, so none is recommended ([how the scores work and what the research says](SCORING.md)).
+- **Neutral comparison** is the default. **Values match** is optional: scores reflect only the priorities you enter, and every piece of evidence is shown. [How the scores work](SCORING.md).
 - It supports your own research; it does not replace it. AI can be wrong, so open the sources, especially for close calls.
+- Use it once your ballot or voters' pamphlet arrives, when candidate lists are final. Re-check close races in the final week.
 - Dates, deadlines and places to vote come only from your official election office ([vote.org](https://www.vote.org) can point you there).
-- Tried it? [Tell us where it worked](TESTED.md).
-- Found a wrong fact or a broken source? [Report it](https://github.com/tperkowitz-tech/ballot-guide/issues/new/choose).
+- Found a wrong fact or a broken source? [Report it](https://github.com/tperkowitz-tech/ballot-guide/issues/new/choose). Tried it? [Tell us where it worked](TESTED.md#add-your-report).
 
-## For contributors
+## More
 
-The skill in [`ballot-guide/`](ballot-guide/) is the source of truth: the web kit and prompt kit are generated from its prompts, so a change to the skill reaches every version. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to edit, test (`python3 tools/check.py`) and release.
+- [SCORING.md](SCORING.md): how scores and calls work, and what the research says.
+- [TESTED.md](TESTED.md): where it has been tested, and which chats worked.
+- [CREDITS.md](CREDITS.md): the work this builds on.
+- [CONTRIBUTING.md](CONTRIBUTING.md): how to edit, test and release.
 
-This tool builds on other people's work; see [CREDITS.md](CREDITS.md). MIT licensed. See [LICENSE](LICENSE).
+MIT licensed. See [LICENSE](LICENSE).
