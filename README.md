@@ -46,7 +46,7 @@ Once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Electi
 
 ## Good to know
 
-- Neutral comparison by default; if you choose scores, they reflect only the priorities you enter, and every piece of evidence is shown. The default (Original) scoring counts all donors and endorsements on a priority together like one statement; you can pick Improved, a proposed option under review that counts them like one questionnaire answer and ignores money that backs both sides, or set your own ([how the scores work](SCORING.md)).
+- Neutral comparison by default; if you choose scores, they reflect only the priorities you enter, and every piece of evidence is shown. The default (Original) scoring counts all donors and endorsements on a priority together like one statement. You can instead pick Evidence-based, a research-informed option still being tested that weighs donors by kind of money and ignores money that backs both sides, or set your own weights. No study has tested any weighting, so none is recommended ([how the scores work and what the research says](SCORING.md)).
 - It supports your own research; it does not replace it. AI can be wrong, so open the sources, especially for close calls.
 - Dates, deadlines and places to vote come only from your official election office ([vote.org](https://www.vote.org) can point you there).
 - Tried it? [Tell us where it worked](TESTED.md).

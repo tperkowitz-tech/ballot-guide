@@ -39,9 +39,12 @@ campaign promises. The voter makes the choice. Read `references/rules.md` and
    the event they turn on, and "(uneven evidence)" when coverage differs by 0.4+.
    Party is evidence only for a party priority the voter listed.
    Offer three scoring options: Original (the default) pools donors and endorsements to 1;
-   Improved (proposed, under review) pools them to 2 and leaves out a donor backing more than
-   one candidate in a race; Custom weights 0-3 are the voter's own choice, never yours.
-   Pass the choice to `scripts/score.py` as `"scoring"` and name it in the guide.
+   Evidence-based (research-informed; being tested) weighs the pool by donor type from the
+   event id (`person-`, `cause-`, `pac-`) and incumbency (at most 2) and leaves out a donor
+   backing more than one candidate in a race; Custom weights 0-3 are the voter's own choice,
+   never yours. Never call an option recommended. Pass the choice to `scripts/score.py` as
+   `"scoring"` (`"improved"` is an old alias of `"evidence"`), mark sitting officeholders
+   `"incumbent": true`, and name the option in the guide.
    Unopposed: 60+ "Vote for" and 40 or less "Consider leaving blank or writing in"
    need coverage 0.5+, better than thin evidence and at least one record; otherwise
    "Your call"; no evidence "Not enough evidence". A clear contested winner or a

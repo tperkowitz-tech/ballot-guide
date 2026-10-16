@@ -46,18 +46,23 @@ do not do it; report it under BLOCKERS.
 ## Researcher report format (required)
 
 1. **Evidence file** at the assigned path, in the scorer JSON shape (see the top of
-   `scripts/score.py`): `races[].race`, `measure`, `options[].name`, `red_line`, `withdrawn` (true if the candidate withdrew), and
+   `scripts/score.py`): `races[].race`, `measure`, `options[].name`, `red_line`, `withdrawn` (true if the candidate withdrew),
+   `incumbent` (true if the candidate holds this office now), and
    `evidence[]` items with `axis`, `sign`, `kind`, `event`, `source`, `date`, `text`, plus a
    top-level `gray` list of the voter's torn topics (empty if none) and a `party_axes` list of
    the letters of any party priorities (party endorsements and donors count only there).
    The coordinator adds the top-level `"scoring"` key from the voter's choice: `"original"`
-   (the default when absent), `"improved"`, or `{"record": n, "questionnaire": n, "stated": n,
+   (the default when absent), `"evidence"` (`"improved"` is an old alias), or `{"record": n, "questionnaire": n, "stated": n,
    "donors": n, "exclude_both_sides": true|false}` with whole numbers 0-3, not all 0.
-   For every `funder` and `endorsement` item, set `event` to the donor's, donor group's or
-   endorser's name (for example `"Example Realty PAC"`), written the same way under every
-   candidate: Improved scoring spots money that backs more than one candidate by that id.
-   For money or ads spent AGAINST a candidate, write the event id as `against-<donor name>`
-   (for example `[D][-][FUNDER][against-Example PAC]`); for support use the donor name.
+   For every `funder` and `endorsement` item, set `event` to a type and the donor's, donor
+   group's or endorser's name, written the same way under every candidate: `person-<name>`
+   for individual donors or small-dollar totals, `cause-<name>` for a group whose mission is
+   that axis's issue, `pac-<name>` for PAC, corporate or trade money (for example
+   `"pac-Example Realty PAC"`). Evidence-based scoring weighs donors by that type and spots
+   money that backs more than one candidate by that id. For money or ads spent AGAINST a
+   candidate, put `against-` first (for example `[D][-][FUNDER][against-pac-Example PAC]`).
+   Use `questionnaire` only for closed-ended answers (yes/no, multiple choice, rating scales,
+   as in Vote Smart); open-ended written answers (for example Vote411) are `stated`.
    Backing one candidate and opposing another is counted, never treated as both-sides money.
    A measure has one option, the YES side. In neutral mode, use a short topic name
    as the axis and sign "0" on every row (no directions); nothing is scored. Bullets

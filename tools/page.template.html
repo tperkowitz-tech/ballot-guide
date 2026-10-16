@@ -161,8 +161,8 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
     <dl>
       <dt>Record</dt><dd>Something a candidate actually did (a vote, a ruling, an official act).</dd>
       <dt>Funder</dt><dd>Who gave money to the campaign.</dd>
-      <dt>Questionnaire</dt><dd>A candidate's written answer to a published survey, such as Vote411 or Vote Smart. Counts more than a statement, less than a record.</dd>
-      <dt>Statement</dt><dd>What a candidate says, such as a website or interview.</dd>
+      <dt>Questionnaire</dt><dd>A candidate's yes/no, multiple-choice or rating answer to a published survey, such as Vote Smart's. Counts more than a statement, less than a record.</dd>
+      <dt>Statement</dt><dd>What a candidate says, such as a website, an interview, or a written answer to an open-ended survey such as Vote411.</dd>
       <dt>Endorsement</dt><dd>Support from an issue group that publishes its criteria. All endorsements and donors on one priority count as one weak item.</dd>
       <dt>Measure</dt><dd>A yes/no question on the ballot, such as a proposition, an initiative, or a local tax (levy).</dd>
       <dt>Uncontested</dt><dd>Only one candidate is running.</dd>
@@ -224,10 +224,10 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
       </fieldset>
       <fieldset aria-describedby="scoring-hint">
         <legend>Scoring</legend>
-        <p class="hint" id="scoring-hint">Original counts donors and endorsements like one statement. Improved (proposed, under review against the research) counts them like one questionnaire answer and ignores money that backs both sides. Custom lets you set each weight.</p>
+        <p class="hint" id="scoring-hint">Original and Evidence-based count records most. Original counts all donors and endorsements on a priority together like one statement. Evidence-based weighs them by kind of money, using what research found about each signal, and ignores money that backs more than one candidate; it has not yet been checked against real results. Custom lets you set each weight, so how much records count is your choice. No study has tested any of these weightings.</p>
         <label class="opt"><input type="radio" name="scoring" value="original" checked> Original (default): donors and endorsements together count like one statement</label>
-        <label class="opt"><input type="radio" name="scoring" value="improved"> Improved (proposed; under review): records count most; donors and endorsements count like a questionnaire answer; money that backs more than one candidate in a race is not counted</label>
-        <label class="opt"><input type="radio" name="scoring" value="custom" aria-controls="custom-fields"> Custom: set each weight yourself</label>
+        <label class="opt"><input type="radio" name="scoring" value="evidence"> Evidence-based (research-informed; being tested): individual donors and issue groups count more for newcomers, PAC money counts less for incumbents, and money that backs more than one candidate in a race is not counted</label>
+        <label class="opt"><input type="radio" name="scoring" value="custom" aria-controls="custom-fields"> Custom: set each weight yourself (starts equal to Original)</label>
         <div id="custom-fields" class="fields" style="padding:0" hidden>
           <p class="hint" id="custom-hint">Whole numbers from 0 to 3; 0 means not counted (those lines are shown but left out). All questionnaire answers on a priority together never count more than one record.</p>
           <div class="field"><label for="f-w-record">Records (votes, rulings, official acts)</label><input type="number" id="f-w-record" min="0" max="3" step="1" inputmode="numeric" aria-describedby="custom-hint custom-bad"></div>
@@ -590,7 +590,7 @@ function writeState(st){
   (Array.isArray(st.axes)&&st.axes.length?st.axes:defaultState().axes).slice(0,6).forEach(a=>addAxis({name:String(a.name||""),meaning:String(a.meaning||""),weight:[1,2,3].includes(a.weight)?a.weight:2}));
   $("f-gray").value=st.gray||""; $("f-red").value=st.red||""; $("f-stakes").value=st.stakes||"";
   $("f-viability").checked=!!st.viability;
-  document.querySelector(`input[name=scoring][value=${["improved","custom"].includes(st.scoring)?st.scoring:"original"}]`).checked=true;
+  document.querySelector(`input[name=scoring][value=${st.scoring==="custom"?"custom":["evidence","improved"].includes(st.scoring)?"evidence":"original"}]`).checked=true;
   // Saved data is untrusted: anything but a whole number 0-3 loads as the Custom starting weight.
   const c=st.custom&&typeof st.custom==="object"?st.custom:{}, d=defaultState().custom;
   for(const k of ["record","questionnaire","stated","donors"])$("f-w-"+k).value=String([0,1,2,3].includes(c[k])?c[k]:d[k]);
@@ -730,9 +730,10 @@ function renderCalc(out,r){
   const det=el("details",null,"math"), sc=res.scoring; det.append(el("summary","Show the math"));
   det.append(el("p","Scoring: "+scoringLabel(sc)+"."));
   det.append(el("p","Weights: "+Object.entries(r.weights).map(([k,v])=>k+"="+v).join(", ")+"."));
-  det.append(el("p",`Each priority gets a position from its evidence: records count ${sc.record}, statements ${sc.stated}, all questionnaire answers on a priority together count ${sc.questionnaire} per answer up to ${sc.record} (never more than one record), and all donors and endorsements on a priority together count ${sc.donors} (their average direction), plus a neutral starting weight of 3.`+(zeroWeight(sc)?" A kind weighted 0 is not counted; its lines are listed above.":"")+(sc.exclude_both_sides?" A donor or endorser that backs more than one candidate in the race is not counted (access money).":"")+" Lines with the same source count once unless they have different event ids. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
+  const pool=sc.name==="evidence"?"all donors and endorsements on a priority together count as one entry whose weight is the highest of its members' weights, and whose direction is their weighted average. Member weights come from the event id: for a newcomer, individual donors (person-) and groups whose mission is that priority (cause-) count 2, and PAC, corporate or trade money (pac-) and all others 1; for an incumbent, PAC money counts 0.5 and all others 1. So the entry counts at most 2, less than one record. This is a deliberately simple rule informed by research, not a tested one.":`all donors and endorsements on a priority together count ${sc.donors} (their average direction).`;
+  det.append(el("p",`Each priority gets a position from its evidence, plus a neutral starting weight of 3: records count ${sc.record}, statements ${sc.stated}, all questionnaire answers on a priority together count ${sc.questionnaire} per answer up to ${sc.record} (never more than one record), and ${pool}`+(zeroWeight(sc)?" A kind weighted 0 is not counted; its lines are listed above.":"")+(sc.exclude_both_sides?" A donor or endorser that backs more than one candidate in the race is not counted: it can't tell the candidates apart (the guide's own rule of thumb).":"")+" Lines with the same source count once unless they have different event ids. Score = 50 + 50 × weighted average of positions, over priorities with evidence only (num / den below). The range assumes each priority without the candidate's own evidence (records, questionnaire answers, statements) could go fully against or fully for your values."));
   res.rows.forEach(row=>{
-    det.append(el("p",row.name+":"));
+    det.append(el("p",row.name+(sc.name==="evidence"?(row.incumbent?" (incumbent: PAC money counts 0.5)":" (newcomer: individual donors and issue groups count 2)"):"")+":"));
     const ul=el("ul");
     if(row.uncapped===null)ul.append(el("li","No evidence: no score."));
     else ul.append(el("li",`Score = round(50 + 50 × ${row.num.toFixed(3)} / ${row.den}) = ${row.uncapped}; could be ${row.low}–${row.high}`));

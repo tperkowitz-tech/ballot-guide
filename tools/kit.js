@@ -23,9 +23,10 @@ function defaultState() {
     mode: "neutral", address: "", place: "", date: "",
     axes: [1, 2, 3].map(() => ({name: "", meaning: "", weight: 2})),
     gray: "", red: "", stakes: "", viability: false,
-    // Values mode: "original" (default), "improved" (proposed, under review) or "custom" with the
-    // weights below, in the shape score.py's "scoring" key takes.
-    scoring: "original", custom: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
+    // Values mode: "original" (default), "evidence" (being tested) or "custom" with the weights
+    // below, in the shape score.py's "scoring" key takes. Custom starts equal to Original, so no
+    // starting value reads as a recommendation.
+    scoring: "original", custom: {record: 3, questionnaire: 2, stated: 1, donors: 1, exclude_both_sides: false},
     crowded: "all", minShare: "", minMoney: "", includeOffice: false, always: "",
     doubleCheck: true,
   };
@@ -84,8 +85,9 @@ function placeFromAddress(address) {
   return safePlace({place}) ? place : "";
 }
 
-// The calculator's scoring for the Step 1 choice: a preset name or the custom weights object.
-const scoringOf = state => state.scoring === "custom" ? state.custom : state.scoring === "improved" ? "improved" : "original";
+// The calculator's scoring for the Step 1 choice: a preset name or the custom weights object. A
+// saved "improved" (the v1.7 name) is the same option as "evidence".
+const scoringOf = state => state.scoring === "custom" ? state.custom : ["evidence", "improved"].includes(state.scoring) ? "evidence" : "original";
 // One line naming the scoring, for the profile (Steps 5 and 7 read it) and the calculator.
 function scoringText(state) {
   const r = scoringResolve(scoringOf(state));
@@ -130,8 +132,8 @@ function fillStep(stepIndex, stepText, state, extras) {
     text = text.replace(/^For each item, choose the axis letter.*\n(?:(?:[-+0]|gray) = .*\n)+/m, NEUTRAL_EVIDENCE + "\n")
       .replace(/^For each fact, give an axis letter.*\n/m, NEUTRAL_EVIDENCE + "\n")
       .split("[{{axis}}][{{+ / - / 0 / gray}}]").join("[{{TOPIC}}][0]")
-      .split("[B][-][FUNDER][Example Realty PAC]").join("[Housing][0][FUNDER][Example Realty PAC]")
-      .split("[D][-][FUNDER][against-Example PAC]").join("[Housing][0][FUNDER][against-Example PAC]")
+      .split("[B][-][FUNDER][pac-Example Realty PAC]").join("[Housing][0][FUNDER][pac-Example Realty PAC]")
+      .split("[D][-][FUNDER][against-pac-Example PAC]").join("[Housing][0][FUNDER][against-pac-Example PAC]")
       .replace(" Use gray for topics the profile lists as torn/gray areas.", "");
   }
   if (neutral && stepIndex === 6) {
@@ -177,7 +179,7 @@ function checkQuestion(stepIndex, stepText, state, ex) {
   const full = fillStep(stepIndex, stepText, state, ex), [ask, fmt] = full.split(/^OUTPUT FORMAT[^\n]*\n/m);
   if (fmt === undefined) return full;
   return [...ask.split("\n").filter(l => /^(TASK|RACE|MEASURE):/.test(l)),
-    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: On FUNDER and ENDORSEMENT lines[^\n]*?is recognized\.)?(?: For money or ads spent AGAINST[^\n]*?against-Example PAC\]\.)?(?: (?=\S)|\n)/m, "")].join("\n");
+    "(Short form. The answer had to use this format.)", "OUTPUT FORMAT:", fmt.trim().replace(/^Use the same event id[^\n]*?count once\.(?: On FUNDER and ENDORSEMENT lines[^\n]*?is recognized\.)?(?: For money or ads spent AGAINST[^\n]*?against-pac-Example PAC\]\.)?(?: (?=\S)|\n)/m, "")].join("\n");
 }
 
 // Copies longer than this may be cut off silently: Google AI Mode's input stops at 8,192 characters.

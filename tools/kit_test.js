@@ -404,7 +404,7 @@ console.log("kit_test: all checks passed");
 
   // Step 8 sends the question in short form: task, item, output format; no research instructions.
   const full = forChat(8, real[0], real[8], st, {checkStep: 3, question: real[3], race: "Mayor: A vs B", answer: "CANDIDATE: Z"});
-  assert.ok(full.includes("TASK: Collect evidence for ONE race.") && full.includes("RACE: Mayor: A vs B") && full.includes("OUTPUT FORMAT:\nCANDIDATE: {{name}}"));
+  assert.ok(full.includes("TASK: Collect evidence for ONE race.") && full.includes("RACE: Mayor: A vs B") && full.includes("OUTPUT FORMAT:\nCANDIDATE: {{name, then (incumbent) if they hold this office now}}"));
   assert.ok(!full.includes("Research every candidate, including minor ones.") && full.includes("CORRECTED ANSWER:"));
   assert.ok(!full.includes("Use the same event id") && full.includes("- ...\nRED LINE CROSSED:"));
   // Values mode keeps the gray rule, so the checker knows gray marks a torn topic.
@@ -491,10 +491,15 @@ console.log("kit_test: v1.6.0 checks passed");
   assert.ok(buildProfile(st).includes("\nScoring: Original (default)\n"));
   assert.ok(!buildProfile(defaultState()).includes("Scoring:"));
   assert.ok(!calcProfile(st).includes("Scoring"));
-  assert.ok(buildProfile({...st, scoring: "improved"}).includes("\nScoring: Improved (proposed; under review)\n"));
-  // Unknown saved values fall back to the default; a saved "improved" stays the voter's choice.
+  assert.ok(buildProfile({...st, scoring: "evidence"}).includes("\nScoring: Evidence-based (research-informed; being tested)\n"));
+  // Unknown saved values fall back to the default.
   assert.strictEqual(scoringOf({...st, scoring: "fancy"}), "original");
-  assert.strictEqual(scoringOf({...st, scoring: "improved"}), "improved");
+  assert.strictEqual(scoringOf({...st, scoring: "evidence"}), "evidence");
+  // A saved v1.7 "improved" loads as Evidence-based.
+  assert.strictEqual(scoringOf({...st, scoring: "improved"}), "evidence");
+  // Custom starts equal to Original: same scores, so no starting value reads as a recommendation.
+  assert.deepStrictEqual(calculate("A=3", "CANDIDATE: X\n- [A][-][RECORD][r] v | https://e.org/1\n- [A][+][FUNDER][person-Jo] g | https://e.org/2",
+    scoringOf({...st, scoring: "custom"})).result.rows[0].score, 36);
   const custom = {...st, scoring: "custom", custom: {record: 3, questionnaire: 1, stated: 0, donors: 3, exclude_both_sides: false}};
   assert.strictEqual(scoringOf(custom), custom.custom);
   assert.strictEqual(scoringText(custom), "Custom: records 3, questionnaire answers 1, statements 0, donors and endorsements 3; money backing more than one candidate counted");
@@ -506,8 +511,8 @@ console.log("kit_test: v1.6.0 checks passed");
   // Step 3 asks for donor-name event ids; neutral mode gets the example in its [TOPIC][0] form.
   const md = require("fs").readFileSync(require("path").join(__dirname, "..", "ballot-guide", "references", "prompts.md"), "utf8");
   const step3 = [...md.matchAll(/^## Step (\d)[^\n]*\n[\s\S]*?```text\n([\s\S]*?)\n```/gm)].map(m => m[2])[3];
-  assert.ok(fillStep(3, step3, st).includes("[B][-][FUNDER][Example Realty PAC]"));
-  assert.ok(fillStep(3, step3, defaultState()).includes("[Housing][0][FUNDER][Example Realty PAC]"));
-  assert.ok(fillStep(3, step3, defaultState()).includes("[Housing][0][FUNDER][against-Example PAC]"));
+  assert.ok(fillStep(3, step3, st).includes("[B][-][FUNDER][pac-Example Realty PAC]"));
+  assert.ok(fillStep(3, step3, defaultState()).includes("[Housing][0][FUNDER][pac-Example Realty PAC]"));
+  assert.ok(fillStep(3, step3, defaultState()).includes("[Housing][0][FUNDER][against-pac-Example PAC]"));
   console.log("kit_test: v1.7.0 scoring checks passed");
 }

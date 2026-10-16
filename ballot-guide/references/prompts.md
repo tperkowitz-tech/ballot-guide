@@ -12,8 +12,8 @@ RULES FOR THIS TASK. Follow all rules.
 2. Do not invent URLs, votes, numbers, or quotes. If you cannot confirm a fact, write UNVERIFIED and continue.
 3. Evidence has 5 kinds. Label each item:
    RECORD = a vote, ruling, bill sponsored, official act, lawsuit, discipline, or audit.
-   QUESTIONNAIRE = a specific written answer to a published questionnaire. One question = one item.
-   STATED = other campaign words: website, interview, speech. One position on one topic from one dated source = one item.
+   QUESTIONNAIRE = a closed-ended answer to a published questionnaire: yes/no, multiple choice or a rating scale (as in Vote Smart's). One question = one item.
+   STATED = other campaign words: website, interview, speech, and open-ended written questionnaire answers (for example Vote411). One position on one topic from one dated source = one item.
    FUNDER = who gave money or spent money for or against (campaign-finance data).
    ENDORSEMENT = an endorsement by an issue group that publishes its criteria.
    RECORD is strongest, then QUESTIONNAIRE, then STATED. All QUESTIONNAIRE items on one value together count no more than one RECORD. All FUNDER and ENDORSEMENT items on one value together count as one pooled item.
@@ -41,8 +41,8 @@ B | {{name}} | {{meaning}} | weight {{1-3}}
 C | {{name}} | {{meaning}} | weight {{1-3}}
 D | {{name}} | {{meaning}} | weight {{1-3}}
 
-Scoring: {{Original (default) / Improved (proposed; under review) / Custom: records 0-3, questionnaire answers 0-3, statements 0-3, donors and endorsements 0-3; money backing more than one candidate counted or not counted}} (default: Original)
-Original counts all donors and endorsements on a value together like one statement. Improved, proposed and under review against the research, counts them like one questionnaire answer (more than a single statement), and ignores money that backs both sides. Custom is your own choice; 0 means not counted.
+Scoring: {{Original (default) / Evidence-based (research-informed; being tested) / Custom: records 0-3, questionnaire answers 0-3, statements 0-3, donors and endorsements 0-3; money backing more than one candidate counted or not counted}} (default: Original)
+Original counts all donors and endorsements on a value together like one statement. Evidence-based weighs them by kind of money, using what research found about each signal: individual donors and issue groups count more for newcomers, PAC money counts less for incumbents, and money that backs more than one candidate is ignored; it has not yet been checked against real results. Custom is your own choice; 0 means not counted. No study has tested any of these weightings.
 
 Gray areas. Topics where you are MIXED. Evidence on these topics is tagged gray and left out of the score, not + or -.
 - {{topic, and why you are mixed}}
@@ -118,7 +118,7 @@ For EACH candidate, search in this order. Stop at about 8 evidence items for eac
    - Judges: opinions they wrote or joined, notable trial rulings, bar association ratings, judicial conduct actions.
    - Executives/administrators: official acts, audits, budgets, controversies, why they left past jobs.
    - People with no office: prior offices, boards and commissions, professional work, past races and results, lawsuits.
-2. QUESTIONNAIRE: written answers to published questionnaires: Vote Smart Political Courage Test, Vote411 (League of Women Voters), Ballotpedia Candidate Connection, and published interest-group or newspaper questionnaires. Write one line per question.
+2. QUESTIONNAIRE: closed-ended answers (yes/no, multiple choice, rating scales) to published questionnaires, such as the Vote Smart Political Courage Test, and closed-ended items in Ballotpedia Candidate Connection or interest-group and newspaper questionnaires. Write one line per question. Open-ended written answers (for example Vote411, League of Women Voters) are STATED.
 3. FUNDER: Top 5 to 10 donors and PACs from the official campaign-finance data (for US federal: fec.gov; for states: the state disclosure agency). Group them by industry or interest (use OpenSecrets or FollowTheMoney categories when available), one item per group, not per check. Tag each group to the value its industry or interest relates to. If a top funder is a PAC or committee, also find who funds THAT committee (one level back), and any independent spending for or against. For each funder, write in 5 to 10 words what that funder wants. Use the state's official campaign-finance site (secretary of state, elections or ethics commission) or the FEC for federal races. If itemized donors are not shown, report total raised and spent with the date. Label sites that collect filings (for example OpenSecrets, FollowTheMoney, Transparency USA) by name; never call them an official filing.
 4. ENDORSEMENT: endorsements by issue groups that publish their criteria. Tag each to the value that matches the group's issue. Note it when a group endorses only likely winners.
 5. STATED: other statements, such as the campaign website or interviews.
@@ -137,10 +137,10 @@ Tagging:
 - Historical acts: include the date, and write "older than 8 years" when it is.
 
 OUTPUT FORMAT (repeat for each candidate):
-CANDIDATE: {{name}} | {{current job/office}}
+CANDIDATE: {{name, then (incumbent) if they hold this office now}} | {{current job/office}}
 - [{{axis}}][{{+ / - / 0 / gray}}][RECORD / QUESTIONNAIRE / STATED / FUNDER / ENDORSEMENT][{{optional event id}}] {{date}}: {{fact}} | {{URL}}
 - ...
-Use the same event id when two lines describe the same vote, ruling, donation or statement. Give distinct facts from the same page different event ids; lines with the same source and no event id count once. On FUNDER and ENDORSEMENT lines, the event id is the donor's, donor group's or endorser's name, for example [B][-][FUNDER][Example Realty PAC], so the same donor under two candidates is recognized. For money or ads spent AGAINST a candidate, write the event id as against-<donor name>, for example [D][-][FUNDER][against-Example PAC]. Use gray for topics the profile lists as torn/gray areas.
+Use the same event id when two lines describe the same vote, ruling, donation or statement. Give distinct facts from the same page different event ids; lines with the same source and no event id count once. On FUNDER and ENDORSEMENT lines, the event id is a type and the donor's, donor group's or endorser's name: person-<name> for individual donors or small-dollar totals, cause-<name> for a group whose mission is the issue on that line, pac-<name> for PAC, corporate or trade money (a hyphen right after the type, as in cause-), for example [B][-][FUNDER][pac-Example Realty PAC]. Write it the same way under every candidate, so the same donor under two candidates is recognized. For money or ads spent AGAINST a candidate, put against- first, for example [D][-][FUNDER][against-pac-Example PAC]. Use gray for topics the profile lists as torn/gray areas.
 RED LINE CROSSED: {{yes: which | URL, or no}}
 GAPS: {{what you could not find}}
 ```
@@ -196,12 +196,13 @@ FOR EACH OPTION (candidate, or YES for a measure):
 2. Lines with the same event id are one event. Lines with no event id and the same URL are one event (ignore letter case in the domain, anything after ? or #, and a final /). Lines with neither and the same fact text are one event (ignore case, spacing and the date). On each axis keep its strongest kind (RECORD, then QUESTIONNAIRE, then STATED, then ENDORSEMENT, then FUNDER). If lines of that kind disagree, use 0 and say so.
 3. Sign s: + = 1, 0 = 0, - = -1. Kind weights come from the Scoring line in the VALUES PROFILE (no line: Original):
    Original (default): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 1; all money counted.
-   Improved (proposed; under review): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS 2; money backing more than one candidate not counted.
+   Evidence-based (being tested): RECORD 3, QUESTIONNAIRE 2, STATED 1, DONORS by type (below); money backing more than one candidate not counted. "Improved" is an old name for it.
    Custom: the weights the line gives (records, questionnaire answers, statements, donors and endorsements) and whether money backing more than one candidate is counted.
    DONORS weighs all FUNDER and ENDORSEMENT events on a value together. A kind with weight 0 is not counted: leave its lines out and list them as not counted.
-   When money backing more than one candidate is not counted: a FUNDER or ENDORSEMENT event id (ignore case and spacing) that appears under two or more candidates in the same race is left out for each of them, unless the id is an opposition id, "against-" or "against:" followed by the donor (spending against a candidate always counts), or the candidate withdrew; list it as "{{donor}} backs more than one candidate here; not counted (access money)". A measure has one option, so this never applies to it.
-4. All QUESTIONNAIRE events on a value together count as ONE item: k = the number of answers x the QUESTIONNAIRE weight, but never more than the RECORD weight (with the Original or Improved weights: 2 for one answer, 3 for two or more); s = the average of their signs.
+   When money backing more than one candidate is not counted: a FUNDER or ENDORSEMENT event id (ignore case and spacing) that appears under two or more candidates in the same race is left out for each of them, unless the id is an opposition id, "against-" or "against:" followed by the donor (before or after the type) (spending against a candidate always counts), or the candidate withdrew; list it as "{{donor}} backs more than one candidate here; not counted (can't tell the candidates apart)". A measure has one option, so this never applies to it.
+4. All QUESTIONNAIRE events on a value together count as ONE item: k = the number of answers x the QUESTIONNAIRE weight, but never more than the RECORD weight (with the Original or Evidence-based weights: 2 for one answer, 3 for two or more); s = the average of their signs.
    All FUNDER and ENDORSEMENT events on a value together count as ONE item: k = DONORS, s = the average of their signs.
+   Evidence-based instead gives each FUNDER or ENDORSEMENT event a weight from its event id type (after any against-): for a newcomer, person- and cause- 2, pac- and any other id 1; for an option marked (incumbent), pac- 0.5 and all others 1. Then k = the highest weight among them, s = (sum of weight x sign) / (sum of weights).
    For each value: position p = (sum of k x s) / (sum of k + 3).
 5. KNOWN values have at least one event of any kind. UNKNOWN values have none.
    SCORE = round( 50 + 50 x (sum of weight x p over KNOWN values) / (sum of KNOWN weights) ). Round a half to the even number.
@@ -255,7 +256,7 @@ Check each item. For each problem, write it in the output.
 16. Duplicate events collapsed: do lines about the same vote, ruling, donation or statement share one event id, and count once?
 17. Gray items excluded: is every gray item left out of the score and listed?
 18. Report what each call turns on: does every toss-up name the one event that flips it?
-19. Questionnaires: is each QUESTIONNAIRE line one question from a published questionnaire?
+19. Questionnaires: is each QUESTIONNAIRE line one closed-ended question (yes/no, multiple choice, rating scale) from a published questionnaire? Open-ended written answers must be STATED.
 20. Donors and endorsements: are FUNDER and ENDORSEMENT items grouped (one per group, donors by industry or interest), and do they count as one item per value in the math?
 
 OUTPUT FORMAT:
@@ -277,7 +278,7 @@ TASK: Write the voter guide in Markdown. Use only the facts and scores given. Do
 STRUCTURE:
 1. Title: "{{City}} Ballot Guide {{year}}", the address districts, and the election date.
 2. Values: the axes from the VALUES PROFILE, in a short list.
-3. Method: 6 sentences. First, one sentence naming the scoring from the VALUES PROFILE's Scoring line (Original if there is none), for example "Scoring: Original (default)." Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements on one value together count as one item, weighted by that scoring (Improved: like one questionnaire answer, and money that backs more than one candidate in a race is not counted; Original: like one statement). Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
+3. Method: 6 sentences. First, one sentence naming the scoring from the VALUES PROFILE's Scoring line (Original if there is none), for example "Scoring: Original (default)." Records (what candidates did) count most, then questionnaire answers (all answers on one value together count no more than one record), then other statements; all donors and endorsements on one value together count as one item, weighted by that scoring (Original: like one statement; Evidence-based: by kind of money, at most like one questionnaire answer, and money that backs more than one candidate in a race is not counted). Scores use a fixed formula and average only the values with evidence; the range shows how far the values without the candidate's own evidence could move the score. Coverage shows how much of your values the evidence reaches; the evidence level shows how much of it is record or questionnaire. Scores show how well each choice fits your values, not who is likely to win; a vote also tells officials what voters want, and if electability matters to you, it is your choice to weigh it.
 4. Summary table: | Race | Best match | Score (range) | Coverage | Evidence |. Put measures first, then federal, state, county, city, and judges.
 5. Uncontested races: a short section for each, with the score, range and the call (vote, your call, or consider leaving blank). Then one line: offices NOT on this ballot that the voter may expect.
 6. One section for each race or measure:

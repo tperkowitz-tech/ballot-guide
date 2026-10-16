@@ -2,7 +2,7 @@
 
 Input JSON:
   {"axes": {"A": 3, "B": 2, ...},          # axis letter -> integer weight 1-3
-   "scoring": optional "original" (default) | "improved"
+   "scoring": optional "original" (default) | "evidence" ("improved", the v1.7 name, is an alias)
               | {"record": n, "questionnaire": n, "stated": n, "donors": n,  # integers 0-3
                  "exclude_both_sides": bool},
    "gray": optional [str],                 # the profile's gray-area (torn) topics
@@ -10,6 +10,7 @@ Input JSON:
    "races": [{"race": str,
               "measure": optional bool,
               "options": [{"name": str,
+                           "incumbent": optional bool (holds this office now; only "evidence" reads it),
                            "red_line": optional bool or str (what was crossed, may end " | URL"),
                            "withdrawn": optional bool (withdrew or not on the ballot),
                            "evidence": [{"axis": "A",
@@ -34,11 +35,17 @@ axis, all funder and endorsement events together count as one entry (k = 1, sign
 mean), so donors and endorsers never outweigh one statement, and all questionnaire answers
 together count as one entry (k = 2 for one answer, 3 for more, sign = their mean), so
 answers never outweigh one record. That is the "original" scoring (v2.1), the default.
-"improved" (proposed, under review against the research) counts the pooled donors and endorsements as k = 2 and drops both-sides money: a
-funder or endorsement support event id (case and spacing ignored; an opposition id, "against-" or
-"against:" then the donor, never counts) that appears, with a link, under two or more options of one
-race that did not withdraw is left out of every option's math with a warning. That is this
-guide's own heuristic: money on both sides reads as buying access, not backing a position. A custom object sets each
+"evidence" (research-informed, being tested; "improved" is a legacy alias for it) keeps that one
+pool per axis but weighs it by donor type, read from the event id prefix (case-insensitive, after
+any "against-"): "person-" (individual or small-dollar donors) and "cause-" (a group whose mission
+is the axis's issue) count 2 for a newcomer, "pac-" (PAC, corporate or trade money) and anything
+else 1; for an incumbent ("incumbent": true) "pac-" counts 0.5 and the rest 1. The pool's k is the
+highest member weight present (so at most 2, below one record) and its sign the weight-averaged
+mean of its members' signs. It also drops both-sides money: a funder or endorsement support event
+id (case and spacing ignored; an opposition id, "against-" or "against:" before or after the type
+prefix, never counts) that appears, with a link, under two or more options of one race that did not
+withdraw is left out of every option's math with a warning. That is this guide's own rule of thumb:
+money on both sides can't tell the candidates apart. A custom object sets each
 kind weight (0 = not counted; those rows are skipped with a warning), pools questionnaire
 answers to min(n x questionnaire, record) and donors to k = donors, and turns the both-sides rule
 on or off. Every race result echoes the "scoring" used. The score averages only the axes that have evidence;
@@ -54,8 +61,13 @@ import sys
 
 KIND = {"record": 3, "questionnaire": 2, "stated": 1, "funder": 1, "endorsement": 1}  # original weights
 # Preset scorings; a custom one has the same keys. "donors" weighs the pooled funder and endorsement entry.
+# For "evidence", donors is the most one pool can count; DONOR_W sets each member's weight.
 SCORING = {"original": {"record": 3, "questionnaire": 2, "stated": 1, "donors": 1, "exclude_both_sides": False},
-           "improved": {"record": 3, "questionnaire": 2, "stated": 1, "donors": 2, "exclude_both_sides": True}}
+           "evidence": {"record": 3, "questionnaire": 2, "stated": 1, "donors": 2, "exclude_both_sides": True}}
+ALIAS = {"improved": "evidence"}  # the v1.7 name, so saved inputs keep working
+# Evidence-based pool member weight by donor type: (newcomer, incumbent). Individual donors and
+# issue groups carry more signal for newcomers; access money concentrates on incumbents.
+DONOR_W = {"person": (2, 1), "cause": (2, 1), "pac": (1, 0.5), "general": (1, 1)}
 WEIGHTS = ("record", "questionnaire", "stated", "donors")
 # Breaks ties within one event: the candidate's own words beat what others give or say.
 RANK = {"record": 5, "questionnaire": 4, "stated": 3, "endorsement": 2, "funder": 1}
@@ -70,10 +82,12 @@ def resolve_scoring(s):
     """Return (scoring, errors): a preset name or custom object -> {"name", 4 weights, "exclude_both_sides"}."""
     if s is None:
         s = "original"
+    if isinstance(s, str):
+        s = ALIAS.get(s, s)
     if isinstance(s, str) and s in SCORING:
         return {"name": s, **SCORING[s]}, []
     if not isinstance(s, dict):
-        return None, ['scoring must be "improved", "original" or an object with record, questionnaire, '
+        return None, ['scoring must be "evidence", "original" or an object with record, questionnaire, '
                       'stated, donors and exclude_both_sides']
     errs = [f"scoring weight for {k} must be an integer 0-3" for k in WEIGHTS
             if type(s.get(k)) is not int or not 0 <= s[k] <= 3]
@@ -104,7 +118,24 @@ def norm_event(event):
     return re.sub(r"\s+", " ", event.strip().lower())
 
 
-OPPOSE = re.compile(r"against[-:]")  # an opposition id: "against-Example PAC" ("Against Malaria Fund" is support)
+# An opposition id: "against-Example PAC", also with a type prefix on either side ("against-pac-X",
+# "pac-against-X"); "Against Malaria Fund" is support.
+OPPOSE = re.compile(r"(?:(?:person|cause|pac)-)?against[-:]")
+TYPED = re.compile(r"(?:against[-:] ?)?(person|cause|pac)-")
+
+
+def donor_type(event):
+    """person, cause, pac or general, from a normalized event id's prefix."""
+    m = TYPED.match(norm_event(event)) if isinstance(event, str) else None
+    return m.group(1) if m else "general"
+
+
+def pool_weight(sc, event, incumbent):
+    """One funder/endorsement event's weight in its axis pool: the scoring's donors weight, or
+    under "evidence" the DONOR_W weight for its type and the option's incumbency."""
+    if sc.get("name") != "evidence":
+        return sc["donors"]
+    return DONOR_W[donor_type(event)][1 if incumbent is True else 0]
 
 
 def both_sides(opts):
@@ -189,7 +220,8 @@ def collapse(opt, party_axes=(), sc=None, shared=()):
     both-sides money (shared event ids, when the scoring excludes it); collapse rows of one
     event to one entry per axis."""
     name, gray, groups, warnings, told = opt.get("name"), [], {}, [], set()
-    w = kind_weights(sc or SCORING["original"])
+    sc = sc or SCORING["original"]
+    w = kind_weights(sc)
     for i, ev in enumerate(opt.get("evidence", [])):
         label = ev.get("event") or ev.get("text") or ev.get("source") or f"{name} item {i + 1}"
         if not linked(ev):
@@ -204,15 +236,15 @@ def collapse(opt, party_axes=(), sc=None, shared=()):
         if not w[ev["kind"]]:
             warnings.append(f"{name}: Not counted (weight 0 in your scoring): {label}")
             continue
-        if sc and sc["exclude_both_sides"] and ev["kind"] in AGGREGATE and isinstance(ev.get("event"), str) \
+        if sc["exclude_both_sides"] and ev["kind"] in AGGREGATE and isinstance(ev.get("event"), str) \
                 and ev["event"].strip() and norm_event(ev["event"]) in shared:
             if norm_event(ev["event"]) not in told:
                 told.add(norm_event(ev["event"]))
-                warnings.append(f"{name}: {ev['event']} backs more than one candidate here; not counted (access money)")
+                warnings.append(f"{name}: {ev['event']} backs more than one candidate here; not counted (can't tell the candidates apart)")
             continue
         key = event_key(ev, i)
         if key not in groups:
-            groups[key] = {"label": label, "rows": []}
+            groups[key] = {"label": label, "event": ev.get("event"), "rows": []}
         groups[key]["rows"].append(ev)
     events = []
     for g in groups.values():
@@ -224,7 +256,8 @@ def collapse(opt, party_axes=(), sc=None, shared=()):
             if len(signs) > 1:
                 warnings.append(f"{name}: conflicting tags for one event ({g['label']}) on axis {axis}; using 0.")
             entries.append((axis, kind, SIGN[signs.pop()] if len(signs) == 1 else 0))
-        events.append({"label": g["label"], "entries": entries})
+        events.append({"label": g["label"], "entries": entries,
+                       "w": pool_weight(sc, g["event"], opt.get("incumbent"))})
     return events, gray, warnings
 
 
@@ -238,7 +271,7 @@ def fit(events, axes, sc):
     for ev in events:
         for axis, kind, s in ev["entries"]:
             if kind in AGGREGATE:
-                pooled[axis].append(s)
+                pooled[axis].append((s, ev["w"]))
             elif kind == "questionnaire":
                 quest[axis].append(s)
             else:
@@ -251,11 +284,13 @@ def fit(events, axes, sc):
             k = min(w["questionnaire"] * len(quest[a]), w["record"])
             num[a] += k * (sum(quest[a]) / len(quest[a]))
             den[a] += k
-        # All donors and endorsers on an axis count as one entry (k = donors, mean sign), so a
-        # flood of them never outweighs one record.
+        # All donors and endorsers on an axis count as one entry (k = the highest member weight,
+        # sign = weight-averaged mean), so a flood of them never outweighs one record. With equal
+        # weights (original, custom) this is k = donors and the plain mean, exactly as before.
         if pooled[a]:
-            num[a] += sc["donors"] * (sum(pooled[a]) / len(pooled[a]))
-            den[a] += sc["donors"]
+            k = max(w for _, w in pooled[a])
+            num[a] += k * (sum(s * w for s, w in pooled[a]) / sum(w for _, w in pooled[a]))
+            den[a] += k
     known = {a for ev in events for a, _, _ in ev["entries"]}
     if not known:
         return None, None, None
@@ -281,7 +316,7 @@ def steps(events):
     then per axis all questionnaire answers together and all donors/endorsers together,
     matching how fit() pools them."""
     def drop(gone):
-        return [{"label": e["label"], "entries": [x for x in e["entries"] if not gone(e, x)]} for e in events]
+        return [{**e, "entries": [x for x in e["entries"] if not gone(e, x)]} for e in events]
     out = [(ev["label"], drop(lambda e, x, ev=ev: e is ev and x[1] in SOLO))
            for ev in events if any(k in SOLO for _, k, _ in ev["entries"])]
     for a in sorted({x[0] for e in events for x in e["entries"]}):
@@ -425,7 +460,7 @@ def score(data):
 
 
 def demo():
-    # The v2.1 assertions below pin the original scoring; the improved and custom ones follow them.
+    # The v2.1 assertions below pin the original scoring; the evidence and custom ones follow them.
     one = lambda axes, opts, measure=False, gray=False, scoring="original": score_race(
         {"race": "R", "measure": measure, "options": opts}, axes, gray, scoring=scoring)
     # Every row gets its own page unless a test names one; rows without a link are not counted.
@@ -627,31 +662,55 @@ def demo():
     assert r["options"][0]["score"] == 36, r
     assert score({"axes": {"A": 3}, "races": [{"race": "R", "options": [
         {"name": "X", "evidence": rec_fund}]}]})[0]["options"][0]["score"] == 36
-    # Improved pools them as k = 2: (-3 + 2) / (3 + 2 + 3) -> 43.75 -> 44.
-    assert score({"axes": {"A": 3}, "scoring": "improved", "races": [{"race": "R", "options": [
-        {"name": "X", "evidence": rec_fund}]}]})[0]["options"][0]["score"] == 44
+    # Evidence-based ("improved" is its legacy alias): a general donor counts 1, like original.
+    r = score({"axes": {"A": 3}, "scoring": "improved", "races": [{"race": "R", "options": [
+        {"name": "X", "evidence": rec_fund}]}]})[0]
+    assert (r["scoring"]["name"], r["options"][0]["score"]) == ("evidence", 36), r
+    # Donor types from the event id prefix (case, spacing and an "against-" in either order handled).
+    assert [donor_type(e) for e in ("person-Jo Roe", " PAC-Example", "Cause-Clean Air Group", "against-pac-Example PAC",
+                                    "Against: Person-Jo Roe", "pac-against-Example", "Example PAC", "pacific donors", None)] == \
+        ["person", "pac", "cause", "pac", "person", "pac", "general", "general", "general"]
+    tf = lambda e, sign="+": ev("A", sign, "funder", event=e)
+    evid = lambda evs, **o: one({"A": 3}, [{"name": "X", **o, "evidence": [ev("A", "-", "record")] + evs}], scoring="evidence")["options"][0]["score"]
+    # Newcomer: person- and cause- count 2: (-3 + 2) / (3 + 2 + 3) -> 43.75 -> 44; pac- 1: (-3 + 1) / 7 -> 36.
+    assert (evid([tf("person-Jo Roe")]), evid([tf("cause-Clean Air Group")]), evid([tf("pac-Example PAC")])) == (44, 44, 36)
+    # Incumbent: pac- counts 0.5: (-3 + 0.5) / 6.5 -> 30.8 -> 31; person- 1 -> 36.
+    assert (evid([tf("pac-Example PAC")], incumbent=True), evid([tf("person-Jo Roe")], incumbent=True)) == (31, 36)
+    # A mixed pool: k = the highest weight (2), sign = (2 x 1 + 1 x -1) / 3; (-3 + 2/3) / 8 -> 35.4 -> 35.
+    assert evid([tf("person-Jo Roe"), tf("pac-Example PAC", "-")]) == 35
+    # Original and custom ignore the incumbent flag and the type prefix: (-3 + 0) / 7 -> 28.6 -> 29.
+    mix = [{"name": "X", "incumbent": True, "evidence": [ev("A", "-", "record"), tf("person-Jo Roe"), tf("pac-Example PAC", "-")]}]
+    assert one({"A": 3}, mix)["options"][0]["score"] == 29
+    cust_eq = {"record": 3, "questionnaire": 2, "stated": 1, "donors": 1, "exclude_both_sides": False}
+    assert one({"A": 3}, mix, scoring=cust_eq)["options"][0]["score"] == 29
     # Both-sides money: one donor event id under two candidates (case and spacing ignored) is
     # shown in a warning and left out of both; original counts it.
     pac = lambda n, e: [ev("A", "+", "record", event=f"r{n}"), ev("A", "+", "funder", event=e)]
     two = [{"name": "X", "evidence": pac(1, "Example Realty PAC")}, {"name": "Y", "evidence": pac(2, "example  realty pac")}]
-    r = one({"A": 3}, two, scoring="improved")
+    r = one({"A": 3}, two, scoring="evidence")
     assert [o["score"] for o in r["options"]] == [75, 75], r  # record alone: 3 / (3 + 3)
-    assert r["warnings"] == ["X: Example Realty PAC backs more than one candidate here; not counted (access money)",
-                             "Y: example  realty pac backs more than one candidate here; not counted (access money)"], r
+    assert r["warnings"] == ["X: Example Realty PAC backs more than one candidate here; not counted (can't tell the candidates apart)",
+                             "Y: example  realty pac backs more than one candidate here; not counted (can't tell the candidates apart)"], r
     assert [o["score"] for o in one({"A": 3}, two)["options"]] == [79, 79]  # original: (3 + 1) / (3 + 1 + 3)
     # Backing X while spending against Y is a signal, not hedging: both rows count.
     vs = [{"name": "X", "evidence": pac(1, "Example PAC")}, {"name": "Y", "evidence": [ev("A", "+", "record", event="r2"),
           ev("A", "-", "funder", event="against-Example PAC")]}]
-    r = one({"A": 3}, vs, scoring="improved")
-    assert ([o["score"] for o in r["options"]], r["warnings"]) == ([81, 56], []), r  # (3 + 2) / 8; (3 - 2) / 8
+    r = one({"A": 3}, vs, scoring="evidence")
+    assert ([o["score"] for o in r["options"]], r["warnings"]) == ([79, 64], []), r  # (3 + 1) / 7; (3 - 1) / 7
+    # With a type prefix, "against-" may come before or after it; the incumbent's pac- counts 0.5.
+    for opp in ("against-pac-Example PAC", "PAC-against-Example PAC"):
+        vs = [{"name": "X", "evidence": pac(1, "pac-Example PAC")}, {"name": "Y", "incumbent": True, "evidence": [
+              ev("A", "+", "record", event="r2"), ev("A", "-", "funder", event=opp)]}]
+        r = one({"A": 3}, vs, scoring="evidence")
+        assert ([o["score"] for o in r["options"]], r["warnings"]) == ([79, 69], []), r  # (3 + 1) / 7; (3 - 0.5) / 6.5
     # Only "against-" / "against:" marks opposition: a donor named "Against ..." backing both is excluded.
     mal = [{"name": "X", "evidence": pac(1, "Against Malaria Fund")}, {"name": "Y", "evidence": pac(2, "against malaria fund")}]
-    assert [o["score"] for o in one({"A": 3}, mal, scoring="improved")["options"]] == [75, 75]
+    assert [o["score"] for o in one({"A": 3}, mal, scoring="evidence")["options"]] == [75, 75]
     # A withdrawn candidate's donors are not both-sides money; a red-lined candidate's still are.
     gone = lambda flag: [{"name": "X", **flag, "evidence": pac(1, "Example PAC")}, {"name": "Y", "evidence": pac(2, "Example PAC")}]
-    r = one({"A": 3}, gone({"withdrawn": True}), scoring="improved")
-    assert ([o["score"] for o in r["options"]], r["warnings"]) == ([81, 81], []), r
-    assert [o["score"] for o in one({"A": 3}, gone({"red_line": True}), scoring="improved")["options"]] == [75, 75]
+    r = one({"A": 3}, gone({"withdrawn": True}), scoring="evidence")
+    assert ([o["score"] for o in r["options"]], r["warnings"]) == ([79, 79], []), r
+    assert [o["score"] for o in one({"A": 3}, gone({"red_line": True}), scoring="evidence")["options"]] == [75, 75]
     # Custom: weight 0 rows are listed as not counted and give no coverage; questionnaire answers
     # pool to min(n x questionnaire, record); the both-sides checkbox switches the rule.
     cust = lambda **w: {"record": 3, "questionnaire": 2, "stated": 1, "donors": 2, "exclude_both_sides": True, **w}
@@ -672,7 +731,7 @@ def demo():
         except ValueError as err:
             assert msg in str(err), (bad, err)
     print(json.dumps(one({"A": 3, "B": 2}, [{"name": "X", "evidence": x}, {"name": "Y", "evidence": y[:2]}],
-                         scoring="improved"), indent=2))
+                         scoring="evidence"), indent=2))
     print("self-check OK")
 
 
