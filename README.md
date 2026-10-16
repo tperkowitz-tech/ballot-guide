@@ -23,24 +23,21 @@ What the skill does that the web and prompt kits can't:
 
 ## No skills? Use any AI chat
 
-**Quick start (easiest):** one copy-and-paste starter runs the whole ballot in a single free AI chat.
+**Quick start (the main free path):** about 5 actions, in one free AI chat and the [web kit](https://tperkowitz-tech.github.io/ballot-guide/#quick-start).
 
-1. Copy the starter from the [web kit's Quick start](https://tperkowitz-tech.github.io/ballot-guide/#quick-start) (or the [plain text](PROMPT-KIT.md#quick-start-one-chat)).
-2. Paste it into a free AI chat with web search (ChatGPT worked in testing; free accounts may limit photo uploads, so typing the races works best).
-3. Type the races from your ballot or sample ballot, then type "next" for each item and "guide" at the end.
+1. Copy the starter from the web kit's Quick start (or the [plain text](PROMPT-KIT.md#quick-start-one-chat)).
+2. Paste it into a free AI chat with web search and type the races from your ballot or sample ballot (ChatGPT worked in testing; free accounts may limit photo uploads, so typing works best). The chat asks whether you want a neutral comparison or a match to your priorities.
+3. Type "next 3" until every item is done. If the chat gets slow, type "continue" to move to a fresh chat.
+4. After about every 12 items, type "export" (free chats can forget early research on a long ballot).
+5. Paste each export into the web kit's Quick start; each paste adds to the guide. The page checks each item, scores it if you gave priorities, and builds your guide table, with no more chat steps. One button copies a double-check of only the items it flagged.
 
-For scores against your values, a double-check, or saved progress, use the full kits:
-
-| Option | Best for |
-|---|---|
-| [Web kit](https://tperkowitz-tech.github.io/ballot-guide/) | Anyone with a browser. The page writes each question, you paste it into an AI chat with web search, and paste the answer back. No install, no account. |
-| [Prompt kit](PROMPT-KIT.md) | People who prefer plain text, or chats the web kit doesn't fit. The same questions, to copy by hand. |
+**Advanced:** to research one race at a time, with a separate chat and double-check per item, open "Advanced: research one race at a time" on the same page, or use the plain-text [prompt kit](PROMPT-KIT.md).
 
 [![The Ballot Guide web kit](docs/img/web-kit.jpg)](https://tperkowitz-tech.github.io/ballot-guide/)
 
 In testing (October 2026), logged-out ChatGPT with search was the free option that worked; still check its ballot list against your official sample ballot. Free Copilot needs a sign-in, logged-out Perplexity stops after one question, free Gemini declined or returned errors on these election questions, and Google AI Mode did not find ballot lists reliably (in one test it used a primary-election list). See [where it's been tested](TESTED.md).
 
-With the kits, plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time. The web kit saves your progress.
+With the step-by-step kit, plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time. The web kit saves your progress.
 
 ## When to use it
 
@@ -49,7 +46,7 @@ Once your ballot or voters' pamphlet arrives (usually 2 to 6 weeks before Electi
 ## Privacy
 
 - **The skill** runs inside your AI app. Your address is used only to look up your ballot and is left out of the guide; the app's own privacy policy covers your conversation.
-- **The web kit** keeps your progress only in your own browser. It collects nothing about you, uses no cookies or tracking, and loads nothing from other sites; GitHub, which hosts it, sees visitors' IP addresses like any website host. Your address goes only into the question that looks up your ballot (and its optional double-check), which you paste into an AI chat yourself. Press "Start over" to erase everything saved. Full details are in the [web kit's privacy section](https://tperkowitz-tech.github.io/ballot-guide/#privacy).
+- **The web kit** keeps your progress only in your own browser. It collects nothing about you, uses no cookies or tracking, and loads nothing from other sites; GitHub, which hosts it, sees visitors' IP addresses like any website host. Your address goes only into the step-by-step kit's question that looks up your ballot (and its optional double-check), which you paste into an AI chat yourself; the Quick start needs no address, and lines of a pasted export that may include one are never saved. Press "Start over" to erase everything saved. Full details are in the [web kit's privacy section](https://tperkowitz-tech.github.io/ballot-guide/#privacy).
 - **Any AI chat** may keep what you send it. Some free chats, such as DeepSeek, Qwen, Kimi and Z.ai, are made by companies based in China or their affiliates. Some say they store what you send in China (DeepSeek, for one); others store it elsewhere but may allow access from China. Read a chat's privacy policy before you share your address.
 
 ## Good to know

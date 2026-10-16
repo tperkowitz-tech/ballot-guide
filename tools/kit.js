@@ -452,6 +452,173 @@ function bundleAnswers(items) {
   return out.join("\n");
 }
 
+// The Quick start starter's "export" answer: an optional PRIORITIES line (values mode), then one
+// "=== ITEM n: name" block per item, each in the Step 3/4 shape calc.js reads. Chats restyle it,
+// so every line goes through normLine first (bold, headings, bullets, escapes); fence lines are
+// dropped. A plain "ITEM n:" header works too, but not as a bullet ("- ITEM 4: WRONG" is a
+// checker's problem line). A checker's CHECK SUMMARY / PROBLEMS / REMOVED line ends the current
+// item, and headers without "===" are ignored until its CORRECTED ANSWER line, so its reply can be
+// pasted after an export.
+const EXPORT_HEAD = /^(?:=+\s*)?ITEM\s+(\d+)(?:\s+of\s+(\d+))?\s*[:.)–—-]\s*(.*?)\s*=*$/i;
+const EXPORT_END = /^(?:CHECK SUMMARY|PROBLEMS|CORRECTED ANSWER|REMOVED)\b\s*(?::|$)/i;
+const BULLET = /^\s*(?:[-*•+]|\d+[.)])\s/;
+const MAX_PRIORITIES = 6; // the profile form holds at most six
+
+// "A = Housing (3); B = Taxes (weight 2)". Letters must run A, B, C in order, because the
+// evidence tags use the chat's letters; renumbering them would tag facts to the wrong priority.
+function parsePriorities(text) {
+  const priorities = [], problems = [];
+  for (const part of String(text).split(/\s*;\s*/).filter(p => p.trim())) {
+    const m = part.match(/^\s*([A-Za-z])\s*[=:]\s*(.*?)\s*(?:\(\s*(?:weight\s*)?(-?\d+(?:\.\d+)?)\s*\))?\s*$/i);
+    if (!m || !m[2]) { problems.push(`Could not read this priority (expected "A = priority (1 to 3)"): ${part.trim()}`); continue; }
+    if (priorities.length === MAX_PRIORITIES) { problems.push(`Only ${MAX_PRIORITIES} priorities are used; left out: ${part.trim()}`); continue; }
+    const letter = letters(priorities.length + 1)[priorities.length];
+    // One message for the first slip: every later letter is off by the same step.
+    if (m[1].toUpperCase() !== letter && !problems.some(x => x.startsWith("PRIORITIES letters"))) {
+      problems.push(`PRIORITIES letters must run A, B, C in order; found ${m[1].toUpperCase()} where ${letter} belongs. Ask the chat to export again.`);
+    }
+    let weight = m[3] === undefined ? 2 : Math.round(Number(m[3]));
+    if (m[3] === undefined) problems.push(`No weight for ${letter} (${m[2]}); using 2.`);
+    else if (weight < 1 || weight > 3) {
+      problems.push(`Weight for ${letter} (${m[2]}) must be 1, 2 or 3 (found ${m[3]}); using ${Math.min(3, Math.max(1, weight))}.`);
+      weight = Math.min(3, Math.max(1, weight));
+    }
+    priorities.push({letter, name: m[2], weight});
+  }
+  return {priorities, problems};
+}
+
+// Real chats loosen the evidence tags (a live free-chat export matched the strict form on 0 of 248
+// lines), so each item is rewritten into the form calc.js reads before it is stored. KIND synonyms:
+// DONORS / FUNDERS / FUNDERS-YES are FUNDER and ENDORSEMENTS is ENDORSEMENT. On a measure the
+// starter's labels describe the YES side: YES, NO and COST (the official statement and estimate)
+// are RECORD, FOR and AGAINST (the campaigns' arguments) are STATED, and FUNDERS-NO is FUNDER with
+// an "against-" event id, the form Step 3 uses for money spent against an option.
+const KIND_WORD = {RECORD: "RECORD", QUESTIONNAIRE: "QUESTIONNAIRE", Q: "QUESTIONNAIRE", STATED: "STATED", FUNDER: "FUNDER",
+  FUNDERS: "FUNDER", DONOR: "FUNDER", DONORS: "FUNDER", "FUNDERS-YES": "FUNDER", ENDORSEMENT: "ENDORSEMENT", E: "ENDORSEMENT", ENDORSEMENTS: "ENDORSEMENT"};
+const MEASURE_WORD = {YES: "RECORD", NO: "RECORD", COST: "RECORD", FOR: "STATED", AGAINST: "STATED", "FUNDERS-NO": "FUNDER"};
+const SIGN_TAG = {"+": "+", "-": "-", "−": "-", "–": "-", "0": "0", plus: "+", minus: "-", mixed: "0", neutral: "0", gray: "gray", grey: "gray"};
+const NOT_COUNTED = "GAPS: not counted, needs a priority and +/-/0 tag:";
+
+// Tagged lines become "[X][S][KIND][event] rest". [UNVERIFIED] stubs and lines the scorer cannot
+// count become GAPS lines, moved after each candidate's evidence because calc.js stops reading
+// evidence at GAPS. Returns {answer, gaps, notCounted} (counts of lines moved to GAPS).
+function tidyItem(lines, measure, values, allowed) {
+  const out = [], tail = [];
+  let gaps = 0, notCounted = 0;
+  const flush = () => { out.push(...tail); tail.length = 0; };
+  for (let line of lines) {
+    if (/^(CANDIDATE|MEASURE)\s*:/i.test(line)) flush();
+    line = line.replace(/^(MEASURE\s*:.*?),?\s*then\s+EVIDENCE\s*:?\s*$/i, "$1");
+    if (/^GAPS\s*:/i.test(line)) { tail.push(line); continue; }
+    // "WITHDRAWN: No withdrawals were verified" is a note, not a withdrawal.
+    if (/^WITHDRAWN\s*:\s*(?:none|n\/a|no\b)/i.test(line)) { tail.push("GAPS: " + line); continue; }
+    const t = line.match(/^(?:\[[^\]]*\]\s*)+/);
+    if (!t) { out.push(line); continue; }
+    const tags = [...t[0].matchAll(/\[\s*([^\]]*?)\s*\]/g)].map(m => m[1]), rest = line.slice(t[0].length).trim();
+    if (tags.some(x => /^UNVERIFIED$/i.test(x))) { tail.push("GAPS: unverified: " + rest); gaps++; continue; }
+    const k = tags.findIndex(x => KIND_WORD[x.toUpperCase()] || (measure && MEASURE_WORD[x.toUpperCase()]));
+    const word = k < 0 ? "" : tags[k].toUpperCase(), kind = KIND_WORD[word] || MEASURE_WORD[word];
+    const before = k < 0 ? tags : tags.slice(0, k);
+    const sign = before.map(x => SIGN_TAG[x.toLowerCase()]).find(Boolean);
+    const axis = before.find(x => !SIGN_TAG[x.toLowerCase()] && !/^(some|none|n\/a|\?)$/i.test(x)) || "";
+    const event = k >= 0 && tags[k + 1] ? tags[k + 1] : word === "FUNDERS-NO" ? "against-funders-no" : "";
+    const letterOk = /^[A-Za-z]$/.test(axis) && (!allowed || allowed.includes(axis.toUpperCase()));
+    if (!kind || (values && (!letterOk || !sign))) { tail.push(`${NOT_COUNTED} ${line}`); notCounted++; continue; }
+    out.push(`[${values ? axis.toUpperCase() : axis || "General"}][${values ? sign : "0"}][${kind}]${event ? `[${event}]` : ""} ${rest}`);
+  }
+  flush();
+  return {answer: out.join("\n"), gaps, notCounted};
+}
+
+// Several exports (one per "continue" chat) can be pasted together: items merge by number and a
+// later block replaces an earlier one. Lines that may hold an address are returned in addressLines,
+// never in an item. known: priority letters already in use, checked when the paste has no PRIORITIES.
+function parseExport(text, address = "", known = null) {
+  const byN = new Map(), addressLines = [], notes = [], problems = [];
+  const earlier = new Map(); // n -> the block a later one with the same number replaced
+  let pri = null, priOpen = false, cur = null, global = -1, total = null, inCheck = false;
+  for (const raw of String(text).split(/\r?\n/)) {
+    if (/^\s*```/.test(raw)) continue;
+    const line = lineNorm(raw);
+    if (!line) continue;
+    let m;
+    if ((m = line.match(EXPORT_HEAD)) && !BULLET.test(mdPlain(raw)) && (!inCheck || line.startsWith("="))) {
+      const n = Number(m[1]);
+      inCheck = false; priOpen = false; global = -1;
+      if (n < 1) { problems.push(`"${line}" is not a valid item number (items start at 1); its lines were left out.`); cur = null; continue; }
+      if (m[2]) total = Math.max(total || 0, Number(m[2]));
+      let title = m[3].trim();
+      if (mayHaveAddress(title, address)) { addressLines.push(line); title = ""; }
+      if (byN.has(n)) { notes.push(`Item ${n} was pasted more than once; the later one is used.`); earlier.set(n, byN.get(n)); }
+      byN.delete(n);
+      cur = {n, title: title || `Item ${n}`, lines: []};
+      byN.set(n, cur);
+      continue;
+    }
+    if (mayHaveAddress(line, address)) { addressLines.push(line); continue; }
+    if ((m = line.match(/^PRIORITIES\s*:\s*(.*)$/i))) { pri = m[1]; priOpen = !m[1].trim(); cur = null; continue; }
+    // PRIORITIES written one per line under the heading.
+    if (priOpen && /^[A-Za-z]\s*[=:]/.test(line)) { pri += (pri.trim() ? "; " : "") + line; continue; }
+    priOpen = false;
+    if (EXPORT_END.test(line)) { cur = null; inCheck = !/^CORRECTED ANSWER/i.test(line); continue; }
+    // A closing "GLOBAL GAPS:" paragraph is about the whole export: a note, not part of an item.
+    if (/^GLOBAL GAPS\s*:/i.test(line)) { cur = null; global = notes.push(line) - 1; continue; }
+    if (cur) cur.lines.push(line);
+    else if (global >= 0) notes[global] += " " + line;
+  }
+  const {priorities, problems: pp} = pri && pri.trim() ? parsePriorities(pri.trim().replace(/\.$/, "")) : {priorities: [], problems: []};
+  problems.push(...pp);
+  // Tags must use the PRIORITIES letters; a letter without them means the PRIORITIES line is missing.
+  const allowed = priorities.length ? priorities.map(p => p.letter) : known;
+  // A repeated item that came back empty never replaces one with lines.
+  for (const [n, old] of earlier) {
+    if (!byN.get(n).lines.length && old.lines.length) {
+      byN.set(n, old);
+      // Replaces the "later one is used" note, which no longer holds.
+      notes.splice(notes.indexOf(`Item ${n} was pasted more than once; the later one is used.`), 1, `Item ${n} came back empty; the earlier one is kept.`);
+    }
+  }
+  const blocks = [...byN.values()].sort((a, b) => a.n - b.n);
+  const items = blocks.map(it => {
+    const used = [...new Set(it.lines.map(l => (l.match(/^\[\s*([A-Za-z])\s*\]\s*\[/) || [])[1]).filter(Boolean).map(s => s.toUpperCase()))];
+    const bad = allowed ? used.filter(l => !allowed.includes(l)) : used;
+    if (bad.length) problems.push(allowed
+      ? `Item ${it.n} (${it.title}) uses priority letter ${bad.join(", ")}, which PRIORITIES does not list (${allowed.join(", ")}).`
+      : `Item ${it.n} (${it.title}) uses priority letters (${bad.join(", ")}) but the paste has no PRIORITIES line. Paste the whole export, starting with PRIORITIES.`);
+    const kind = it.lines.some(l => /^MEASURE\s*:/i.test(l)) ? "measure" : "race";
+    return {n: it.n, title: it.title, kind, ...tidyItem(it.lines, kind === "measure", !!allowed, allowed)};
+  });
+  // A values export whose tags carry no usable +/- sign (a live free-chat retest tagged every line
+  // 0, most with "NEUTRAL" for the letter) cannot be scored: every score would sit at 50. Then the
+  // items are read as a neutral comparison instead, and `unscored` tells the page to say so.
+  // Partial exports still score what they can; their untagged lines stay flagged. Only a paste
+  // with its own PRIORITIES line can fall back: one without keeps the page's mode, so in values
+  // mode its untagged lines stay flagged rather than being rewritten as neutral.
+  const signed = items.reduce((t, it) => t + it.answer.split("\n").filter(l => /^\[[A-Z]\]\[[+-]\]\[/.test(l)).length, 0);
+  const tagged = items.reduce((t, it) => t + it.answer.split("\n").filter(l => /^\[/.test(l)).length + it.notCounted, 0);
+  const flagged = items.reduce((t, it) => t + it.notCounted, 0);
+  const unscored = priorities.length > 0 && tagged > 0 && (!signed || flagged >= 0.9 * tagged);
+  if (unscored) items.forEach((it, i) => Object.assign(it, tidyItem(blocks[i].lines, it.kind === "measure", false, null)));
+  // unscoredWhy: "none" (no +/- tags at all) or "few" (90% or more of tagged lines unusable).
+  return {priorities, items, addressLines, notes, problems, unscored, unscoredWhy: !unscored ? "" : signed ? "few" : "none", total};
+}
+
+// One Step 8 check for the same Quick start chat, covering only the items the page flagged
+// (flagged: [{n, title, answer, flags}]). No profile goes in, and lines that may hold an address
+// are left out. The corrected answer comes back in the export format, so it can be pasted after
+// the export and read again (a later item replaces the earlier one).
+function checkFlagged(stepText, flagged, address = "") {
+  const keep = l => !mayHaveAddress(l, address);
+  // "Item n:" rather than "- ITEM n:", so a checker echoing this list never reads as an item header.
+  const why = flagged.map(it => `Item ${it.n}: ${it.flags.join("; ")}`).filter(keep);
+  const answer = flagged.map(it => [`=== ITEM ${it.n}: ${it.title}`, ...mdPlain(it.answer).trim().split(/\r?\n/).filter(keep)].join("\n")).join("\n\n");
+  return fillCheck(stepText, {}, {answer})
+    .replace(/^TASK: .*$/m, "TASK: Check your own earlier answers in this chat for the items below. Do not trust them. Do not add new research beyond checking.")
+    .replace("{{the original step prompt}}", () => ["The starter's research for each item, in its export format. The Ballot Guide page flagged these items:", ...why].join("\n"))
+    + "\n\nWrite the CORRECTED ANSWER in the export format (=== ITEM n: name, then its lines), one block per item checked, so I can paste it into the Ballot Guide page.";
+}
+
 // Test report: these option lists must match .github/ISSUE_TEMPLATE/test-report.yml exactly
 // (kit_test.js checks), or GitHub silently ignores the prefilled value.
 const REPORT_STATES = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
@@ -488,6 +655,6 @@ function chatRefused(text) {
 if (typeof module === "object" && module.exports) {
   module.exports = {WEB_GATE, ADDRESS_WITHHELD, DOUBLE_CHECK_STEP, NEUTRAL_EVIDENCE, defaultState, letters, axisLines, scoringOf, scoringText, focusRuleSentence, safePlace, placeFromAddress, buildProfile, fillStep, fixFormat, splitForChat, longCopyNote, forChat,
     mayHaveAddress, parseBallot, calcProfile, raceText, measureText, bundleAnswers, fillCheck, extractCorrected, usableCorrected, checkSummary, checkLine,
-    checkMismatch, splitInfo, splitFollowUp, addPart,
+    checkMismatch, splitInfo, splitFollowUp, addPart, parsePriorities, parseExport, tidyItem, NOT_COUNTED, checkFlagged, LONG_COPY,
     REPORT_STATES, REPORT_OVERALL, REPORT_KEYS, testReportUrl, chatRefused};
 }

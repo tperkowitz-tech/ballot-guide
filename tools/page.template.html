@@ -126,6 +126,13 @@ pre.example{padding:8px 10px;font-size:11.5px;border-left:3px solid var(--rule)}
 .advanced>summary h2{font-size:1.05rem}
 .adv-body{padding:14px;display:flex;flex-direction:column;gap:28px}
 #guided{display:flex;flex-direction:column;gap:16px}
+.how h3{font:750 1rem/1.2 var(--display);margin:8px 0 0}
+.guide-wrap{overflow-x:auto;background:var(--sheet)}
+#guide-table td{vertical-align:top;overflow-wrap:break-word}
+/* Phone width: each item becomes a stacked card instead of four squeezed columns. */
+@media (max-width:560px){#guide-table thead{display:none}#guide-table tr,#guide-table td{display:block}#guide-table td{border:0;padding:2px 8px}#guide-table tr{border-bottom:1px solid var(--rule);padding:6px 0}#guide-table td:first-child{font-weight:700}}
+#guide-table ul{margin:0;padding-left:16px}
+#guide-table details summary{cursor:pointer;color:var(--pen);min-height:44px;display:flex;align-items:center}
 td{overflow-wrap:anywhere}
 footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;gap:8px}
 @page{size:letter;margin:.6in}
@@ -140,15 +147,17 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
   <h1>Ballot Guide Prompt Kit</h1>
   <p class="lede">Build a sourced guide to your ballot. Neutral comparison by default; optional scores against your own values.</p>
   <p class="lede"><strong>Private by design:</strong> this page collects nothing about you, and the page itself sends nothing anywhere. <a href="#privacy">Read the privacy policy</a>.</p>
-  <div class="btn-row"><a class="copy" href="#stage-1" id="start-link">Start: Step 1, your profile</a></div>
+  <div class="btn-row"><a class="copy" href="#quick-start" id="start-link">Start: Quick start</a></div>
 </header>
 
 <div class="how" id="quick-start" role="region" aria-labelledby="quick-h">
   <h2 id="quick-h">Quick start (easiest)</h2>
   <ol>
     <li>Copy the starter.</li>
-    <li>Paste it into a free AI chat with web search (ChatGPT worked in testing; free accounts may limit photo uploads, so typing the races works best).</li>
-    <li>Type the races from your ballot or sample ballot, then type 'next' for each item and 'guide' at the end.</li>
+    <li>Paste it into a free AI chat with web search, and type the races from your ballot or sample ballot (ChatGPT worked in testing; free accounts may limit photo uploads, so typing works best).</li>
+    <li>Type "next 3" until every item is done. If the chat gets slow, type "continue" and paste its message into a new chat.</li>
+    <li>After about every 12 items, type "export" and copy the whole answer (free chats can forget early research on a long ballot).</li>
+    <li>Paste it below and press Read export; each paste adds to the guide. This page checks, scores and builds your guide itself, with no more chat steps.</li>
   </ol>
   <div class="btn-row"><button class="copy primary" type="button" id="quick-copy">Copy the starter</button></div>
   <details>
@@ -156,9 +165,32 @@ footer{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;ga
     <pre id="quick-text"><!--QUICKSTART--></pre>
   </details>
   <p>No street address needed: you share only your races (or your city, county and state). If you send a photo, use an unmarked ballot or sample ballot, and leave out the envelope.</p>
-  <p>Want scores against your values, a double-check, or saved progress? Use the <a href="#start-h">full kit below</a>.</p>
+  <h3 id="export-h">Paste your export</h3>
+  <textarea id="export-answer" rows="8" autocomplete="off" aria-labelledby="export-h" aria-describedby="export-hint"></textarea>
+  <p class="hint" id="export-hint">Paste one export at a time; items with the same number replace the earlier ones. This box is not saved; only the items read from it are, in this browser, without lines that may include an address.</p>
+  <div class="btn-row"><button type="button" class="copy primary" id="export-read">Read export</button></div>
+  <div id="export-confirm" class="warn" hidden>
+    <p id="export-confirm-msg"></p>
+    <div class="btn-row"><button type="button" class="copy primary" id="export-yes">Yes, read the export</button><button type="button" class="copy" id="export-no">Cancel</button></div>
+  </div>
+  <p id="export-found" aria-live="polite"></p>
+  <div id="export-warn"></div>
+  <div id="export-guide" hidden>
+    <p class="warn" id="guide-notice" hidden></p>
+    <p id="export-summary"><strong></strong></p>
+    <div class="guide-wrap"><table id="guide-table"><thead><tr><th scope="col">#</th><th scope="col">Contest</th><th scope="col">Result</th><th scope="col">Flags</th></tr></thead><tbody></tbody></table></div>
+    <p class="hint" id="guide-note"></p>
+    <div id="export-check" hidden>
+      <p class="hint" id="export-check-hint">Copies one message for the same chat that asks it to check only the flagged items against their sources. Paste its reply at the end of the box above and press Read export again.</p>
+      <div class="btn-row" id="export-check-parts"><button type="button" class="copy primary" id="export-check-copy" aria-describedby="export-check-hint">Double-check only flagged items</button></div>
+    </div>
+  </div>
+  <p>Prefer one chat per race, with a check after each? Use <a href="#step-kit">Advanced: research one race at a time</a> below.</p>
 </div>
 
+<details class="advanced" id="step-kit">
+<summary><h2>Advanced: research one race at a time</h2></summary>
+<div class="adv-body">
 <div class="how" role="region" aria-labelledby="start-h">
   <h2 id="start-h">Before you start</h2>
   <p>You will need: an AI chat that can search the web (for example ChatGPT or Claude with search turned on). Plan on about 5 minutes per race or measure; a ballot of 20 items takes 1 to 2 hours, so do a few at a time — progress is saved. This page writes the questions for you. You copy each question into the AI chat, then paste the AI's answer back here. <a href="sample.html">See sample guides</a> to know what you will get.</p>
@@ -438,13 +470,15 @@ GAPS: no funder data found</textarea>
 </section>
 </div>
 </details>
+</div>
+</details>
 
 <section class="how" id="privacy" aria-labelledby="privacy-h">
   <h2 id="privacy-h">Privacy</h2>
   <p><strong>This page collects no information about you.</strong> It has no accounts, no cookies, no analytics or tracking, and no server of its own. Nothing you type is sent to this project or to anyone else by this page.</p>
   <ul>
     <li><strong>What stays on your computer:</strong> to keep your progress, your browser saves your profile choices, your race list and the AI answers you paste, in this browser on this device only. It stays until you press <em>Start over</em> or clear this site's data in your browser settings. This page never sends it anywhere.</li>
-    <li><strong>What is never saved:</strong> your address, the AI's answer that lists your ballot, and that answer's double-check reply (both may repeat your address).</li>
+    <li><strong>What is never saved:</strong> your address, the AI's answer that lists your ballot, and that answer's double-check reply (both may repeat your address). The Quick start export box is not saved either: only the items read from it are, and lines that may include an address are shown to you and left out.</li>
     <li><strong>What leaves your computer, only when you do it:</strong> text you copy and paste into an AI chat. Your address goes only into the ballot-lookup question and its optional double-check. The AI service's own privacy policy covers anything you paste there; some services, including several free chats made by companies based in China or their affiliates, may store it outside the US. Some search-based AI tools, such as Google AI Mode, put your question in the page address, so it can be saved in your browser history. Links you open take you to other websites.</li>
     <li><strong>Hosting:</strong> GitHub Pages serves this page. Like any website host, GitHub receives standard information such as your IP address when the page loads. The page loads nothing from any other site: no fonts, ads or scripts. Your browser enforces this with a security policy built into the page.</li>
     <li><strong>Test report:</strong> the optional "Share how it went" panel only opens a GitHub form with the fields shown in its preview. Nothing is sent unless you submit that form on GitHub.</li>
@@ -509,6 +543,8 @@ let items=[];
 // Saved data is untrusted: a non-string field loads as empty rather than as "[object Object]".
 const str=v=>typeof v==="string"?v:"";
 const checkFields=x=>({checkAnswer:str(x.checkAnswer),original:str(x.original),checked:!!x.checked,checkSkipped:!!x.checkSkipped});
+// Quick start items carry their export item number n (ballot order); step-by-step items have none.
+const exportNo=x=>Number.isInteger(x.n)&&x.n>0?{n:x.n,...(Number.isInteger(x.of)&&x.of>=x.n?{of:x.of}:{})}:{};
 let ballotChecked=false, ballotCheckText="", ballotOriginal="", ballotSkipped=false;
 // Stage 3 format example, shown once; neutral answers use [TOPIC][0][KIND] (kit.js NEUTRAL_EVIDENCE).
 const EXAMPLE={
@@ -666,7 +702,7 @@ function save(){
   // The address is deliberately left out of storage: it is the one field that identifies a person.
   const st=readState(), {address,...profile}=st;
   profile.place=safePlace(st); // a street typed into the place field is never saved
-  const keep=items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:it.status,...checkFields(it)}));
+  const keep=items.map(it=>({kind:it.kind,text:it.text,note:it.note,answer:it.answer,status:it.status,...checkFields(it),...exportNo(it)}));
   try{localStorage.setItem(STORE,JSON.stringify({profile,items:keep,ballotChecked}))}catch(_){/* storage blocked or full: the page still works, nothing is remembered */}
 }
 
@@ -679,7 +715,7 @@ function load(){
   const {address,...rest}=prof;
   writeState({...defaultState(),...rest});
   items=(Array.isArray(s.items)?s.items:[]).filter(x=>x&&(x.kind==="race"||x.kind==="measure"))
-    .map(x=>({kind:x.kind,text:String(x.text||""),note:String(x.note||""),answer:String(x.answer||""),status:"to do",...checkFields(x)}));
+    .map(x=>({kind:x.kind,text:String(x.text||""),note:String(x.note||""),answer:String(x.answer||""),status:"to do",...checkFields(x),...exportNo(x)}));
   ballotChecked=s.ballotChecked===true;
   // Drop the v1 key only once v2 is safely written, so a failed write never loses the profile.
   if(migrated){save();try{if(localStorage.getItem(STORE))localStorage.removeItem(OLD_STORE)}catch(_){/* storage blocked: v1 stays until Start over */}}
@@ -770,16 +806,17 @@ let uid=0;
 // Scores (values mode) or counts (neutral mode) one pasted Step 3/4 answer and sets its status.
 function evalItem(it){
   const out=it.ui.out, text=it.answer, st=readState();
-  out.replaceChildren(); it.calc=""; it.call="";
+  out.replaceChildren(); it.calc=""; it.call=""; it.eval=null;
   it.refused=chatRefused(text);
   if(!text.trim())it.status="to do";
   else if(it.refused){
-    it.status="problem";
+    it.status="problem"; it.eval={errors:1,warnings:0,res:null};
     out.append(noteBox([{msg:refusedText(it.refused),line:""}]));
   }else if(st.mode==="values"){
     const r=calculate(calcProfile(st),text,scoringOf(st));
     renderCalc(out,r);
     it.status=r.result&&!r.errors.length?"scored":"problem";
+    it.eval={errors:r.errors.length,warnings:r.warnings.length,res:r.result};
     if(r.result)it.call="Call: "+r.result.call;
     if(r.result){
       const res=r.result, measure=r.kind==="measure";
@@ -793,6 +830,7 @@ function evalItem(it){
     out.append(el("p",it.calc));
     if(c.errors.length||c.warnings.length)out.append(noteBox(c.errors.concat(c.warnings)));
     it.status=c.recognized&&!c.errors.length?"pasted":"problem";
+    it.eval={errors:c.errors.length,warnings:c.warnings.length,res:null};
   }
   refreshItem(it);
 }
@@ -1018,6 +1056,7 @@ function refreshStages(){
   $("s4-status").textContent=items.length&&done===items.length?"Ready":"Finish Step 3 first, or go ahead with what you have";
   const n6=splitForChat(finalChat(6)).length, n7=splitForChat(finalChat(7)).length, w=$("bundle-warn");
   partButtons(6,n6); partButtons(7,n7);
+  renderGuide();
   w.hidden=n6<2&&n7<2;
   w.textContent=w.hidden?"":"This text is long, so it comes in parts; some chats cut off long pastes. Paste every part, in order, into the same new chat. The chat replies OK until the last part.";
   refreshShare();
@@ -1025,7 +1064,6 @@ function refreshStages(){
 
 // Focus follows the move, so keyboard and screen-reader users land on the new stage.
 function go(from,to){$(from).open=false;$(to).open=true;$(to).scrollIntoView({block:"start"});$(to).querySelector("summary").focus({preventScroll:true})}
-$("start-link").addEventListener("click",()=>{$("stage-1").open=true});
 $("s1-next").addEventListener("click",()=>go("stage-1","stage-2"));
 $("s2-next").addEventListener("click",()=>go("stage-2","stage-3"));
 $("s3-next").addEventListener("click",()=>go("stage-3","stage-4"));
@@ -1126,6 +1164,138 @@ function readBallot(){
   }
 }
 
+// ---- Quick start export ----
+const plural=(n,w)=>n+" "+w+(n===1?"":"s");
+// "Items 1–12, 14 of 35": the item numbers read so far, as ranges, and the ballot total when an
+// export header gave it ("ITEM n of N").
+function progressText(ex){
+  const ns=ex.map(it=>it.n), runs=[];
+  ns.forEach((n,i)=>{if(i&&n===ns[i-1]+1)runs[runs.length-1][1]=n;else runs.push([n,n])});
+  const of=Math.max(0,...ex.map(it=>it.of||0));
+  return (ns.length===1?"Item ":"Items ")+runs.map(([a,b])=>a===b?a:a+"–"+b).join(", ")+(of?" of "+of:"");
+}
+const exportItems=()=>items.filter(it=>exportNo(it).n).sort((a,b)=>a.n-b.n);
+// One guide-table row from the scorer's output, so the guide needs no more chat. flagged: problems,
+// lines to check, or a toss-up; those go into the one double-check message.
+function guideInfo(it){
+  const p=parseResearch(it.answer,{},true), e=it.eval||{errors:0,warnings:0,res:null}, res=e.res, result=[], flags=[];
+  const facts=p.options.reduce((t,o)=>t+o.evidence.length,0), measure=it.kind==="measure";
+  const who=name=>measure?"":": "+name;
+  if(res){
+    result.push(callText(res));
+    res.rows.forEach(r=>result.push((measure?"YES":r.name)+": "+scoreText(r)+" · "+LEVEL[r.evidence]));
+    res.rows.filter(r=>!r.excluded&&(r.evidence==="thin"||r.evidence==="none")).forEach(r=>flags.push("thin evidence"+who(r.name)));
+  }else{
+    result.push((measure?"Measure":plural(p.options.length,"candidate"))+", "+plural(facts,"sourced fact"));
+    p.options.filter(o=>o.evidence.length<2).forEach(o=>flags.push("thin evidence"+who(o.name)));
+  }
+  p.options.filter(o=>o.withdrawn).forEach(o=>flags.push("withdrew: "+o.name+" (check your official ballot)"));
+  const toss=!!res&&(!!res.turns_on||/^Toss-up/.test(res.call||""));
+  if(toss)flags.push("toss-up"+(res.turns_on?", turns on: "+res.turns_on:""));
+  if(it.refused)flags.push(refusedText(it.refused));
+  else if(it.status==="problem")flags.push(plural(e.errors||1,"problem")+" (open the item under Advanced, Step 3)");
+  if(e.warnings)flags.push(plural(e.warnings,"line")+" to check");
+  if(!facts)flags.push("no sourced facts");
+  // Lines parseExport could not tag for scoring (kit.js NOT_COUNTED): shown, never scored.
+  const nc=it.answer.split("\n").filter(l=>l.startsWith(NOT_COUNTED)).length;
+  if(nc)flags.push(plural(nc,"line")+" "+(nc===1?"needs":"need")+" a priority and +/-/0 tag; not counted");
+  return {result,flags,flagged:toss||it.status==="problem"||e.warnings>0||nc>0||!facts,names:measure?[]:p.options.map(o=>o.name)};
+}
+const flaggedItems=()=>exportItems().map(it=>({it,g:guideInfo(it)})).filter(x=>x.g.flagged);
+const flaggedCheck=()=>checkFlagged(STEPS[DOUBLE_CHECK_STEP].text,flaggedItems().map(({it,g})=>({n:it.n,title:it.text,answer:it.answer,flags:g.flags})),readState().address);
+function renderGuide(){
+  const ex=exportItems(), body=$("guide-table").tBodies[0];
+  $("export-guide").hidden=!ex.length;
+  body.replaceChildren();
+  let look=0;
+  for(const it of ex){
+    const g=guideInfo(it), tr=el("tr"), contest=el("td"), result=el("td"), flags=el("td");
+    if(g.flagged)look++;
+    contest.append(el("div",it.text));
+    if(g.names.length)contest.append(el("div",g.names.join(" · "),"hint"));
+    const facts=el("details"); facts.append(el("summary","Sourced facts"),el("pre",it.answer)); contest.append(facts);
+    g.result.forEach(x=>result.append(el("div",x)));
+    if(g.flags.length){const ul=el("ul");g.flags.forEach(f=>ul.append(el("li",f)));flags.append(ul)}else flags.append(el("span","none","hint"));
+    tr.append(el("td",String(it.n)),contest,result,flags); body.append(tr);
+  }
+  $("export-summary").firstChild.textContent=`${progressText(ex)} read: ${ex.length-look} ready, ${look} need a look.`;
+  $("guide-note").textContent=readState().mode==="values"?"Scores reflect only the priorities in your export, from the evidence shown; they are not a prediction or a recommendation. The choice is yours.":"Neutral comparison: no scores or picks. Open each item's sourced facts to compare.";
+  // One button, or "Copy part i of N" buttons when the check is long; parts are rebuilt at click time.
+  const box=$("export-check-parts"), n=look?splitForChat(flaggedCheck(),LONG_COPY).length:0;
+  $("export-check").hidden=!look;
+  if(box.childElementCount-1===(n>1?n:0))return;
+  [...box.children].slice(1).forEach(b=>b.remove());
+  box.firstElementChild.hidden=n>1;
+  for(let i=0;i<(n>1?n:0);i++){
+    const b=el("button",`Copy part ${i+1} of ${n}`,"copy"+(i===0?" primary":""));
+    b.type="button"; b.setAttribute("aria-label",`Copy part ${i+1} of ${n}: double-check flagged items`);
+    b.addEventListener("click",()=>copyText(splitForChat(flaggedCheck(),LONG_COPY)[i]||"",b));
+    box.append(b);
+  }
+}
+$("export-check-copy").addEventListener("click",ev=>copyText(flaggedCheck(),ev.currentTarget));
+// Reads the export into the same items the step-by-step kit uses, so every check and the
+// calculator apply. Items merge by number into earlier export items; PRIORITIES sets the mode.
+function readExport(confirmed){
+  const text=$("export-answer").value, warn=$("export-warn"), found=$("export-found");
+  warn.replaceChildren(); $("export-confirm").hidden=true;
+  if(chatRefused(text)){found.textContent=refusedText(chatRefused(text));return}
+  const st=readState(), prior=exportItems();
+  const p=parseExport(text,st.address,prior.length&&st.mode==="values"?letters(st.axes.length):null);
+  if(p.addressLines.length)warn.append(noteBox(p.addressLines.map(line=>({msg:"Not kept, because it may include an address:",line}))));
+  if(!p.items.length){found.textContent='No "=== ITEM" lines found. Type export in the chat and paste its whole answer.';return}
+  // Ask before replacing step-by-step items, or a filled-in profile's different priorities.
+  const others=items.filter(it=>!exportNo(it).n), ask=[];
+  if(others.length)ask.push(`the ${plural(others.length,"item")} from the step-by-step kit below`);
+  // Matching names and weights keep the profile's own meaning text.
+  const axes=p.priorities.map((x,i)=>({name:x.name,meaning:st.axes[i]&&st.axes[i].name.trim()===x.name?st.axes[i].meaning:"",weight:x.weight}));
+  const sameAxes=st.axes.length===axes.length&&st.axes.every((a,i)=>a.name.trim()===axes[i].name&&a.weight===axes[i].weight);
+  if(axes.length&&!sameAxes&&st.axes.some(a=>a.name.trim()||a.meaning.trim()))ask.push("your saved priorities ("+st.axes.map((a,i)=>letters(st.axes.length)[i]+": "+(a.name.trim()||"(no name)")).join(", ")+")");
+  if(ask.length&&!confirmed){
+    $("export-confirm-msg").textContent=`This replaces ${ask.join(" and ")}. Read the export anyway?`;
+    // The previous paste's status and notice would read as this one's until the user answers.
+    found.textContent="Waiting for your choice…"; $("guide-notice").hidden=true;
+    $("export-confirm").hidden=false; $("export-yes").focus(); return;
+  }
+  // Only a paste with its own PRIORITIES sets the mode; an export with no usable +/- tags is read
+  // as neutral (kit.js parseExport `unscored`) and its priorities are still kept in the profile.
+  // A paste without PRIORITIES keeps the page's mode.
+  const wasNeutral=st.mode!=="values";
+  if(axes.length)writeState({...st,mode:p.unscored?"neutral":"values",axes});
+  else if(!prior.length)writeState({...st,mode:"neutral"});
+  const values=readState().mode==="values", notice=$("guide-notice");
+  if(axes.length||values){
+    notice.hidden=!p.unscored;
+    notice.textContent=p.unscoredWhy==="few"?"Too few lines in this export have + or - tags for your priorities to score it, so this shows the neutral comparison. For scores, ask the chat to re-export with + and - tags, or use the Advanced section below or the skill."
+      :"This export has no +/- tags for your priorities, so it can't be scored. Showing the neutral comparison instead. For scores, ask the chat to re-export with + and - tags, or use the Advanced section below or the skill.";
+  }
+  const byN=new Map(prior.map(it=>[it.n,it])), replaced=[], keptOld=[];
+  for(const x of p.items){
+    // An item that came back with no lines never replaces one that has an answer.
+    if(byN.has(x.n)&&!x.answer.trim()&&byN.get(x.n).answer.trim()){keptOld.push(x.n);continue}
+    if(byN.has(x.n))replaced.push(x.n);
+    byN.set(x.n,{kind:x.kind,text:x.title,note:"",answer:x.answer,status:"to do",...checkFields({}),n:x.n,...(p.total?{of:p.total}:{})});
+  }
+  items=[...byN.values()].sort((a,b)=>a.n-b.n);
+  buildLists(); render();
+  const notes=[...p.notes,...(replaced.length?[`Replaced item${replaced.length>1?"s":""} ${replaced.join(", ")} with the new paste.`]:[]),
+    ...(keptOld.length?[`Item${keptOld.length>1?"s":""} ${keptOld.join(", ")} came back empty; the earlier answer is kept.`]:[]),...p.problems];
+  if(!p.priorities.length&&prior.length)notes.push("No PRIORITIES line in this paste; your earlier mode and priorities are kept.");
+  if(p.priorities.length&&!p.unscored&&wasNeutral&&prior.length)notes.push("Earlier items were read as a neutral comparison; paste their export again to score them.");
+  if(notes.length)warn.append(noteBox(notes.map(msg=>({msg,line:""}))));
+  // Says the mode the page is actually in after this paste.
+  found.textContent=`Read ${plural(p.items.length,"item")}`+(p.unscored?" (neutral comparison; see the notice below).":values?" (values match).":" (neutral comparison).");
+  announce(found.textContent+" "+$("export-summary").textContent);
+}
+$("export-read").addEventListener("click",()=>readExport(false));
+$("export-yes").addEventListener("click",()=>readExport(true));
+$("export-no").addEventListener("click",()=>{$("export-confirm").hidden=true;$("export-found").textContent="Cancelled; nothing was read.";$("export-read").focus()});
+// In-page links into a folded section (the step-by-step kit, its stages) open the sections first.
+document.addEventListener("click",ev=>{
+  const a=ev.target.closest&&ev.target.closest('a[href^="#"]'), t=a&&document.getElementById(a.getAttribute("href").slice(1));
+  for(let d=t&&t.closest("details");d;d=d.parentElement&&d.parentElement.closest("details"))d.open=true;
+});
+
 $("reset").addEventListener("click",()=>{$("reset-confirm").hidden=false;$("reset-yes").focus()});
 $("reset-no").addEventListener("click",()=>{$("reset-confirm").hidden=true;$("reset").focus()});
 $("reset-yes").addEventListener("click",()=>{
@@ -1133,6 +1303,7 @@ $("reset-yes").addEventListener("click",()=>{
   items=[]; spotShown=[];
   ballotChecked=false; ballotCheckText=""; ballotOriginal=""; ballotSkipped=false; ballotDc.refresh();
   document.querySelectorAll(".len-note").forEach(n=>n.remove());
+  $("export-answer").value=""; $("export-found").textContent=""; $("export-warn").replaceChildren(); $("guide-notice").hidden=true; $("export-confirm").hidden=true;
   $("f-address").value=""; $("ballot-answer").value=""; $("ballot-found").textContent=""; $("ballot-warn").replaceChildren(); $("ballot-fix-row").hidden=true; $("s3-next-item").hidden=true; oldItems=[]; $("ballot-old").hidden=true;
   writeState(defaultState()); buildLists(); render();
   $("reset-confirm").hidden=true;
@@ -1147,6 +1318,8 @@ runCalc();
 {
   const st=readState(), filled=!!st.date&&(st.mode!=="values"||st.axes.some(a=>a.name.trim()));
   const allDone=items.length>0&&items.every(isDone);
+  // Someone midway through the step-by-step kit finds it open; Quick start users never need it.
+  $("step-kit").open=items.some(it=>!exportNo(it).n);
   $("stage-1").open=!filled;
   $("stage-2").open=filled&&!items.length;
   $("stage-3").open=items.length>0&&!allDone;

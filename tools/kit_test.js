@@ -527,3 +527,247 @@ console.log("kit_test: v1.6.0 checks passed");
   assert.strictEqual(m[1].replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), src);
   console.log("kit_test: quick start checks passed");
 }
+
+// Quick start export: the starter's "export" answer read into items, then scored by calc.js.
+{
+  const {parseExport, parsePriorities, checkFlagged, splitForChat, calcProfile, defaultState, LONG_COPY} = require("./kit.js");
+  const {calculate} = require("./calc.js");
+  const exp = [
+    "PRIORITIES: A = Open records (3); B = Careful budgets (2); C = Parks (1)",
+    "=== ITEM 1: City Council, Position 2",
+    "CANDIDATE: Jo Roe (incumbent) | council member",
+    "- [A][+][RECORD] 2025-03-10: Voted yes on an open records ordinance, final passage 7-2. | https://example.org/r1",
+    "- [B][+][RECORD] 2025-06-02: Voted yes on the city budget, final passage 6-3. | https://example.org/r2",
+    "- [C][+][QUESTIONNAIRE] 2026: Answered yes to more park funding. | https://example.org/q1",
+    "CANDIDATE: Sam Lee | business owner",
+    "- [A][-][STATED] 2026: Website says records requests cost too much. | https://example.org/s1",
+    "- [B][0][FUNDER] 2026: Top donors are local firms. | https://example.org/f1",
+    "WITHDRAWN: Pat Doe | https://example.org/w1",
+    "GAPS: no questionnaire found for Sam Lee",
+    "=== ITEM 2: Measure 1, library levy",
+    "MEASURE: Measure 1",
+    "EVIDENCE:",
+    "- [B][-][RECORD] 2026-08-01: Raises the levy rate by 10 cents per $1,000. | https://example.org/m1",
+    "- [C][+][STATED] 2026: Supporters say it keeps branches open. | https://example.org/m2",
+    "GAPS: none",
+  ].join("\n");
+  const p = parseExport(exp);
+  assert.deepStrictEqual(p.priorities, [{letter: "A", name: "Open records", weight: 3}, {letter: "B", name: "Careful budgets", weight: 2}, {letter: "C", name: "Parks", weight: 1}]);
+  assert.deepStrictEqual(p.items.map(i => [i.n, i.title, i.kind]), [[1, "City Council, Position 2", "race"], [2, "Measure 1, library levy", "measure"]]);
+  assert.ok(p.items[0].answer.startsWith("CANDIDATE: Jo Roe (incumbent) | council member\n[A][+][RECORD] 2025-03-10"));
+  assert.deepStrictEqual([p.addressLines, p.notes, p.problems], [[], [], []]);
+
+  // Markdown-styled (bold headers, headings, bullets, fences) and escaped copies read the same.
+  const styled = "Here is your export:\n```text\n**PRIORITIES:** A = Open records (3); B = Careful budgets (2); C = Parks (1)\n" +
+    exp.split("\n").slice(1).map(l => l.startsWith("===") ? "### **" + l + "**" : l.startsWith("- ") ? "* " + l.slice(2) : "**" + l.replace(":", ":**")).join("\n") + "\n```";
+  const escaped = exp.replace(/([\[\]|=])/g, "\\$1").split("\n").map(l => l + "\\").join("\n");
+  for (const v of [styled, escaped]) {
+    const q = parseExport(v);
+    assert.deepStrictEqual(q.priorities, p.priorities, v);
+    assert.deepStrictEqual(q.items, p.items, v);
+  }
+  // A plain "ITEM n:" header works too.
+  assert.deepStrictEqual(parseExport("ITEM 4: Mayor\nCANDIDATE: A | x").items.map(i => [i.n, i.title]), [[4, "Mayor"]]);
+
+  // Two pastes (one per "continue" chat) merge by number; the later item 2 replaces the earlier one.
+  const second = "=== ITEM 2: Measure 1, library levy\nMEASURE: Measure 1\nEVIDENCE:\n- [C][+][RECORD] 2024: Branch hours rose after the last levy. | https://example.org/m3\n=== ITEM 3: Sheriff\nCANDIDATE: Al Poe | deputy\n- [A][+][QUESTIONNAIRE] 2026: Yes on body cameras. | https://example.org/q3";
+  const merged = parseExport(exp + "\n\n" + second);
+  assert.deepStrictEqual(merged.items.map(i => i.n), [1, 2, 3]);
+  assert.ok(merged.items[1].answer.includes("m3") && !merged.items[1].answer.includes("m1"));
+  assert.deepStrictEqual(merged.notes, ["Item 2 was pasted more than once; the later one is used."]);
+  // A checker's reply pasted after the export: its summary and problem list are not item lines.
+  const reply = "CHECK SUMMARY: 3 CONFIRMED, 1 WRONG, 0 NOT FOUND, 0 NO SOURCE\nPROBLEMS:\n- [B][-][RECORD] 2026-08-01: 10 cents: WRONG | 12 cents\nCORRECTED ANSWER:\n" + second.split("\n=== ITEM 3")[0] + "\nREMOVED: none\nAnything else?";
+  const fixed = parseExport(exp + "\n" + reply);
+  assert.strictEqual(fixed.items[1].answer, "MEASURE: Measure 1\nEVIDENCE:\n[C][+][RECORD] 2024: Branch hours rose after the last levy. | https://example.org/m3");
+  assert.ok(!fixed.items[0].answer.includes("CHECK SUMMARY"));
+
+  // PRIORITIES: weights clamped to 1-3, a missing weight defaults to 2, letters must run in order, at most 6.
+  const pr = parsePriorities("A = Taxes (5); B = Schools; C = Parks (weight 0); E = Roads (2); F=a(1); G=b(1); H=c(1)");
+  assert.deepStrictEqual(pr.priorities.map(x => [x.letter, x.name, x.weight]), [["A", "Taxes", 3], ["B", "Schools", 2], ["C", "Parks", 1], ["D", "Roads", 2], ["E", "a", 1], ["F", "b", 1]]);
+  assert.strictEqual(pr.problems.length, 5, pr.problems.join("\n"));
+  assert.ok(pr.problems.some(x => x.includes("found E where D belongs")) && pr.problems.some(x => x.startsWith("Only 6")));
+  // One per line under the heading reads the same.
+  assert.deepStrictEqual(parseExport("PRIORITIES:\nA = Open records (3)\nB = Careful budgets (2)\n=== ITEM 1: X").priorities.map(x => x.weight), [3, 2]);
+  // No PRIORITIES: neutral, unless the evidence uses letters; letters outside PRIORITIES are a problem.
+  const neutral = parseExport("=== ITEM 1: Mayor\nCANDIDATE: A | x\n- [Housing][0][RECORD] 2025: f | https://e.org/1");
+  assert.deepStrictEqual([neutral.priorities, neutral.problems], [[], []]);
+  assert.ok(/no PRIORITIES line/.test(parseExport(exp.split("\n").slice(1).join("\n")).problems[0]));
+  assert.ok(/letter D, which PRIORITIES does not list \(A, B, C\)/.test(parseExport(exp.replace("[C][+][STATED]", "[D][+][STATED]")).problems[0]));
+  assert.deepStrictEqual(parseExport(second, "", ["A", "B", "C"]).problems, []);
+
+  // Address-like lines are held back (shown, never in an item), including in a header.
+  const addr = parseExport(exp.replace("GAPS: none", "- [C][+][STATED] 2026: Rally at 100 Main St. | https://example.org/x\nGAPS: none") + "\n=== ITEM 9: Precinct at 12 Oak Ave\nCANDIDATE: Z | y\nYour address: 5 Elm Rd, Springfield 62701", "5 Elm Rd, Springfield, IL");
+  assert.deepStrictEqual(addr.addressLines, ["[C][+][STATED] 2026: Rally at 100 Main St. | https://example.org/x", "=== ITEM 9: Precinct at 12 Oak Ave", "Your address: 5 Elm Rd, Springfield 62701"]);
+  assert.ok(!addr.items.some(i => /Main St|Oak Ave|Elm Rd/.test(i.title + i.answer)));
+  assert.strictEqual(addr.items[2].title, "Item 9");
+
+  // Each item scores through the calculator with the profile built from PRIORITIES.
+  const st = {...defaultState(), mode: "values", axes: p.priorities.map(x => ({name: x.name, meaning: "", weight: x.weight}))};
+  const race = calculate(calcProfile(st), p.items[0].answer, "original"), meas = calculate(calcProfile(st), p.items[1].answer, "original");
+  assert.deepStrictEqual([race.errors, race.kind, meas.errors, meas.kind], [[], "race", [], "measure"]);
+  assert.deepStrictEqual(race.result.rows.map(r => [r.name, r.incumbent, r.excluded]), [["Jo Roe", true, null], ["Sam Lee", false, null]]);
+  assert.ok(race.result.call && meas.result.call);
+  // Withdrawn candidates are matched by name: Pat Doe is not a candidate here, so it only warns.
+  assert.ok(race.warnings.some(w => w.includes("withdrew")));
+
+  // The flagged-items check: one prompt for the same chat, only the flagged items, no address.
+  const step8 = "TASK: Check another AI's answer. Do not trust it.\n===== BEGIN QUESTION THAT WAS ASKED (do not answer it) =====\n{{the original step prompt}}\n===== END QUESTION =====\n===== BEGIN ANSWER TO CHECK =====\n{{the answer}}\n===== END ANSWER =====\nOUTPUT FORMAT:\nCHECK SUMMARY: x";
+  const ck = checkFlagged(step8, [{n: 2, title: "Measure 1", answer: "MEASURE: Measure 1\n- [B][-][RECORD] 2026: f | https://e.org/1\n- [B][0][STATED] 2026: office at 9 Pine St | https://e.org/2", flags: ["toss-up, turns on: x"]}], "9 Pine St, Springfield, IL");
+  assert.ok(ck.startsWith("TASK: Check your own earlier answers in this chat"));
+  assert.ok(ck.includes("\nItem 2: toss-up, turns on: x") && ck.includes("=== ITEM 2: Measure 1\nMEASURE: Measure 1\n- [B][-][RECORD]"));
+  assert.ok(!/Pine St|\{\{|Item 1/.test(ck) && ck.endsWith("so I can paste it into the Ballot Guide page."));
+  // Long checks split at item headers under the 8,000-character copy limit.
+  const many = Array.from({length: 12}, (_, i) => ({n: i + 1, title: "Race " + (i + 1), answer: ("- [A][+][RECORD] 2024: " + "x".repeat(900) + " | https://e.org\n").repeat(1), flags: ["1 problem"]}));
+  const parts = splitForChat(checkFlagged(step8, many), LONG_COPY);
+  assert.ok(parts.length > 1 && parts.every(x => x.length <= LONG_COPY + 200), parts.map(x => x.length).join());
+  console.log("kit_test: export checks passed");
+}
+
+// A trimmed excerpt of a real free-chat export (public candidate and measure facts): fenced, loose
+// tags, "then EVIDENCE:" on the MEASURE line, [UNVERIFIED] stubs, measure labels, GLOBAL GAPS.
+{
+  const {parseExport, NOT_COUNTED} = require("./kit.js");
+  const {calculate, countEvidence, parseWeights} = require("./calc.js");
+  const real = [
+    "```", "",
+    "PRIORITIES: A = Welfare state: public health care, education, strong safety net (3); B = Fair taxes: progressive taxes (3); C = Lifestyle neutrality (2); D = Good government (2).",
+    "", "=== ITEM 1: Washington Initiative IP26-645",
+    "MEASURE: Initiative IP26-645, then EVIDENCE:",
+    "- [B][some][YES] Repeals the scheduled 9.9% income tax on income above $1 million and prohibits state and local income taxes. | https://www.sos.wa.gov/sites/default/files/2026-07/ExStmt_IP26-645.pdf",
+    "- [UNVERIFIED] Campaign committee finance totals and top donors. | https://www.pdc.wa.gov/political-disclosure-reporting-data",
+    "GAPS: Full current campaign-finance committee breakdown and verified top donors.",
+    "", "=== ITEM 4: U.S. Representative, Washington District 6",
+    "CANDIDATE: Emily Randall (challenger for this seat in 2026; incumbent status not verified for the 2026 term) | U.S. Representative candidate",
+    "- [UNVERIFIED][DONORS] FEC reported $1,195,246.70 in receipts for January 1, 2025–July 15, 2026; top three donors not verified. | https://www.fec.gov/data/candidate/H4WA06117/",
+    "GAPS: Voting record, questionnaire, current issue statements, top donors, endorsements.",
+    "", "CANDIDATE: Teresa Fox | U.S. Representative candidate",
+    "- [D][some][STATED] Campaign describes fiscal restraint, public safety, naval readiness, rural healthcare access, Title IX, and term limits. | https://foxforwa.com/",
+    "- [RECORD] Former county official. | https://example.gov/fox",
+    "GAPS: Questionnaire, top donors, verified endorsements.",
+    "", "=== ITEM 27: County Charter Amendment 52",
+    "MEASURE: Amendment 52, then EVIDENCE:",
+    "- [YES] Reduces the minimum number of council meetings to at least 45 per year. | https://example.gov/vp",
+    "- [COST] Fiscal impact is indeterminate but expected to be minimal. | https://example.gov/fis",
+    "- [FOR] Supporters say the change allows a more practical schedule. | https://example.gov/vp",
+    "- [AGAINST] No statement against was submitted. | https://example.gov/vp",
+    "- [FUNDERS-YES] Supporting committee identified; totals not verified. | https://example.gov/cr",
+    "- [FUNDERS-NO] Opposing committee reported small totals. | https://example.gov/cr2",
+    "- [UNVERIFIED][FUNDERS-NO] No opposing committee finance total verified. | https://example.gov/cr",
+    "WITHDRAWN: No withdrawals were verified in the reviewed material.",
+    "GAPS: Full charter language.",
+    "", "GLOBAL GAPS: This is a working export of the research gathered so far.",
+    "Several local candidates have not been researched to the same depth.", "```",
+  ].join("\n");
+  const v = parseExport(real);
+  assert.deepStrictEqual(v.priorities.map(x => [x.letter, x.weight]), [["A", 3], ["B", 3], ["C", 2], ["D", 2]]);
+  assert.strictEqual(v.priorities[0].name, "Welfare state: public health care, education, strong safety net");
+  // No line has a usable +/- sign, so the export is read as a neutral comparison instead.
+  assert.deepStrictEqual(v.items.map(i => [i.n, i.kind, i.gaps, i.notCounted]), [[1, "measure", 1, 0], [4, "race", 1, 0], [27, "measure", 1, 0]]);
+  assert.strictEqual(v.unscored, true);
+  assert.deepStrictEqual([v.problems, v.notes], [[], ["GLOBAL GAPS: This is a working export of the research gathered so far. Several local candidates have not been researched to the same depth."]]);
+  assert.ok(v.items[0].answer.startsWith("MEASURE: Initiative IP26-645\n[B][0][RECORD] Repeals"));
+  assert.ok(v.items[1].answer.includes("[D][0][STATED] Campaign describes"));
+  // A partial values export scores what it can: lines without a letter and a +/-/0 sign stay
+  // visible as GAPS, never errors.
+  const partial = parseExport(real.replace("[YES] Reduces", "[B][+][YES] Reduces").replace("[COST] Fiscal", "[D][-][COST] Fiscal"));
+  assert.strictEqual(partial.unscored, false);
+  assert.deepStrictEqual(partial.items.map(i => [i.n, i.notCounted]), [[1, 1], [4, 2], [27, 4]]);
+  assert.ok(partial.items[1].answer.includes(NOT_COUNTED + " [D][some][STATED] Campaign describes"));
+  const prof = "A=3, B=3, C=2, D=2";
+  for (const it of partial.items) assert.deepStrictEqual(calculate(prof, it.answer, "original").errors, [], it.answer);
+  assert.deepStrictEqual(calculate(prof, partial.items[2].answer, "original").result.rows[0].items, 2);
+  // Neutral: a line with only a KIND counts under the topic General; measure labels map to kinds.
+  const n = parseExport(real.replace(/^PRIORITIES:.*$/m, "").replace(/\[[A-D]\]\[some\]/g, "[Taxes][0]"));
+  const m = n.items[2].answer.split("\n");
+  assert.deepStrictEqual(m.slice(0, 7), ["MEASURE: Amendment 52",
+    "[General][0][RECORD] Reduces the minimum number of council meetings to at least 45 per year. | https://example.gov/vp",
+    "[General][0][RECORD] Fiscal impact is indeterminate but expected to be minimal. | https://example.gov/fis",
+    "[General][0][STATED] Supporters say the change allows a more practical schedule. | https://example.gov/vp",
+    "[General][0][STATED] No statement against was submitted. | https://example.gov/vp",
+    "[General][0][FUNDER] Supporting committee identified; totals not verified. | https://example.gov/cr",
+    "[General][0][FUNDER][against-funders-no] Opposing committee reported small totals. | https://example.gov/cr2"]);
+  assert.deepStrictEqual(n.items.map(it => countEvidence(it.answer)).map(c => [c.recognized, c.errors.length, c.warnings.length]), [[1, 0, 0], [2, 0, 0], [6, 0, 0]]);
+  // In values mode the against- event reads as opposing money (both-sides rule skips it).
+  assert.deepStrictEqual(calculate(prof, "MEASURE: M\n[A][-][FUNDERS-NO] x | https://e.org".replace("FUNDERS-NO", "FUNDER][against-funders-no"), "original").errors, []);
+  assert.ok(!Object.keys(parseWeights(prof).weights).includes("General"));
+  console.log("kit_test: real export checks passed");
+}
+
+// Retest 3 (trimmed real export): every sign 0 and "NEUTRAL" in place of most letters, so the
+// values export cannot be scored and is read as a neutral comparison. "ITEM n of N" gives the total.
+{
+  const {parseExport} = require("./kit.js");
+  const {countEvidence} = require("./calc.js");
+  const r3 = [
+    "```",
+    "PRIORITIES: A = Welfare state (3); B = Fair taxes (3); C = Lifestyle neutrality (2); D = Good government (2)",
+    "",
+    "=== ITEM 1 of 35: Initiative IP26-645",
+    "MEASURE: Initiative IP26-645",
+    "- [B][0][STATED] undated: A YES vote repeals the scheduled 9.9% income tax on income above $1 million | https://www.sos.wa.gov/sites/default/files/2026-07/ExStmt_IP26-645.pdf",
+    "- [NEUTRAL][0][STATED] undated: Official voters’ pamphlet contains measure information and arguments | https://www.sos.wa.gov/sites/default/files/2026-09/IP26-645%20VP%20page%209.17.pdf",
+    "GAPS: Detailed attributed FOR and AGAINST arguments not preserved.",
+    "",
+    "=== ITEM 4 of 35: U.S. Representative, District 6",
+    "CANDIDATE: Emily Randall | U.S. Representative candidate",
+    "- [NEUTRAL][0][FUNDER] undated: FEC reports $1,195,246.70 in receipts for January 1, 2025–July 15, 2026 | https://www.fec.gov/data/candidate/H4WA06117/",
+    "CANDIDATE: Teresa Fox | U.S. Representative candidate",
+    "- [NEUTRAL][0][STATED] undated: Campaign identifies fiscal restraint, public safety and term limits as issues | https://foxforwa.com/",
+    "",
+    "=== ITEM 20 of 35: District Court, Position 5",
+    "CANDIDATE: Candidate X | District Court candidate",
+    "GAPS: Official ballot confirmation and candidate research were not preserved.",
+    "```",
+  ].join("\n");
+  const p = parseExport(r3);
+  assert.deepStrictEqual([p.unscored, p.total, p.priorities.length, p.problems], [true, 35, 4, []]);
+  assert.deepStrictEqual(p.items.map(i => [i.n, i.notCounted, countEvidence(i.answer).recognized]), [[1, 0, 2], [4, 0, 2], [20, 0, 0]]);
+  assert.ok(p.items[0].answer.includes("[General][0][STATED] undated: Official voters")); // NEUTRAL reads as a sign word, so the topic is General;
+  // One signed line is enough to score; the rest stay flagged.
+  const one = parseExport(r3.replace("[B][0][STATED]", "[B][+][STATED]"));
+  assert.deepStrictEqual([one.unscored, one.items.map(i => i.notCounted)], [false, [1, 2, 0]]);
+  // 90% or more of the tagged lines unusable also falls back, even with one signed line.
+  const many = r3.replace("GAPS: Official", Array.from({length: 9}, (_, i) => `- [NEUTRAL][0][STATED] f${i} | https://e.org/${i}`).join("\n") + "\nGAPS: Official");
+  assert.strictEqual(parseExport(many.replace("[B][0][STATED]", "[B][+][STATED]")).unscored, true);
+  // Neutral exports and pastes without PRIORITIES are never "unscored".
+  assert.strictEqual(parseExport(r3.replace(/^PRIORITIES:.*$/m, "")).unscored, false);
+  console.log("kit_test: retest 3 export checks passed");
+}
+
+// Review fixes: no fallback without the paste's own PRIORITIES; checker list lines are not headers;
+// an empty repeat never replaces an item with lines; item 0 is rejected.
+{
+  const {parseExport, checkFlagged, NOT_COUNTED} = require("./kit.js");
+  const {calculate} = require("./calc.js");
+  const first = parseExport("PRIORITIES: A = Open records (3); B = Budgets (2); C = Parks (1)\n=== ITEM 1: Mayor\nCANDIDATE: X | y\n- [A][+][RECORD] 2025: f | https://e.org/1\n=== ITEM 2: Clerk\nCANDIDATE: Y | z\n- [B][-][RECORD] 2025: g | https://e.org/2\n=== ITEM 4: Measure 1\nMEASURE: Measure 1\n- [C][+][RECORD] 2025: h | https://e.org/3");
+  assert.strictEqual(first.unscored, false);
+  // The reviewer's repro: a later paste of item 5 with only 0 signs and no PRIORITIES, read into the values page.
+  const later = parseExport("=== ITEM 5: Sheriff\nCANDIDATE: Z | w\n- [A][0][STATED] 2026: says x | https://e.org/4\n- [NEUTRAL][0][STATED] 2026: says y | https://e.org/5", "", ["A", "B", "C"]);
+  assert.deepStrictEqual([later.unscored, later.unscoredWhy, later.priorities, later.problems], [false, "", [], []]);
+  assert.strictEqual(later.items[0].answer, `CANDIDATE: Z | w\n[A][0][STATED] 2026: says x | https://e.org/4\n${NOT_COUNTED} [NEUTRAL][0][STATED] 2026: says y | https://e.org/5`);
+  assert.deepStrictEqual(calculate("A=3, B=2, C=1", later.items[0].answer, "original").errors, []);
+  // Without a known profile (neutral page) the same paste reads as neutral.
+  assert.ok(parseExport("=== ITEM 5: Sheriff\nCANDIDATE: Z | w\n- [NEUTRAL][0][STATED] 2026: says y | https://e.org/5").items[0].answer.includes("[General][0][STATED]"));
+  // Why the fallback happened: no +/- tags at all, or too few.
+  assert.strictEqual(parseExport("PRIORITIES: A = x (3)\n=== ITEM 1: M\nCANDIDATE: Z | w\n- [A][0][STATED] f | https://e.org/1").unscoredWhy, "none");
+  assert.strictEqual(parseExport("PRIORITIES: A = x (3)\n=== ITEM 1: M\nCANDIDATE: Z | w\n- [A][+][STATED] f | https://e.org/1\n" + Array.from({length: 9}, (_, i) => `- [some][STATED] g${i} | https://e.org/${i + 2}`).join("\n")).unscoredWhy, "few");
+
+  // A checker reply: "- ITEM 4: ..." and "ITEM 4: ..." inside PROBLEMS are not headers; the corrected block is.
+  const exp = "=== ITEM 4: Measure 1\nMEASURE: Measure 1\n- [Parks][0][RECORD] 2025: h | https://e.org/3";
+  const reply = "CHECK SUMMARY: 1 CONFIRMED, 1 WRONG\nPROBLEMS:\n- ITEM 4: Measure 1: WRONG | rate is 12 cents\nITEM 4: also check the date\nCORRECTED ANSWER:\nITEM 4: Measure 1\nMEASURE: Measure 1\n- [Parks][0][RECORD] 2025: h2 | https://e.org/3b\nREMOVED: none";
+  const fixed = parseExport(exp + "\n" + reply);
+  assert.deepStrictEqual(fixed.items.map(i => [i.n, i.answer]), [[4, "MEASURE: Measure 1\n[Parks][0][RECORD] 2025: h2 | https://e.org/3b"]]);
+  // A bare repeat with no lines keeps the earlier block.
+  const bare = parseExport(exp + "\n=== ITEM 4: Measure 1");
+  assert.ok(bare.items[0].answer.includes("2025: h |"));
+  assert.deepStrictEqual(bare.notes, ["Item 4 came back empty; the earlier one is kept."]); // not also "the later one is used"
+  // The flagged-check list uses "Item n:", which never reads back as a header.
+  const ck = checkFlagged("TASK: x\n{{the original step prompt}}\n{{the answer}}", [{n: 4, title: "Measure 1", answer: "MEASURE: Measure 1", flags: ["toss-up"]}]);
+  assert.ok(ck.includes("\nItem 4: toss-up") && !ck.includes("- ITEM"));
+  assert.deepStrictEqual(parseExport(ck).items.map(i => [i.n, i.answer.split("\n")[0]]), [[4, "MEASURE: Measure 1"]]);
+  // Item 0 is rejected and reported.
+  const zero = parseExport("=== ITEM 0: Nothing\nCANDIDATE: Q | r\n=== ITEM 1: Mayor\nCANDIDATE: X | y");
+  assert.deepStrictEqual(zero.items.map(i => i.n), [1]);
+  assert.ok(/not a valid item number/.test(zero.problems[0]));
+  console.log("kit_test: review fix checks passed");
+}

@@ -115,8 +115,9 @@ def build_md(steps, intro="", quick=""):
            f"A web version with copy buttons and a score calculator is at {SITE}", "",
            "## Quick start (one chat)", "",
            "The easiest way: paste this starter into one free AI chat with web search, type the races from your "
-           "ballot or sample ballot, then type \"next\" for each item and \"guide\" at the end. For scores against "
-           "your values, a double-check, or saved progress, use the full steps below.", "",
+           "ballot or sample ballot, then type \"next 3\" until done. Type \"export\" and paste the answer into the "
+           f"web kit's Quick start ({SITE}#quick-start), which checks and scores each item and builds your guide; or "
+           "type \"guide\" for a summary in the chat. To research one race at a time, use the full steps below.", "",
            "```text", quick, "```", "",
            "## How to use", "", HOW_INTRO, "", "Two ways to use it:", ""]
     out += [f"- {s}" for s in HOW_MODES] + [""]
