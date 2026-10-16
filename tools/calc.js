@@ -2,9 +2,13 @@
 // exactly (same formula, same rounding, same calls); tools/calc_test.js fuzzes the two for parity.
 // tools/build_kit.py inlines this file into docs/index.html.
 const KIND = {record: 3, questionnaire: 2, stated: 1, funder: 1, endorsement: 1}; // original weights
-// Preset scorings, as in score.py; a custom one has the same keys. "donors" weighs the pooled funder and endorsement entry.
+// Preset scorings, as in score.py; a custom one has the same keys. "donors" weighs the pooled funder and endorsement entry
+// (for "evidence", the most one pool can count; DONOR_W sets each member's weight).
 const SCORING = {original: {record: 3, questionnaire: 2, stated: 1, donors: 1, exclude_both_sides: false},
-  improved: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true}};
+  evidence: {record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true}};
+const ALIAS = {improved: "evidence"}; // the v1.7 name, so saved inputs keep working
+// Evidence-based pool member weight by donor type: [newcomer, incumbent], as in score.py.
+const DONOR_W = {person: [2, 1], cause: [2, 1], pac: [1, 0.5], general: [1, 1]};
 const WEIGHTS = ["record", "questionnaire", "stated", "donors"];
 // Breaks ties within one event: the candidate's own words beat what others give or say.
 const RANK = {record: 5, questionnaire: 4, stated: 3, endorsement: 2, funder: 1};
@@ -145,6 +149,10 @@ const NEUTRAL_ANSWER = "This answer was written for a neutral comparison. Copy t
 // WITHDRAWN: line or the CANDIDATE: name field ("Jo Roe (withdrew from the race)"); records and
 // job lines mention withdrawn bills, amendments and earlier races too often to trust.
 const WITHDREW = /\b(?:withdr(?:ew|awn)|dropped out)\b.*\b(?:race|ballot|election|campaign)\b|\bnot on the ballot\b|\bremoved from the ballot\b/i;
+// The current officeholder, in the CANDIDATE: name field: "(incumbent)" in any case, "[INCUMBENT]", or
+// an all-caps INCUMBENT ending the field after a comma or semicolon ("Jo Roe, INCUMBENT"). Strict, so "NON-INCUMBENT" or "(CHALLENGER TO
+// INCUMBENT)" never set it. Only Evidence-based scoring reads it; it is not part of the shown name.
+const INCUMBENT = [/\(\s*incumbent\s*\)/gi, /\[\s*INCUMBENT\s*\]/g, /(?:^|(?<=[,;]\s*))INCUMBENT\s*$/];
 const nameKey = s => s.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^\w' -]/g, " ").replace(/\s+/g, " ").trim();
 // Same person: equal names, or one whole-word inside the other when both have 3+ characters.
 const sameName = (a, b) => a === b || (a.length > 2 && b.length > 2 && (` ${a} `.includes(` ${b} `) || ` ${b} `.includes(` ${a} `)));
@@ -196,7 +204,10 @@ function parseResearch(text, weights, neutral) {
     if ((m = line.match(/^CANDIDATE:\s*([^|]*)/i))) {
       if (kind === "measure") { errors.push({line, msg: "Paste one race or one measure at a time, not both."}); cur = null; continue; }
       kind = "race";
-      cur = {name: m[1].trim() || `Candidate ${options.length + 1}`, red_line: false, evidence: []};
+      const field = INCUMBENT.reduce((t, re) => t.replace(re, " "), m[1]);
+      const inc = field !== m[1], shown = inc ? field.replace(/\s+/g, " ").replace(/^[\s,;]+|[\s,;]+$/g, "") : m[1].trim();
+      cur = {name: shown || `Candidate ${options.length + 1}`, red_line: false, evidence: []};
+      if (inc) cur.incumbent = true;
       options.push(cur);
       if (WITHDREW.test(m[1])) withdraw(cur, line);
       continue;
@@ -304,9 +315,10 @@ const isGray = ev => ev.sign === "gray" || ev.gray === true;
 // Same as score.py resolve_scoring(): {scoring, errors}; scoring is {name, 4 weights, exclude_both_sides}.
 function resolveScoring(s) {
   if (s === undefined || s === null) s = "original";
+  if (typeof s === "string" && has(ALIAS, s)) s = ALIAS[s];
   if (typeof s === "string" && has(SCORING, s)) return {scoring: {name: s, ...SCORING[s]}, errors: []};
   if (!s || typeof s !== "object" || Array.isArray(s)) {
-    return {scoring: null, errors: ['scoring must be "improved", "original" or an object with record, questionnaire, stated, donors and exclude_both_sides']};
+    return {scoring: null, errors: ['scoring must be "evidence", "original" or an object with record, questionnaire, stated, donors and exclude_both_sides']};
   }
   const errors = WEIGHTS.filter(k => !Number.isInteger(s[k]) || s[k] < 0 || s[k] > 3).map(k => `scoring weight for ${k} must be an integer 0-3`);
   if (typeof s.exclude_both_sides !== "boolean") errors.push("scoring exclude_both_sides must be true or false");
@@ -323,7 +335,7 @@ const kindWeights = sc => ({record: sc.record, questionnaire: sc.questionnaire, 
 // The page's name for a scoring: the Step 1 choice, with the weights spelled out for Custom.
 function scoringLabel(sc) {
   if (sc.name === "original") return "Original (default)";
-  if (sc.name === "improved") return "Improved (proposed; under review)";
+  if (sc.name === "evidence") return "Evidence-based (research-informed; being tested)";
   return `Custom: records ${sc.record}, questionnaire answers ${sc.questionnaire}, statements ${sc.stated}, donors and endorsements ${sc.donors}; money backing more than one candidate ${sc.exclude_both_sides ? "not counted" : "counted"}`;
 }
 const linked = ev => typeof ev.source === "string" && /^\s*https?:\/\//i.test(ev.source);
@@ -332,7 +344,13 @@ const sharedEvent = ev => AGGREGATE.includes(ev.kind) && typeof ev.event === "st
 // Same as score.py both_sides(): normalized funder/endorsement support ids that back two or more
 // options. Opposition ids ("against-" or "against:" then the donor) never count: backing A while
 // opposing B is a signal, not hedging. Withdrawn options are skipped too; red-lined ones count.
-const OPPOSE = /^against[-:]/;
+// A type prefix may come on either side ("against-pac-X", "pac-against-X"), as in score.py.
+const OPPOSE = /^(?:(?:person|cause|pac)-)?against[-:]/;
+const TYPED = /^(?:against[-:] ?)?(person|cause|pac)-/;
+const donorType = event => { const m = typeof event === "string" ? normEvent(event).match(TYPED) : null; return m ? m[1] : "general"; };
+// Same as score.py pool_weight(): the scoring's donors weight, or under "evidence" the DONOR_W
+// weight for the event's type and the option's incumbency.
+const poolWeight = (sc, event, incumbent) => sc.name !== "evidence" ? sc.donors : DONOR_W[donorType(event)][incumbent === true ? 1 : 0];
 function bothSides(options) {
   const backs = new Map();
   options.forEach((o, i) => {
@@ -415,12 +433,12 @@ function collapse(opt, partyAxes, sc, shared) {
     if (sc.exclude_both_sides && sharedEvent(ev) && shared.has(normEvent(ev.event))) {
       if (!told.has(normEvent(ev.event))) {
         told.add(normEvent(ev.event));
-        warnings.push(`${opt.name}: ${ev.event} backs more than one candidate here; not counted (access money)`);
+        warnings.push(`${opt.name}: ${ev.event} backs more than one candidate here; not counted (can't tell the candidates apart)`);
       }
       return;
     }
     const key = eventKey(ev, i);
-    if (!groups.has(key)) groups.set(key, {label, rows: []});
+    if (!groups.has(key)) groups.set(key, {label, event: ev.event, rows: []});
     groups.get(key).rows.push(ev);
   });
   const events = [];
@@ -433,7 +451,7 @@ function collapse(opt, partyAxes, sc, shared) {
       if (signs.size > 1) warnings.push(`${opt.name}: conflicting tags for one event (${g.label}) on axis ${axis}; using 0.`);
       entries.push([axis, kind, signs.size === 1 ? SIGN[[...signs][0]] : 0]);
     }
-    events.push({label: g.label, entries});
+    events.push({label: g.label, entries, w: poolWeight(sc, g.event, opt.incumbent)});
   }
   return {events, gray, warnings};
 }
@@ -445,7 +463,7 @@ function fitParts(events, weights, sc) {
   for (const a of Object.keys(weights)) { num[a] = 0; den[a] = 0; pooled[a] = []; quest[a] = []; }
   for (const ev of events) {
     for (const [axis, kind, s] of ev.entries) {
-      if (AGGREGATE.includes(kind)) pooled[axis].push(s);
+      if (AGGREGATE.includes(kind)) pooled[axis].push([s, ev.w]);
       else if (kind === "questionnaire") quest[axis].push(s);
       else { num[axis] += w[kind] * s; den[axis] += w[kind]; }
     }
@@ -457,8 +475,13 @@ function fitParts(events, weights, sc) {
       const k = Math.min(w.questionnaire * quest[a].length, w.record);
       num[a] += k * mean(quest[a]); den[a] += k;
     }
-    // All donors and endorsers on an axis count as one entry (k = donors, mean sign), as in score.py.
-    if (pooled[a].length) { num[a] += sc.donors * mean(pooled[a]); den[a] += sc.donors; }
+    // All donors and endorsers on an axis count as one entry (k = the highest member weight,
+    // sign = weight-averaged mean), as in score.py.
+    if (pooled[a].length) {
+      const k = Math.max(...pooled[a].map(p => p[1]));
+      num[a] += k * (pooled[a].reduce((t, [s, w]) => t + s * w, 0) / pooled[a].reduce((t, p) => t + p[1], 0));
+      den[a] += k;
+    }
   }
   const known = new Set(events.flatMap(ev => ev.entries.map(e => e[0])));
   if (!known.size) return {score: null, low: null, high: null, total: 0, W: 0};
@@ -483,7 +506,7 @@ const fit = (events, weights, sc) => fitParts(events, weights, sc).score;
 // Leave-one-out steps as [label, remaining events], same order as score.py steps(): each
 // record/stated event alone, then per axis all questionnaire answers and all donors/endorsers.
 function steps(events) {
-  const drop = gone => events.map(e => ({label: e.label, entries: e.entries.filter(x => !gone(e, x))}));
+  const drop = gone => events.map(e => ({...e, entries: e.entries.filter(x => !gone(e, x))}));
   const out = events.filter(ev => ev.entries.some(x => SOLO.includes(x[1])))
     .map(ev => [ev.label, drop((e, x) => e === ev && SOLO.includes(x[1]))]);
   for (const a of [...new Set(events.flatMap(e => e.entries.map(x => x[0])))].sort()) {
@@ -523,7 +546,7 @@ function summarize(opt, weights, grayTopics, partyAxes, sc, shared) {
     coverage: pyRound(cov * 100) / 100, events: events.length, records, questionnaires, gray,
     excluded: opt.withdrawn ? "withdrew" : !opt.red_line ? null : typeof opt.red_line === "string" && opt.red_line.trim() ? `red line: ${opt.red_line.trim()}` : "red line",
     // Older page fields: num/den give "Score = round(50 + 50 × num / den)".
-    red_line: !!opt.red_line, items: (opt.evidence || []).length, kinds: [], num: parts.total, den: parts.W, uncapped: parts.score};
+    red_line: !!opt.red_line, incumbent: opt.incumbent === true, items: (opt.evidence || []).length, kinds: [], num: parts.total, den: parts.W, uncapped: parts.score};
   return {row, events, covered, warnings};
 }
 
@@ -590,7 +613,7 @@ function decide(rows, events, covered, eligible, measure, weights, sc) {
 
 // Returns {call, turns_on, rows, warnings, errors, scoring}; errors means nothing was scored.
 // partyAxes: letters of the voter's party priorities (parseWeights); party evidence counts only there.
-// scoring: "original" (default), "improved" or a custom object, as score.py's "scoring" key.
+// scoring: "original" (default), "evidence" ("improved" is its alias) or a custom object, as score.py's "scoring" key.
 function scoreRace(options, weights, isMeasure, grayTopics, partyAxes, scoring) {
   const {scoring: sc, errors} = resolveScoring(scoring);
   errors.push(...validateRace(options, weights, isMeasure));

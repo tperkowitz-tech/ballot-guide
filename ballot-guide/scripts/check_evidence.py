@@ -176,7 +176,7 @@ def demo():
     e, _ = check({"axes": {"A": 3}, "races": [{"race": "R", "options": [{"evidence": []}]}]})
     assert "no name" in e[0], e
     # The scoring key: presets and custom weights pass; a bad one is an ERROR, as in score.py.
-    for sc in ("improved", "original", {"record": 3, "questionnaire": 1, "stated": 0, "donors": 3, "exclude_both_sides": False}):
+    for sc in ("evidence", "improved", "original", {"record": 3, "questionnaire": 1, "stated": 0, "donors": 3, "exclude_both_sides": False}):
         assert check({**base([ok]), "scoring": sc}) == ([], []), sc
     e, _ = check({**base([ok]), "scoring": {"record": 0, "questionnaire": 0, "stated": 0, "donors": 0, "exclude_both_sides": True}})
     assert e == ["file: every scoring weight is 0, so nothing would count; set at least one above 0"], e

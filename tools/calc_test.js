@@ -496,26 +496,55 @@ console.log("calc_test: all checks passed");
   assert.deepStrictEqual(r.scoring, {name: "original", record: 3, questionnaire: 2, stated: 1, donors: 1, exclude_both_sides: false});
   assert.strictEqual(r.rows[0].score, 36);
   assert.strictEqual(calc.calculate("A=3", "CANDIDATE: X\n- [A][-][RECORD][r] vote | https://e.org/r\n- [A][+][FUNDER][f] gave | https://e.org/f").result.rows[0].score, 36);
-  // Improved pools donors as k = 2: (-3 + 2) / 8 -> 44.
-  assert.strictEqual(scoreRace([{name: "X", evidence: recFund}], {A: 3}, false, false, [], "improved").rows[0].score, 44);
+  // Evidence-based ("improved" is its legacy alias): a general donor counts 1, like original.
+  r = scoreRace([{name: "X", evidence: recFund}], {A: 3}, false, false, [], "improved");
+  assert.deepStrictEqual([r.scoring.name, r.rows[0].score], ["evidence", 36]);
+  // Donor types by event id prefix; newcomer person-/cause- count 2, pac- 1; an incumbent's pac- 0.5.
+  const typed = (event, incumbent, sign = "+") => calc.calculate("A=3", `CANDIDATE: X${incumbent ? " (incumbent)" : ""}\n` +
+    `- [A][-][RECORD][r] vote | https://e.org/r\n- [A][${sign}][FUNDER][${event}] gave | https://e.org/f`, "evidence").result.rows[0].score;
+  assert.deepStrictEqual([typed("person-Jo Roe"), typed("Cause-Clean Air Group"), typed("pac-Example PAC"), typed("Example PAC")], [44, 44, 36, 36]);
+  assert.deepStrictEqual([typed("pac-Example PAC", true), typed("person-Jo Roe", true)], [31, 36]);
+  // A mixed pool: k = 2, sign = (2 - 1) / 3 -> 35.
+  r = scoreRace([{name: "X", evidence: [ev("A", "-", "record"), ev("A", "+", "funder", {event: "person-Jo Roe"}),
+    ev("A", "-", "funder", {event: "pac-Example PAC"})]}], {A: 3}, false, false, [], "evidence");
+  assert.strictEqual(r.rows[0].score, 35);
+  // The incumbent marker: "(incumbent)" in any case, "[INCUMBENT]" or a final INCUMBENT after a comma or semicolon, stripped from
+  // the name; "incumbents" in prose, a lowercase word, a hyphenated or mid-name or longer-parenthetical INCUMBENT are not tags.
+  const cand = line => parseResearch(`${line}\n- [A][+][RECORD] v | https://e.org/1`, {A: 1}).options[0];
+  assert.deepStrictEqual(["CANDIDATE: Jo Roe (Incumbent) | none", "CANDIDATE: Jo Roe INCUMBENT", "CANDIDATE: [INCUMBENT] Jo Roe, ",
+    "CANDIDATE: Jo Roe | incumbent", "CANDIDATE: Jo Roe (beat two incumbents)", "CANDIDATE: Jo Roe NON-INCUMBENT",
+    "CANDIDATE: Jo Roe (CHALLENGER TO INCUMBENT)", "CANDIDATE: INCUMBENT-FREE Jo Roe", "CANDIDATE: Jo Roe NOT INCUMBENT", "CANDIDATE: Jo Roe FORMER INCUMBENT", "CANDIDATE: Jo Roe, INCUMBENT | Mayor"].map(l => [cand(l).name, !!cand(l).incumbent]),
+    [["Jo Roe", true], ["Jo Roe INCUMBENT", false], ["Jo Roe", true], ["Jo Roe", false], ["Jo Roe (beat two incumbents)", false],
+      ["Jo Roe NON-INCUMBENT", false], ["Jo Roe (CHALLENGER TO INCUMBENT)", false], ["INCUMBENT-FREE Jo Roe", false], ["Jo Roe NOT INCUMBENT", false], ["Jo Roe FORMER INCUMBENT", false], ["Jo Roe", true]]);
+  // Original and custom ignore the marker and the prefixes: (-3 + 0) / 7 -> 29.
+  const mixed = "CANDIDATE: X (incumbent)\n- [A][-][RECORD][r] v | https://e.org/r\n- [A][+][FUNDER][person-Jo Roe] g | https://e.org/f\n" +
+    "- [A][-][FUNDER][pac-Example PAC] g | https://e.org/g";
+  assert.deepStrictEqual([calc.calculate("A=3", mixed, "original").result.rows[0].score,
+    calc.calculate("A=3", mixed, {record: 3, questionnaire: 2, stated: 1, donors: 1, exclude_both_sides: false}).result.rows[0].score], [29, 29]);
   // calculate() takes the page's choice; a pasted race with one donor id under both candidates.
   const both = "CANDIDATE: X\n- [A][+][RECORD][r1] vote | https://e.org/r1\n- [A][+][FUNDER][Example Realty PAC] gave | https://e.org/f1\n" +
     "CANDIDATE: Y\n- [A][+][RECORD][r2] vote | https://e.org/r2\n- [A][+][FUNDER][example realty pac] gave | https://e.org/f2";
-  r = calc.calculate("A=3", both, "improved");
+  r = calc.calculate("A=3", both, "evidence");
   assert.deepStrictEqual(r.result.rows.map(o => o.score), [75, 75]);
-  assert.deepStrictEqual(r.warnings, ["X: Example Realty PAC backs more than one candidate here; not counted (access money)",
-    "Y: example realty pac backs more than one candidate here; not counted (access money)"]);
+  assert.deepStrictEqual(r.warnings, ["X: Example Realty PAC backs more than one candidate here; not counted (can't tell the candidates apart)",
+    "Y: example realty pac backs more than one candidate here; not counted (can't tell the candidates apart)"]);
   assert.deepStrictEqual(calc.calculate("A=3", both, "original").result.rows.map(o => o.score), [79, 79]);
   // Support for X plus spending against Y (an "against-" id) both count.
-  r = calc.calculate("A=3", both.replace("[A][+][FUNDER][example realty pac]", "[A][-][FUNDER][against-Example Realty PAC]"), "improved");
-  assert.deepStrictEqual([r.result.rows.map(o => o.score), r.warnings], [[81, 56], []]);
+  r = calc.calculate("A=3", both.replace("[A][+][FUNDER][example realty pac]", "[A][-][FUNDER][against-Example Realty PAC]"), "evidence");
+  assert.deepStrictEqual([r.result.rows.map(o => o.score), r.warnings], [[79, 64], []]);
+  // With a type prefix, "against-" before or after it; the incumbent's pac- counts 0.5: (3 - 0.5) / 6.5 -> 69.
+  for (const opp of ["against-pac-Example Realty PAC", "PAC-against-Example Realty PAC"]) {
+    r = calc.calculate("A=3", both.replace("[Example Realty PAC]", "[pac-Example Realty PAC]").replace("CANDIDATE: Y", "CANDIDATE: Y (incumbent)")
+      .replace("[A][+][FUNDER][example realty pac]", `[A][-][FUNDER][${opp}]`), "evidence");
+    assert.deepStrictEqual([r.result.rows.map(o => [o.name, o.score]), r.warnings], [[["X", 79], ["Y", 69]], []]);
+  }
   // "Against Malaria Fund" is a donor name, not opposition: backing both, it is excluded.
   const mal = both.replace(/Example Realty PAC/gi, "Against Malaria Fund");
-  assert.deepStrictEqual(calc.calculate("A=3", mal, "improved").result.rows.map(o => o.score), [75, 75]);
+  assert.deepStrictEqual(calc.calculate("A=3", mal, "evidence").result.rows.map(o => o.score), [75, 75]);
   // A withdrawn candidate's donors are not both-sides money; a red-lined one's still are.
-  r = calc.calculate("A=3", both.replace("CANDIDATE: X", "CANDIDATE: X (withdrew from the race)"), "improved");
-  assert.deepStrictEqual([r.result.rows.map(o => o.score), r.warnings.filter(w => w.includes("access money"))], [[81, 81], []]);
-  r = calc.calculate("A=3", both.replace("\nCANDIDATE: Y", "\nRED LINE CROSSED: yes\nCANDIDATE: Y"), "improved");
+  r = calc.calculate("A=3", both.replace("CANDIDATE: X", "CANDIDATE: X (withdrew from the race)"), "evidence");
+  assert.deepStrictEqual([r.result.rows.map(o => o.score), r.warnings.filter(w => w.includes("tell the candidates apart"))], [[79, 79], []]);
+  r = calc.calculate("A=3", both.replace("\nCANDIDATE: Y", "\nRED LINE CROSSED: yes\nCANDIDATE: Y"), "evidence");
   assert.deepStrictEqual(r.result.rows.map(o => o.score), [75, 75]);
   // Custom: a weight-0 kind is listed as not counted and gives no coverage.
   const cust = w => ({record: 3, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true, ...w});
@@ -528,7 +557,7 @@ console.log("calc_test: all checks passed");
   assert.ok(r.errors.some(e => e.msg.includes("every scoring weight is 0")), JSON.stringify(r.errors));
   assert.deepStrictEqual(resolveScoring(cust({record: 0})).errors.length, 1);
   assert.strictEqual(scoringLabel(resolveScoring().scoring), "Original (default)");
-  assert.strictEqual(scoringLabel(resolveScoring("improved").scoring), "Improved (proposed; under review)");
+  assert.strictEqual(scoringLabel(resolveScoring("improved").scoring), "Evidence-based (research-informed; being tested)");
   assert.strictEqual(scoringLabel(resolveScoring(cust({stated: 0, exclude_both_sides: false})).scoring),
     "Custom: records 3, questionnaire answers 2, statements 0, donors and endorsements 2; money backing more than one candidate counted");
   console.log("calc_test: scoring option checks passed");
@@ -561,7 +590,10 @@ console.log("calc_test: all checks passed");
           kind: rnd() < 0.01 ? "rumor" : pick(heavy ? ["record", "questionnaire", "questionnaire", "questionnaire", "stated", "funder", "endorsement"]
             : ["record", "record", "questionnaire", "stated", "funder", "endorsement"]),
           // Shared ids across options exercise the both-sides rule; case and spacing variants must match.
-          event: maybe(0.4, pick(["e1", "e2", "e3", "Example PAC", "example  pac", " EXAMPLE PAC", "against-Example PAC", "Against-example pac", "against: Example PAC", "Against Malaria Fund", "against malaria  fund", "Example PAC (against)"])),
+          event: maybe(0.4, pick(["e1", "e2", "e3", "Example PAC", "example  pac", " EXAMPLE PAC", "against-Example PAC", "Against-example pac", "against: Example PAC", "Against Malaria Fund", "against malaria  fund", "Example PAC (against)",
+            // Evidence-based donor types: person-, cause-, pac- (any case, spacing, "against-" either side) and look-alikes.
+            "person-Jo Roe", " PERSON-jo  roe", "cause-Clean Air Group", "Cause-clean air group", "pac-Example PAC", "PAC-example  pac",
+            "against-pac-Example PAC", "pac-against-Example PAC", "Against: Person-Jo Roe", "pacific donors", "person - Jo Roe"])),
           // Mostly real links; the rest (none, empty, a bare domain, a title) are left out with a warning.
           source: rnd() < 0.85 ? pick(["https://a.example", "https://b.example", "HTTPS://A.Example/", "https://a.example?q=1#f", " http://c.example/x"])
             : pick([undefined, "", "a.example", "AP News"]),
@@ -572,10 +604,10 @@ console.log("calc_test: all checks passed");
         });
       }
       options.push({name: measure ? "YES" : "O" + o, red_line: rnd() < 0.15 && pick([true, "", " bribe ", "bribe | https://c.example"]),
-        withdrawn: maybe(0.1, true), evidence});
+        withdrawn: maybe(0.1, true), incumbent: maybe(0.3, pick([true, true, false, "yes"])), evidence});
     }
     const base = {axes, gray: rnd() < 0.5, partyAxes: letters.filter(() => rnd() < 0.3), race: {race: "R" + n, measure, options}};
-    // Every race under every scoring option: the default (no key, original), "improved", "original",
+    // Every race under every scoring option: the default (no key, original), "evidence", "improved" (its alias), "original",
     // and random custom weights 0-3 with either both-sides setting; about 1 in 10 custom slots is an
     // invalid one instead (all 0, questionnaire without record, out of range, no switch, not an
     // integer, an unknown name, null).
@@ -584,7 +616,7 @@ console.log("calc_test: all checks passed");
       {record: 0, questionnaire: 1, stated: 1, donors: 1, exclude_both_sides: true}, {record: 4, questionnaire: 2, stated: 1, donors: 2, exclude_both_sides: true},
       {record: 3, questionnaire: 2, stated: 1, donors: 2}, {record: 3, questionnaire: 2, stated: 1, donors: 1.5, exclude_both_sides: false}, "fancy", null])
       : {record: w03(), questionnaire: w03(), stated: w03(), donors: w03(), exclude_both_sides: rnd() < 0.5};
-    for (const scoring of [undefined, "improved", "original", custom]) cases.push(JSON.parse(JSON.stringify({...base, scoring})));
+    for (const scoring of [undefined, "evidence", "improved", "original", custom]) cases.push(JSON.parse(JSON.stringify({...base, scoring})));
   }
   const py = spawnSync("python3", ["-c", `
 import json, sys
@@ -613,7 +645,7 @@ print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")],
     if (!got.error && got.options.some(o => o.excluded === "withdrew")) kinds.add("withdrawn");
     if (!got.error && got.warnings.some(w => w.includes("full link"))) kinds.add("no-link");
     if (!got.error && got.warnings.some(w => w.includes("Party evidence"))) kinds.add("party");
-    if (!got.error && got.warnings.some(w => w.includes("access money"))) kinds.add("both-sides");
+    if (!got.error && got.warnings.some(w => w.includes("tell the candidates apart"))) kinds.add("both-sides");
     if (!got.error && got.warnings.some(w => w.includes("weight 0"))) kinds.add("weight-0");
     if (!got.error) kinds.add("scoring-" + got.scoring.name);
     try { assert.deepStrictEqual(got, want[i]); } catch (e) {
@@ -621,5 +653,14 @@ print(json.dumps(out))`, path.join(__dirname, "..", "ballot-guide", "scripts")],
     }
   });
   assert.strictEqual(mismatches, 0, `${mismatches} parity mismatches`);
-  console.log(`calc_test: parity fuzz passed (${cases.length / 4} races x 4 scorings, 0 mismatches; calls seen: ${[...kinds].sort().join(", ")})`);
+  // Cases come in fives (default, evidence, improved, original, custom): the alias must equal
+  // "evidence" exactly, and the typed donor weights must actually move some scores.
+  let moved = 0;
+  for (let i = 0; i < want.length; i += 5) {
+    assert.deepStrictEqual(want[i + 2], want[i + 1], "improved must equal evidence");
+    const scores = c => c.error ? c.error : JSON.stringify(c.options.map(o => o.score));
+    if (scores(want[i + 1]) !== scores(want[i + 3])) moved++;
+  }
+  assert.ok(moved > 100, `evidence differs from original in only ${moved} races`);
+  console.log(`calc_test: parity fuzz passed (${cases.length / 5} races x 5 scorings, 0 mismatches; evidence moved ${moved}; calls seen: ${[...kinds].sort().join(", ")})`);
 }
