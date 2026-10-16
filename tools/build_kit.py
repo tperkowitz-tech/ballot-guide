@@ -1,4 +1,4 @@
-"""Build docs/index.html and PROMPT-KIT.md from ballot-guide/references/prompts.md.
+"""Build docs/index.html and PROMPT-KIT.md from ballot-guide/references/prompts.md and quickstart.txt.
 
 The prompts are read from ballot-guide/references/prompts.md (never hand-copied), so the web page and
 the Markdown kit always match the source. tools/calc.js is inlined into the page, so the
@@ -83,7 +83,7 @@ def js_template(s):
     return s.replace("</", "<\\/")  # keep a literal "</script" from closing the script element
 
 
-def build_html(steps, intro=""):
+def build_html(steps, intro="", quick=""):
     page = read("tools/page.template.html")
     how = ("<p><strong>How to use</strong></p>\n<p>" + html.escape(HOW_INTRO) + "</p>\n<p>Two ways to use it:</p>\n<ul>\n"
            + "".join(f"  <li>{html.escape(s)}</li>\n" for s in HOW_MODES)
@@ -96,7 +96,8 @@ def build_html(steps, intro=""):
     calc = read("tools/calc.js").rstrip("\n")
     kit = read("tools/kit.js").rstrip("\n")
     version = read("VERSION").strip()  # the single source for the kit version shown in test reports
-    for marker, value in (("<!--HOW-->", how), ("/*STEPS*/", js_steps), ("/*CALC*/", calc), ("/*KIT*/", kit),
+    # quote=False: the <pre> text then reads back byte-identical to the source (kit_test checks it).
+    for marker, value in (("<!--HOW-->", how), ("<!--QUICKSTART-->", html.escape(quick, quote=False)), ("/*STEPS*/", js_steps), ("/*CALC*/", calc), ("/*KIT*/", kit),
                           ("__KIT_VERSION__", version)):
         if page.count(marker) != 1:
             sys.exit(f"Template marker {marker} must appear exactly once")
@@ -106,12 +107,17 @@ def build_html(steps, intro=""):
     return page
 
 
-def build_md(steps, intro=""):
+def build_md(steps, intro="", quick=""):
     out = ["# Ballot Guide Prompt Kit", "",
            "Build a sourced voter guide for your ballot. By default it compares each race and measure "
            "neutrally, using records and funders, with sources. If you want, it also scores each choice "
            "against values you supply.", "",
            f"A web version with copy buttons and a score calculator is at {SITE}", "",
+           "## Quick start (one chat)", "",
+           "The easiest way: paste this starter into one free AI chat with web search, type the races from your "
+           "ballot or sample ballot, then type \"next\" for each item and \"guide\" at the end. For scores against "
+           "your values, a double-check, or saved progress, use the full steps below.", "",
+           "```text", quick, "```", "",
            "## How to use", "", HOW_INTRO, "", "Two ways to use it:", ""]
     out += [f"- {s}" for s in HOW_MODES] + [""]
     out += [f"{i}. {s}" for i, s in enumerate(HOW_STEPS_MD, 1)]
@@ -133,8 +139,9 @@ def main():
     source = read(src)
     intro = next((line for line in source.splitlines() if line.startswith("Neutral mode:")), "")
     steps = parse_steps(source)
-    write("docs/index.html", build_html(steps, intro))
-    write("PROMPT-KIT.md", build_md(steps, intro))
+    quick = read(os.path.join(os.path.dirname(src), "quickstart.txt"))
+    write("docs/index.html", build_html(steps, intro, quick))
+    write("PROMPT-KIT.md", build_md(steps, intro, quick))
     print("wrote docs/index.html and PROMPT-KIT.md")
 
 

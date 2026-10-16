@@ -69,5 +69,6 @@ For sub-agents, follow references/delegation.md; validate every evidence file wi
 - `references/rules.md` — shared research rules and the original values workflow.
 - `references/prompts.md` — step prompts, with the neutral routing note.
 - `references/delegation.md` — optional tiered research with sub-agents.
+- `references/quickstart.txt` — the single-chat starter the web kit offers for free AI chats.
 - `scripts/score.py` — calculator; `python3 scripts/score.py --demo`.
 - `scripts/check_evidence.py` — checks evidence JSON before scoring; `python3 scripts/check_evidence.py --demo`.

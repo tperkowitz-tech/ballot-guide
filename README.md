@@ -23,6 +23,14 @@ What the skill does that the web and prompt kits can't:
 
 ## No skills? Use any AI chat
 
+**Quick start (easiest):** one copy-and-paste starter runs the whole ballot in a single free AI chat.
+
+1. Copy the starter from the [web kit's Quick start](https://tperkowitz-tech.github.io/ballot-guide/#quick-start) (or the [plain text](PROMPT-KIT.md#quick-start-one-chat)).
+2. Paste it into a free AI chat with web search (ChatGPT worked in testing; free accounts may limit photo uploads, so typing the races works best).
+3. Type the races from your ballot or sample ballot, then type "next" for each item and "guide" at the end.
+
+For scores against your values, a double-check, or saved progress, use the full kits:
+
 | Option | Best for |
 |---|---|
 | [Web kit](https://tperkowitz-tech.github.io/ballot-guide/) | Anyone with a browser. The page writes each question, you paste it into an AI chat with web search, and paste the answer back. No install, no account. |
