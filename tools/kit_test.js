@@ -516,3 +516,14 @@ console.log("kit_test: v1.6.0 checks passed");
   assert.ok(fillStep(3, step3, defaultState()).includes("[Housing][0][FUNDER][against-pac-Example PAC]"));
   console.log("kit_test: v1.7.0 scoring checks passed");
 }
+
+// The Quick start preview (and so its Copy button) must carry the starter byte for byte.
+{
+  const fs = require("fs"), path = require("path");
+  const src = fs.readFileSync(path.join(__dirname, "..", "ballot-guide", "references", "quickstart.txt"), "utf8");
+  const page = fs.readFileSync(path.join(__dirname, "..", "docs", "index.html"), "utf8");
+  const m = page.match(/<pre id="quick-text">([\s\S]*?)<\/pre>/);
+  assert.ok(m, "Quick start preview missing from docs/index.html");
+  assert.strictEqual(m[1].replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), src);
+  console.log("kit_test: quick start checks passed");
+}

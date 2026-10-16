@@ -16,7 +16,7 @@ One row per state, generated from the report log below.
 | Georgia | 1 | ChatGPT (free, logged out) | 2026-10-06 | 1 Worked with fixes |
 | Ohio | 4 | ChatGPT (free, logged out), Google AI Mode (signed out) | 2026-10-07 | 1 Did not work, 3 Worked with fixes |
 | Pennsylvania | 1 | ChatGPT (free, logged out) | 2026-10-06 | 1 Worked with fixes |
-| Washington | 1 | Claude Code | 2026-10-06 | 1 Worked with fixes |
+| Washington | 2 | ChatGPT (free, signed in), Claude Code | 2026-10-15 | 2 Worked with fixes |
 <!-- summary:end -->
 
 ## Add your report
@@ -37,3 +37,4 @@ Nothing is sent until you submit it. A maintainer adds a row here from each repo
 | 2026-10-07 | District of Columbia | (public test address) | 2026 General | Google AI Mode (signed in) | Both | Worked with fixes | Maintainer test; searched every step; names came back as Google links and the race question had no place (both fixed in v1.6.0); 8,192-character input limit cut the double-check; missed two ballot items and listed one that does not exist | v1.5.1 |
 | 2026-10-07 | Ohio | (public test address) | 2026 General | ChatGPT (free, logged out) | Both | Worked with fixes | Maintainer re-test; ballot list complete but included other county districts; Governor race split into parts; Issue 3 votes correct; double-check and values scores worked | v1.6.0 |
 | 2026-10-07 | Ohio | (public test address) | 2026 General | Google AI Mode (signed out) | Both | Did not work | Maintainer re-test; ballot list came from the primary list (missing candidates and races, a withdrawn candidate added); wrong Issue 3 vote count; values call went to the withdrawn candidate (now excluded in v1.6.1) | v1.6.0 |
+| 2026-10-15 | Washington | (public test address) | 2026 General | ChatGPT (free, signed in) | Neutral | Worked with fixes | Maintainer test of the one-chat Quick start: correct 14-item list from a typed ballot, real links, all items in the guide; donor totals sparse, a daily photo-upload limit on free accounts | v1.8.0 |
