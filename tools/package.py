@@ -5,6 +5,8 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "ballot-guide"
 OUTPUT = ROOT / "dist" / "ballot-guide.skill"
+# claude.ai's docs name only ZIP uploads, so ship the same bytes under a .zip name too.
+ZIP_COPY = OUTPUT.with_suffix(".zip")
 
 
 def main():
@@ -22,7 +24,8 @@ def main():
             entry.create_system = 3
             entry.external_attr = 0o100644 << 16
             archive.writestr(entry, path.read_bytes())
-    print(f"wrote {OUTPUT.relative_to(ROOT)} ({len(files)} files)")
+    ZIP_COPY.write_bytes(OUTPUT.read_bytes())
+    print(f"wrote {OUTPUT.relative_to(ROOT)} and {ZIP_COPY.relative_to(ROOT)} ({len(files)} files)")
 
 
 if __name__ == "__main__":

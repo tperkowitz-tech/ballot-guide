@@ -33,6 +33,7 @@ def validate(path):
         raise ValueError("Frontmatter requires name and description")
     if len(fields["name"]) > 64 or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", fields["name"]):
         raise ValueError("Frontmatter name needs lowercase alphanumeric/hyphen format, <=64 characters")
-    if len(fields["description"]) > 1024:
-        raise ValueError("Frontmatter description exceeds 1024 characters")
+    # claude.ai's upload help caps descriptions at 200 characters, stricter than the 1024 spec limit.
+    if len(fields["description"]) > 200:
+        raise ValueError("Frontmatter description exceeds 200 characters (claude.ai limit)")
     return fields
