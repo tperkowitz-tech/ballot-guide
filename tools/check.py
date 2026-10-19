@@ -1,4 +1,5 @@
 """Check tests, generated kit freshness, and publishable-file privacy."""
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -19,6 +20,7 @@ def generated():
 
 def main():
     validate(ROOT / "ballot-guide/SKILL.md")
+    json.loads((ROOT / ".claude-plugin/marketplace.json").read_text())  # a typo here breaks /plugin install
     original = generated()
     try:
         run("python3", "tools/build_kit.py")

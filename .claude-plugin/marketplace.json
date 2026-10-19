@@ -1,0 +1,13 @@
+{
+  "name": "ballot-guide",
+  "description": "Sourced US ballot research guides",
+  "owner": { "name": "tperkowitz-tech" },
+  "plugins": [
+    {
+      "name": "ballot-guide",
+      "source": "./",
+      "description": "Research US ballots, candidates, measures and election logistics with sources",
+      "skills": ["./ballot-guide"]
+    }
+  ]
+}

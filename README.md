@@ -8,15 +8,75 @@ There are three ways to use it: the skill, Quick start, and Advanced (one race a
 
 ## Install the skill
 
-For Claude apps, Claude Code and Codex. The skill runs every step for you and checks its own research files before scoring.
+The skill runs every step for you and checks its own research files before scoring. Pick your tool below. A folder install ends with one folder, `ballot-guide/`, holding `SKILL.md` directly. If you unzip by hand, unzip into the skills folder itself, not into a folder you named `ballot-guide` (that gives `ballot-guide/ballot-guide/`, which no tool finds).
 
-| You use | How to install |
-|---|---|
-| Claude apps | Download `ballot-guide.skill` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest) and upload it in Claude's Skills settings |
-| Claude Code | Unzip the release file into `~/.claude/skills/` |
-| Codex | Copy the [`ballot-guide/`](ballot-guide/) folder to `~/.agents/skills/`, then restart Codex |
+**Claude apps (claude.ai).** Skills work on the Free, Pro, Max, Team and Enterprise plans.
 
-Then ask, for example, *"Research my ballot for the November election"* or *"Explain Measure 3"*. In Codex, start with `Use $ballot-guide to research my ballot.` If your app supports helpers and you allow it, the skill can [split the research across several AI helpers](ballot-guide/references/delegation.md).
+1. Download `ballot-guide.zip` from the [latest release](https://github.com/tperkowitz-tech/ballot-guide/releases/latest).
+2. Make sure code execution is turned on in your settings. Skills need it.
+3. Go to **Customize > Skills > + > Create skill > Upload a skill** and pick the zip.
+
+Team and Enterprise owners can add the skill for everyone in the organization. On Enterprise, the owner must also turn on "Code execution and file creation" and Skills.
+
+**Claude Code.** In Claude Code, run:
+
+```
+/plugin marketplace add tperkowitz-tech/ballot-guide
+/plugin install ballot-guide@ballot-guide
+```
+
+As a plugin, the skill is called `/ballot-guide:ballot-guide`. Or copy it into your personal skills folder from a terminal:
+
+```sh
+# macOS / Linux
+curl -fsSL -o "${TMPDIR:-/tmp}/ballot-guide.zip" https://github.com/tperkowitz-tech/ballot-guide/releases/latest/download/ballot-guide.zip && mkdir -p ~/.claude/skills && unzip -o "${TMPDIR:-/tmp}/ballot-guide.zip" -d ~/.claude/skills
+```
+
+```powershell
+# Windows PowerShell
+$z = "$env:TEMP\ballot-guide.zip"; Invoke-WebRequest https://github.com/tperkowitz-tech/ballot-guide/releases/latest/download/ballot-guide.zip -OutFile $z -UseBasicParsing; Expand-Archive $z "$HOME\.claude\skills" -Force
+```
+
+To share it with a project instead, put the folder in that repo's `.claude/skills/` and commit it. No restart is needed. If `~/.claude/skills/` did not exist when your session started, run `/reload-skills` once.
+
+**Codex.** From a terminal, install into `~/.agents/skills/`:
+
+```sh
+# macOS / Linux
+curl -fsSL -o "${TMPDIR:-/tmp}/ballot-guide.zip" https://github.com/tperkowitz-tech/ballot-guide/releases/latest/download/ballot-guide.zip && mkdir -p ~/.agents/skills && unzip -o "${TMPDIR:-/tmp}/ballot-guide.zip" -d ~/.agents/skills
+```
+
+```powershell
+# Windows PowerShell
+$z = "$env:TEMP\ballot-guide.zip"; Invoke-WebRequest https://github.com/tperkowitz-tech/ballot-guide/releases/latest/download/ballot-guide.zip -OutFile $z -UseBasicParsing; Expand-Archive $z "$HOME\.agents\skills" -Force
+```
+
+Codex picks up new skills automatically; if it doesn't show up, restart Codex. Start with `Use $ballot-guide to research my ballot.` (or pick it from `/skills`).
+
+**Other tools.** Copy the `ballot-guide/` folder into one of these personal folders. Most of them also read `~/.agents/skills/`, so the Codex install covers them.
+
+| Tool | Personal skills folder | Notes |
+|---|---|---|
+| GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/` or `~/.agents/skills/` | Project: `.github/skills/` |
+| Cursor | `~/.cursor/skills/` or `~/.agents/skills/` | Loads skills when Cursor starts |
+| Gemini CLI | `~/.gemini/skills/` or `~/.agents/skills/` | Or `gemini skills install https://github.com/tperkowitz-tech/ballot-guide.git --path ballot-guide`; then `/skills reload` |
+| OpenCode | `~/.config/opencode/skills/` or `~/.agents/skills/` | |
+| Goose | `~/.agents/skills/` | Start a new session |
+| Amp | `~/.config/agents/skills/` or `~/.agents/skills/` | Ask "Reload my skills" |
+| Windsurf (Devin Desktop) | `~/.codeium/windsurf/skills/` or `~/.agents/skills/` | |
+| Kiro | `~/.kiro/skills/` | Or **Import a skill > GitHub** with `https://github.com/tperkowitz-tech/ballot-guide/tree/main/ballot-guide` |
+| ChatGPT (Business, Enterprise, Healthcare, Edu) | Upload the zip: **Skills > Create > Upload from your computer** | Your admin may limit uploads |
+
+On Windows, `~` is your user folder (`%USERPROFILE%`).
+
+**Cross-tool installers.** Either one installs for many tools at once:
+
+- `npx skills add https://github.com/tperkowitz-tech/ballot-guide/tree/main/ballot-guide` (needs Node.js 22.20 or later; add `-g` to install for your user account instead of one project and pick your tools when asked).
+- `gh skill install tperkowitz-tech/ballot-guide ballot-guide/SKILL.md --agent claude-code --scope user` (GitHub CLI 2.90 or later, in preview; change `--agent` to `codex`, `cursor`, `github-copilot` and so on).
+
+**Requirements.** The optional scoring scripts need Python 3.8 or later, standard library only. On Windows, the command may be `python` or `py -3` instead of `python3`.
+
+**Check it worked.** Ask *"What does the ballot-guide skill do?"*, then *"Research my ballot for the November election"* or *"Explain Measure 3"*. If your app supports helpers and you allow it, the skill can [split the research across several AI helpers](ballot-guide/references/delegation.md).
 
 ## Quick start (any free AI chat)
 

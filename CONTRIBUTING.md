@@ -8,7 +8,7 @@ Edit the source, then rebuild. Never edit a generated file by hand: `tools/check
 
 | Source | What it is | Generated from it |
 |---|---|---|
-| `ballot-guide/SKILL.md` | The skill's entry point | `dist/ballot-guide.skill` (with the rest of `ballot-guide/`, via `tools/package.py`) |
+| `ballot-guide/SKILL.md` | The skill's entry point | `dist/ballot-guide.skill` and an identical `dist/ballot-guide.zip` (with the rest of `ballot-guide/`, via `tools/package.py`) |
 | `ballot-guide/references/rules.md` | Research and values-match rules the skill follows | (skill only) |
 | `ballot-guide/references/prompts.md` | Steps 0–8, the prompts every version uses | `docs/index.html`, `PROMPT-KIT.md` (via `tools/build_kit.py`) |
 | `ballot-guide/references/quickstart.txt` | The Quick start starter, tuned in live tests | `docs/index.html`, `PROMPT-KIT.md` |
@@ -46,8 +46,8 @@ Reports arrive as issues labeled `tested`. Copy only the coarse fields into the 
 ## Release
 
 1. Bump `VERSION` and run `python3 tools/build_kit.py`.
-2. Run `python3 tools/check.py` and `python3 tools/package.py`. Inspect `dist/ballot-guide.skill`; `ballot-guide/SKILL.md` must be at its top level.
-3. After review passes and the PR is merged, check out merged `main`, rebuild the archive, and publish the release (for example `v2.1.0`) on that commit with `dist/ballot-guide.skill` attached. Publish only when the owner authorizes it. `dist/` is ignored by Git.
+2. Run `python3 tools/check.py` and `python3 tools/package.py`. Inspect `dist/ballot-guide.zip`; `ballot-guide/SKILL.md` must be at its top level. `dist/ballot-guide.skill` holds the same bytes.
+3. After review passes and the PR is merged, check out merged `main`, rebuild the archive, and publish the release (for example `v2.1.0`) on that commit with both `dist/ballot-guide.zip` and `dist/ballot-guide.skill` attached. The README's install commands download `ballot-guide.zip` from the latest release, so it must be there. Mention both downloads in the release notes. Publish only when the owner authorizes it. `dist/` is ignored by Git.
 
 ## Review and fact-check
 

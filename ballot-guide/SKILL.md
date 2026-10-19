@@ -1,6 +1,6 @@
 ---
 name: ballot-guide
-description: Research US ballots, candidates' evidence (records first, then candidates' own questionnaire answers and statements, with donors and endorsements as limited signals), measures, and official election logistics with sources. Use for a full ballot guide, one race or measure, or an explainer. Neutral comparison is the default; values match is opt-in when the user asks, supplies values, and the host permits it.
+description: "Research a US ballot with sources: candidates' records first, then their own answers and statements; what measures do and cost; official voting info. Neutral by default; values match on request."
 ---
 
 # Ballot Guide
