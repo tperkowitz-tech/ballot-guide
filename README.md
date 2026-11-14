@@ -4,6 +4,8 @@
 
 [See sample guides](https://tperkowitz-tech.github.io/ballot-guide/sample.html) built with it on real ballots.
 
+**After the 2026 general election.** Voting in the November 3, 2026 general election has ended. The samples are a record of those ballots as researched before Election Day, not results. The tool works for any US election, including runoffs and future elections; fixes and reports are welcome.
+
 There are three ways to use it: the skill, Quick start, and Advanced (one race at a time).
 
 ## Install the skill
